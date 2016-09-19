@@ -5,7 +5,7 @@
  Distributed under the Boost License, see file ./LICENSE
 */
 
-module d_common.core_web;
+module d_glat_common.core_web;
 
 import etc.c.curl : CurlOption;
 
