@@ -1,3 +1,9 @@
+/**
+ By Guillaume Lathoud
+ glat@glat.info
+ 
+ Distributed under the Boost License, see file ./LICENSE
+*/
 module d_common.core_parse_number;
 
 import std.format;
