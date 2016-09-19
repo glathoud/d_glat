@@ -4,7 +4,7 @@
  
  Distributed under the Boost License, see file ./LICENSE
 */
-module d_common.core_glob;
+module d_glat_common.core_glob;
 
 import std.algorithm;
 import std.array;
