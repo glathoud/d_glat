@@ -9,6 +9,8 @@ module d_common.lib_search_dichotomy;
  Guillaume Lathoud
  glat@glat.info
 
+ Distributed under the Boost License, see file ./LICENSE
+
 **/
 
 bool search_dichotomy( alias fun )
