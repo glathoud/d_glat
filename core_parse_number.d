@@ -4,7 +4,7 @@
  
  Distributed under the Boost License, see file ./LICENSE
 */
-module d_common.core_parse_number;
+module d_glat_common.core_parse_number;
 
 import std.format;
 import std.regex;
