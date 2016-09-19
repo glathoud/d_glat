@@ -1,3 +1,10 @@
+/**
+ By Guillaume Lathoud
+ glat@glat.info
+
+ Distributed under the Boost License, see file ./LICENSE
+*/
+
 module d_common.core_web;
 
 import etc.c.curl : CurlOption;
