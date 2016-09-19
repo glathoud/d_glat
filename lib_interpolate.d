@@ -6,7 +6,7 @@
  Distributed under the Boost License, see file ./LICENSE
 
 */
-module d_common.lib_interpolate;
+module d_glat_common.lib_interpolate;
 
 double interpolate( in double a, in double b, in double prop )
 {
