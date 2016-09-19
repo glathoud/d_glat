@@ -5,7 +5,7 @@
  Distributed under the Boost License, see file ./LICENSE
 */
 
-module d_common.core_json;
+module d_glat_common.core_json;
 
 import std.json;
 
