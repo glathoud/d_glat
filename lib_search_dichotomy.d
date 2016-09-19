@@ -1,4 +1,4 @@
-module d_common.lib_search_dichotomy;
+module d_glat_common.lib_search_dichotomy;
 
 /**
  Search sorted values accessible through `fun( ulong ) -> double`
