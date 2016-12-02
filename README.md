@@ -1,4 +1,4 @@
-# d_common
+# d_glat_common
 tools in D language
 
 All distributed under the Boost License, see file [LICENSE](LICENSE).
