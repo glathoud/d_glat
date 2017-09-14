@@ -9,6 +9,7 @@ import std.digest.sha;
 import std.exception;
 import std.format;
 import std.json;
+import std.typecons;
 
 alias Jsonplace = string[]; // position in the JSON
 
