@@ -95,6 +95,35 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 }
 
 
+Nullable!JSONValue json_get_place
+( ref JSONValue j, in Jsonplace place )
+{
+  auto plen = place.length;
+  if (plen < 1)
+    return j;
+
+  Nullable!JSONValue j_deeper;
+  Nullable!JSONValue j_ret;
+  
+  if (j.type == JSON_TYPE.OBJECT)
+    {
+      j_deeper = j.object[ place[ 0 ] ];
+    }
+  else if (j.type == JSON_TYPE_ARRAY)
+    {
+      j_deeper = j.array[ to!ulong( place[ 0 ] ) ];
+    }
+
+  return (!j_deeper.isNull)
+    {
+      j_ret = json_get_place( j_deeper, place[ 1:$ ] );
+    }
+
+  return j_ret;
+}
+
+
+
 void json_set_place
 ( ref JSONValue j, in Jsonplace place, in JSONValue v )
 {
@@ -125,7 +154,7 @@ void json_set_place
     }
   else
     {
-      enforce( false, "json structure mismatch bug" );
+      enforce( false, "json_set_place: structure mismatch bug" );
     }
   
   if (!is_leaf)
