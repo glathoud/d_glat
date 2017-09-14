@@ -6,7 +6,7 @@
 */
 module d_glat_common.core_file;
 
-import std.c.stdlib;
+import core.stdc.stdlib;
 import std.conv;
 import std.file;
 import std.path;
