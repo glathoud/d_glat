@@ -50,8 +50,7 @@ string json_get_hash( in ref JSONValue j )
     ( "%(%02x%)", sha1Of( json_get_sorted_hash_material( j ) ) );
 }
 
-Nullable!JSONValue json_get_place
-( ref JSONValue j, in Jsonplace place )
+Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
 {
   Nullable!JSONValue j_ret;
 
@@ -129,19 +128,36 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 
 
 
-bool json_is_string( ref Nullable!JSONValue j )
+bool json_is_string( in ref Nullable!JSONValue j )
 // Should work well together with `json_get_place`.
 {
   pragma( inline, true );
   return !j.isNull  &&  j.type == JSON_TYPE.STRING;
 }
 
-bool json_is_string_equal( ref Nullable!JSONValue j, in string s )
+bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
+{
+  pragma( inline, true );
+  auto maybe_j = json_get_place( j, place );
+  return json_is_string_equal( maybe_j , s );
+}
+
+
+bool json_is_string_equal( T )( in ref T j, in string s )
 // Should work well together with `json_get_place`.
 {
   pragma( inline, true );
   return json_is_string( j )  &&  j.str == s;
 }
+
+
+
+bool json_is_true( in ref Nullable!JSONValue j )
+{
+  pragma( inline, true );
+  return !j.isNull  &&  j.type == JSON_TYPE.TRUE;
+}
+
 
 
 void json_set_place
