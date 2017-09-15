@@ -53,27 +53,32 @@ string json_get_hash( in ref JSONValue j )
 Nullable!JSONValue json_get_place
 ( ref JSONValue j, in Jsonplace place )
 {
+  Nullable!JSONValue j_ret;
+
   auto plen = place.length;
   if (plen < 1)
-    return j;
-
-  Nullable!JSONValue j_deeper;
-  Nullable!JSONValue j_ret;
+    {
+      j_ret = j;
+    }
+  else
+    {
+      Nullable!JSONValue j_deeper;
   
-  if (j.type == JSON_TYPE.OBJECT)
-    {
-      j_deeper = j.object[ place[ 0 ] ];
-    }
-  else if (j.type == JSON_TYPE_ARRAY)
-    {
-      j_deeper = j.array[ to!ulong( place[ 0 ] ) ];
-    }
+      if (j.type == JSON_TYPE.OBJECT)
+        {
+          j_deeper = j.object[ place[ 0 ] ];
+        }
+      else if (j.type == JSON_TYPE.ARRAY)
+        {
+          j_deeper = j.array[ to!ulong( place[ 0 ] ) ];
+        }
 
-  return (!j_deeper.isNull)
-    {
-      j_ret = json_get_place( j_deeper, place[ 1:$ ] );
+      if (!j_deeper.isNull)
+        {
+          j_ret = json_get_place( j_deeper, place[ 1..$ ] );
+        }
     }
-
+  
   return j_ret;
 }
 
