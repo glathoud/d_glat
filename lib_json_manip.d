@@ -128,6 +128,15 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 
 
 
+bool json_is_integer( in ref Nullable!JSONValue j )
+{
+  pragma( inline, true );
+  return !j.isNull  &&  j.type == JSON_TYPE.INTEGER;
+}
+
+
+
+
 bool json_is_string( in ref Nullable!JSONValue j )
 // Should work well together with `json_get_place`.
 {
