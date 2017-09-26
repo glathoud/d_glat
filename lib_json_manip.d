@@ -51,6 +51,14 @@ string json_get_hash( in ref JSONValue j )
     ( "%(%02x%)", sha1Of( json_get_sorted_hash_material( j ) ) );
 }
 
+JSONValue json_get_place( in ref JSONValue j, in Jsonplace place
+                          , in JSONValue j_default )
+{
+  auto j_n = json_get_place( j, place );
+  return j_n.isNull  ?  j_default  :  j_n;
+}
+
+
 Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
 {
   Nullable!JSONValue j_ret;
