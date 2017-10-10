@@ -71,6 +71,12 @@ double json_get_double( in JSONValue jv )
   return get_double_of_json( jv );
 }
 
+long json_get_long( in JSONValue jv )
+{
+  return get_long_of_json( jv );
+}
+
+
 string json_get_string( in JSONValue jv )
 {
   assert( jv.type == JSON_TYPE.STRING );

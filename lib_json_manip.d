@@ -43,12 +43,19 @@ private void _json_flatten_push
 }
 
 
-
 string json_get_hash( in ref JSONValue j )
 // 40-byte hash of sorted `j` (sorted for unicity).
 {
-  return format
-    ( "%(%02x%)", sha1Of( json_get_sorted_hash_material( j ) ) );
+  string sorted_str_json;
+  return json_get_hash( j, sorted_str_json );
+}
+
+string json_get_hash( in ref JSONValue j
+                      , out string sorted_str_json )
+// 40-byte hash of sorted `j` (sorted for unicity).
+{
+  sorted_str_json = json_get_sorted_hash_material( j );
+  return format( "%(%02x%)", sha1Of( sorted_str_json ) );
 }
 
 JSONValue json_get_place( in ref JSONValue j, in Jsonplace place
