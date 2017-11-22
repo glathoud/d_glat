@@ -81,11 +81,14 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
   
       if (j.type == JSON_TYPE.OBJECT)
         {
-          j_deeper = j.object[ place[ 0 ] ];
+	  if (auto p = place[ 0 ] in j.object)
+	    j_deeper = *p;
         }
       else if (j.type == JSON_TYPE.ARRAY)
         {
-          j_deeper = j.array[ to!ulong( place[ 0 ] ) ];
+	  auto p0 = to!size_t( place[ 0 ] );
+	  if (0 <= p0  &&  p0 < j.array.length)
+	    j_deeper = j.array[ p0 ];
         }
 
       if (!j_deeper.isNull)
