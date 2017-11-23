@@ -1,5 +1,12 @@
 module d_glat_common.lib_json_manip;
 
+/* Utilities to manipulate `JSONValue`s
+
+By Guillaume Lathoud - glat@glat.info
+
+Boost license, as described in the file ./LICENSE
+*/
+
 public import d_glat_common.core_json;
 
 import std.algorithm;
@@ -13,6 +20,35 @@ import std.stdio;
 import std.typecons;
 
 alias Jsonplace = string[]; // position in the JSON
+
+JSONValue json_ascii_inplace( ref JSONValue jv )
+/*
+  Conveniently replace non-ASCII chars with "~".
+
+Return the same instance `jv`, modified.
+
+How: Modify in-place all strings in `jv` (recursive walk) to ensure
+all chars are <= 126, thus ensuring ASCII. Useful when packing
+unreliable strings, that may lead to a subsequent UTF-8 decoding error
+when calling `jv.toString`.
+ */
+{
+  json_walk!( json_ascii_inplace_iter )( jv );
+
+  return jv;
+}
+
+private void json_ascii_inplace_iter( in Jsonplace place, ref JSONValue jv2 )
+{
+  immutable ubyte some_max = 126; 
+  
+  if (JSON_TYPE.STRING == jv2.type)
+    {
+      ubyte[] arr  = cast( ubyte[] )( jv2.str );
+      ubyte[] arr2 = arr.map!( x => min( x, some_max ) ).array;
+      jv2.str = cast( string )( arr2 );
+    }
+}
 
 JSONValue json_deep_copy( in ref JSONValue j )
 {
@@ -161,7 +197,7 @@ bool json_is_string( in ref Nullable!JSONValue j )
 {
   pragma( inline, true );
   return !j.isNull  &&  j.type == JSON_TYPE.STRING;
-}
+ }
 
 bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
 {
@@ -225,21 +261,20 @@ void json_set_place
     json_set_place( j_deeper, place[ 1..$ ], v );
 }
 
-
-void json_walk( alias iter )( in ref JSONValue j )
+void json_walk( alias iter )( ref JSONValue j )
 {
   json_walk_until!( _json_walk_iter_wrap!( iter ) )( j );
 }
 
 private bool _json_walk_iter_wrap( alias iter )
-  ( in Jsonplace place, in ref JSONValue v )
+  ( in Jsonplace place, ref JSONValue v )
 {
   pragma( inline, true );
   iter( place, v );
   return false;
 }
 
-bool json_walk_until( alias test )( in ref JSONValue j )
+bool json_walk_until( alias test )( ref JSONValue j )
 {
   auto top_place = cast( Jsonplace )( [] );
   
@@ -247,7 +282,7 @@ bool json_walk_until( alias test )( in ref JSONValue j )
 }
 
 private bool _json_walk_until_sub( alias test )
-  ( in Jsonplace place, in ref JSONValue j )
+  ( in Jsonplace place, ref JSONValue j )
 {
   bool ret = test( place, j );
 
