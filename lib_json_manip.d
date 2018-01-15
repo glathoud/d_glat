@@ -16,6 +16,7 @@ import std.digest.sha;
 import std.exception;
 import std.format;
 import std.json;
+import std.regex;
 import std.stdio;
 import std.typecons;
 
@@ -122,10 +123,17 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
         }
       else if (j.type == JSON_TYPE.ARRAY)
         {
-	  auto p0 = to!size_t( place[ 0 ] );
-	  if (0 <= p0  &&  p0 < j.array.length)
-	    j_deeper = j.array[ p0 ];
-        }
+	  auto ctnum = ctRegex!( `^[0-9]+$` );
+
+	  auto sp0 = place[ 0 ];
+	  auto  cnum = matchFirst( sp0, ctnum );
+	  if (!cnum.empty)
+	    {
+	      auto p0 = to!size_t( place[ 0 ] );
+	      if (0 <= p0  &&  p0 < j.array.length)
+		j_deeper = j.array[ p0 ];
+	    }
+	}
 
       if (!j_deeper.isNull)
         {
@@ -247,10 +255,10 @@ void json_set_place
   else if (j.type == JSON_TYPE.ARRAY)
     {
       if (is_leaf)
-          j.array[ to!ulong( place_0 ) ] = v;
+          j.array[ to!size_t( place_0 ) ] = v;
 
       else
-          j_deeper = j.array[ to!ulong( place_0 ) ];
+          j_deeper = j.array[ to!size_t( place_0 ) ];
     }
   else
     {
