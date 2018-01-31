@@ -95,11 +95,24 @@ string json_get_hash( in ref JSONValue j
   return format( "%(%02x%)", sha1Of( sorted_str_json ) );
 }
 
+JSONValue json_get_place( in ref JSONValue j, in string place_str
+                          , in JSONValue j_default )
+{
+  return json_get_place( j, [ place_str ], j_default );
+}
+
+
 JSONValue json_get_place( in ref JSONValue j, in Jsonplace place
                           , in JSONValue j_default )
 {
   auto j_n = json_get_place( j, place );
   return j_n.isNull  ?  j_default  :  j_n;
+}
+
+
+Nullable!JSONValue json_get_place( in ref JSONValue j, in string place_str )
+{
+  return json_get_place( j, [ place_str ] );
 }
 
 
@@ -230,6 +243,13 @@ bool json_is_true( in ref Nullable!JSONValue j )
   return !j.isNull  &&  j.type == JSON_TYPE.TRUE;
 }
 
+
+
+void json_set_place
+( ref JSONValue j, in string place_str, in JSONValue v )
+{
+  json_set_place( j, [ place_str ], v );
+}
 
 
 void json_set_place
