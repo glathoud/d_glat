@@ -2,6 +2,12 @@ module d_glat_common.core_assoc_array;
 
 import std.stdio;
 
+/*
+  Tools for associative arrays. Boost License, see file ./LICENSE
+
+  By Guillaume Lathoud, 2018
+ */
+
 // To get/initialize associative arrays having more than one dimension
 
 T* getInit2( T )( ref T[string] aa, in string key )
