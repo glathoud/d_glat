@@ -79,5 +79,4 @@ unittest
 
     assert( c_of_b_of_a ==    expected );
   }
-
 }
