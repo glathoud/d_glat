@@ -67,16 +67,34 @@ unittest
   {
     string[string][string] c_of_b_of_a;
 
-    string[string] def_val() { return [ "y0":"z0" ]; }
+    uint call_count = 0;
+    string[string] def_val() { call_count++; return [ "y0":"z0" ]; }
     
     // Implicit: `!(string[string])`
-    auto c_of_b = c_of_b_of_a.aa_getInit( "x", /*custom def_val*/def_val );
-    (*c_of_b)[ "y" ] = "z";
-    (*c_of_b)[ "y0" ] = "z2";
+    assert( call_count == 0 );
+    {
+      auto c_of_b = c_of_b_of_a.aa_getInit( "x", /*custom def_val*/def_val );
+      assert( call_count == 1 );
+      (*c_of_b)[ "y" ] = "z";
+      (*c_of_b)[ "y0" ] = "z2";
+      
+      typeof(c_of_b_of_a) expected;
+      expected["x"] = ["y":"z", "y0":"z2"];
+      
+      assert( c_of_b_of_a ==    expected );
+    }
 
-    typeof(c_of_b_of_a) expected;
-    expected["x"] = ["y":"z", "y0":"z2"];
+    {
+      auto c_of_b = c_of_b_of_a.aa_getInit( "x", /*custom def_val*/def_val );
+      assert( call_count == 1 );  // because `def_val` lazy input parameter
+      (*c_of_b)[ "y" ] = "q";
+      (*c_of_b)[ "y0" ] = "q2";
+      
+      typeof(c_of_b_of_a) expected;
+      expected["x"] = ["y":"q", "y0":"q2"];
+      
+      assert( c_of_b_of_a ==    expected );
+    }
 
-    assert( c_of_b_of_a ==    expected );
   }
 }
