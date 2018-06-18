@@ -10,7 +10,7 @@ import std.stdio;
 
 // To get/initialize associative arrays having more than one dimension
 
-T* aa_getInit( T )( ref T[string] aa, in string key, lazy T def_val = T.init )
+T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
 {
   auto p = key in aa;
   if (p)
