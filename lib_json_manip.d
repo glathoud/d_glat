@@ -70,7 +70,7 @@ private void _json_flatten_push
 {
   if ( j.type == JSON_TYPE.ARRAY )
     {
-      foreach (one ; j.array)
+      foreach (ref one ; j.array)
         _json_flatten_push( ret, one );
     }
   else
@@ -166,7 +166,7 @@ JSONValue json_get_replaced_many_places_with_placeholder_string
   auto ret = json_deep_copy( j );
 
   // Modifications
-  foreach( place ; place_arr )
+  foreach( ref place ; place_arr )
     json_set_place( ret, place, JSONValue( placeholder_string ) );
     
   return ret;
@@ -318,7 +318,7 @@ private bool _json_walk_until_sub( alias test )
     {
       if (j.type == JSON_TYPE.OBJECT)
         {
-          foreach ( k2,v2; j.object )
+          foreach ( k2, ref v2; j.object )
             {
               Jsonplace place2 = cast( Jsonplace )( place ~ k2 );
               ret = ret
@@ -330,7 +330,7 @@ private bool _json_walk_until_sub( alias test )
         }
       else if (j.type == JSON_TYPE.ARRAY)
         {
-          foreach ( k2,v2; j.array )
+          foreach ( k2, ref v2; j.array )
             {
               Jsonplace place2 = cast( Jsonplace )
                 ( place ~ to!string( k2 ) );
