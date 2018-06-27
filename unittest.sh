@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
+
+
+ME=$( realpath "$0" )
+MY_DIR=$( dirname "$ME" )
+MY_UPDIR=$( realpath "$MY_DIR/.." )
+
+cd $MY_UPDIR
+
 function doit {
     echo $1
     rdmd --force -debug -inline -O --main -unittest $1
 }
 export -f doit
 
-find . -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
+find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
 RESULT=$?
 
 echo $1
