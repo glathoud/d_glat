@@ -27,8 +27,6 @@ then
     fi
 fi
 
-echo
-echo "----------------------------------------"
 echo "Done: $(realpath $0)"
 if [[ $RESULT == 0 ]]
 then
@@ -36,5 +34,6 @@ then
 else
     echo "=> Failure! (result: $RESULT)"
 fi
+echo
 
 exit $RESULT
