@@ -1,18 +1,40 @@
 #!/usr/bin/env bash
+function doit {
+    echo $1
+    rdmd --force -debug -inline -O --main -unittest $1
+}
+export -f doit
 
-#!/usr/bin/env bash
+find . -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
+RESULT=$?
 
-set -e
+echo $1
 
-A=$(realpath $PWD/$(dirname $0))
-B=$A/..
+if [[ $RESULT == 0 ]]
+then
+    if [[ "$1" != "-norec" ]]
+    then
+	function do_other {
+	    if [[ "$1" ]]
+	    then
+		echo "$1 -norec"
+		$1 -norec
+	    fi
+	}
+	export -f do_other
+	find . -mindepth 2 -name 'unittest.sh' | xargs -n 1 bash -c 'do_other "$@"' _
+	RESULT=$?
+    fi
+fi
 
-MODULE_NAME=$(basename $A)
+echo
+echo "----------------------------------------"
+echo "Done: $(realpath $0)"
+if [[ $RESULT == 0 ]]
+then
+    echo "=> Success!"
+else
+    echo "=> Failure! (result: $RESULT)"
+fi
 
-
-FILE_LIST=$( find . -name '*.d' -exec grep -l unittest {} \; )
-IMPORT_LIST=$( ( sed 's:/:.:g' | sed 's:^\.\.::g' | sed "s/^\(.*\).d$/import ${MODULE_NAME}.\1;/g" ) <<< "$FILE_LIST" )
-echo $IMPORT_LIST
-
-cd $B
-rdmd --force -inline -debug -unittest --eval="${IMPORT_LIST}; import std.stdio; writeln; writeln( \"${MODULE_NAME}: All unittests passed\" )"
+exit $RESULT
