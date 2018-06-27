@@ -12,13 +12,13 @@ echo $1
 
 if [[ $RESULT == 0 ]]
 then
-    if [[ "$1" != "-norec" ]]
+    if [[ "$1" == "-rec" ]]
     then
 	function do_other {
 	    if [[ "$1" ]]
 	    then
-		echo "$1 -norec"
-		$1 -norec
+		echo "$1"
+		$1
 	    fi
 	}
 	export -f do_other
