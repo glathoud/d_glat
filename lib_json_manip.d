@@ -246,14 +246,14 @@ bool json_is_true( in ref Nullable!JSONValue j )
 
 
 void json_set_place
-( ref JSONValue j, in string place_str, in JSONValue v )
+( /*ref xxx commented out because of issue with -O */ JSONValue j, in string place_str, in JSONValue v )
 {
   json_set_place( j, [ place_str ], v );
 }
 
 
 void json_set_place
-( ref JSONValue j, in Jsonplace place, in JSONValue v )
+( /*ref xxx commented out because of issue with -O */ JSONValue j, in Jsonplace place, in JSONValue v )
 {
   auto plen = place.length;
   assert( 0 < plen );
@@ -270,7 +270,7 @@ void json_set_place
           j.object[ place_0 ] = v;
 
       else
-        j_deeper = j.object[ place_0 ];
+          j_deeper = j.object[ place_0 ];
     }
   else if (j.type == JSON_TYPE.ARRAY)
     {
@@ -282,12 +282,84 @@ void json_set_place
     }
   else
     {
+      stderr.writeln( "json_set_place: structure mismatch bug" );
+      stderr.writeln( "v: ", v );
+      stderr.writeln( "place: ", place );
+      stderr.writeln( "j: ", j.toPrettyString );
       enforce( false, "json_set_place: structure mismatch bug" );
     }
   
   if (!is_leaf)
-    json_set_place( j_deeper, place[ 1..$ ], v );
+      json_set_place( j_deeper, place[ 1..$ ], v );
 }
+
+
+
+
+
+void json_walkreadonly( alias iter )( in ref JSONValue j )
+{
+  json_walkreadonly_until!( _json_walkreadonly_iter_wrap!( iter ) )( j );
+}
+
+private bool _json_walkreadonly_iter_wrap( alias iter )
+  ( in Jsonplace place, in ref JSONValue v )
+{
+  iter( place, v );
+  return false;
+}
+
+bool json_walkreadonly_until( alias test )( in ref JSONValue j )
+{
+  auto top_place = cast( Jsonplace )( [] );
+  
+  return _json_walkreadonly_until_sub!( test )( top_place, j );
+}
+
+private bool _json_walkreadonly_until_sub( alias test )
+  ( in Jsonplace place, in ref JSONValue j )
+{
+  bool ret = test( place, j );
+
+  if (!ret)
+    {
+      if (j.type == JSON_TYPE.OBJECT)
+        {
+          foreach ( k2, ref v2; j.object )
+            {
+              Jsonplace place2 = cast( Jsonplace )( place ~ k2 );
+              ret = ret
+                || _json_walkreadonly_until_sub!( test )( place2, v2 )
+                ;
+              if (ret)
+                break;
+            }
+        }
+      else if (j.type == JSON_TYPE.ARRAY)
+        {
+          foreach ( k2, ref v2; j.array )
+            {
+              Jsonplace place2 = cast( Jsonplace )
+                ( place ~ to!string( k2 ) );
+              
+              ret = ret
+                || _json_walkreadonly_until_sub!( test )( place2, v2 )
+                ;
+              if (ret)
+                break;
+            }          
+        }
+    }
+  
+  return ret;
+}
+
+
+
+
+
+
+
 
 void json_walk( alias iter )( ref JSONValue j )
 {
@@ -297,7 +369,6 @@ void json_walk( alias iter )( ref JSONValue j )
 private bool _json_walk_iter_wrap( alias iter )
   ( in Jsonplace place, ref JSONValue v )
 {
-  pragma( inline, true );
   iter( place, v );
   return false;
 }
