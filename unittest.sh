@@ -1,40 +1,32 @@
 #!/usr/bin/env bash
 
+# Option: number of parallel tasks (default: == number of CPU cores)
+N_PAR_TASK="$1"
+PAR_OPT=()
+if [ "$N_PAR_TASK" != "" ]; then
+    PAR_OPT=( -P "$N_PAR_TASK" )
+fi
 
 ME=$( realpath "$0" )
 MY_DIR=$( dirname "$ME" )
-MY_UPDIR=$( realpath "$MY_DIR/.." )
 
-cd $MY_UPDIR
+cd "$MY_DIR"/..
 
 function doit {
-    echo $1
-    rdmd --force -debug -inline -O --main -unittest $1
+    echo
+    echo ">>>>>>>>>> $1 <<<<<<<<<<"
+    rdmd --force -debug -inline -O --main -i -unittest $1
 }
 export -f doit
 
-find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
+#find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
+
+find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | parallel ${PAR_OPT[@]} doit "{}"
 RESULT=$?
 
-echo $1
-
-if [[ $RESULT == 0 ]]
-then
-    if [[ "$1" == "-rec" ]]
-    then
-	function do_other {
-	    if [[ "$1" ]]
-	    then
-		echo "$1"
-		$1
-	    fi
-	}
-	export -f do_other
-	find . -mindepth 2 -name 'unittest.sh' | xargs -n 1 bash -c 'do_other "$@"' _
-	RESULT=$?
-    fi
-fi
-
+echo
+echo "__________________________________________________"
+echo
 echo "Done: $(realpath $0)"
 if [[ $RESULT == 0 ]]
 then
@@ -42,6 +34,7 @@ then
 else
     echo "=> Failure! (result: $RESULT)"
 fi
+echo "__________________________________________________"
 echo
 
 exit $RESULT

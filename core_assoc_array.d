@@ -21,6 +21,11 @@ T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
 
 unittest
 {
+  import std.path;
+
+  writeln;
+  writeln( "unittest starts: ", baseName( __FILE__ ) );
+
   {
     string[string][string] c_of_b_of_a;
 
@@ -97,4 +102,6 @@ unittest
     }
 
   }
+
+  writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
