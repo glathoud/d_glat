@@ -4,6 +4,7 @@
 N_PAR_TASK="$1"
 PAR_OPT=()
 if [ "$N_PAR_TASK" != "" ]; then
+    echo "N_PAR_TASK: ${N_PAR_TASK}"
     PAR_OPT=( -P "$N_PAR_TASK" )
 fi
 
@@ -21,7 +22,7 @@ export -f doit
 
 #find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
 
-find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | parallel ${PAR_OPT[@]} doit "{}"
+find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | parallel --no-notice ${PAR_OPT[@]} doit "{}"
 RESULT=$?
 
 echo
