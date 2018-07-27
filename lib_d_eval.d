@@ -27,8 +27,8 @@ private immutable string dfltCompiler =
 T d_eval( T )( in string fname, in string code
                , in string compiler = dfltCompiler )
 /*
-  Dynamic code compilation (supports DMD and LDC). You'll probably
-  need:
+  Dynamic code compilation (supports DMD and LDC). To compile your
+  main, you'll probably need:
 
   With DMD:
 
@@ -39,9 +39,8 @@ T d_eval( T )( in string fname, in string code
   -L-ldl -defaultlib=libphobos2.so
   -L"$LDC_DIR/lib/libphobos2-ldc-shared.so.2.0.80"
 
-  when compiling your main with ldmd2, where LDC was compiled to
-  output shared libraries, don't worry, this is fine, I got all the
-  steps for you as of 2018-07 in ./lib_d_eval.md
+  LDC must have been compiled to output shared libraries, see the
+  step-by-step instructions as of 2018-07 in ./lib_d_eval.md
 
   glat@glat.info
  */
@@ -79,7 +78,7 @@ T d_eval( T )( in string fname, in string code
       string tmpfilename_base;
       string tmpfilename_d;
       {
-        auto rx = ctRegex!`[^a-z0-9]`;
+        auto rx = ctRegex!`[^a-z0-9]+`;
         string somename = code.split( "\n" )[ 0 ][ 0..min(100,$) ]
           .replaceAll( rx, "_" );
 
@@ -99,23 +98,46 @@ T d_eval( T )( in string fname, in string code
         
         std.file.write( tmpfilename_d, code );
       }
+
+      // Try to find the shared Phobos library
+      // (esp. for LDC)
+
+      string maybe_phobos_shared
+        = buildPath
+        ( dirName( compiler ), "..", "lib"
+          , "libphobos2-ldc-shared.so"
+          );
+
+      string[] Lopt = 
+        exists( maybe_phobos_shared )
+        ?  [ `-L"`~maybe_phobos_shared~`"` ]
+        :  []
+        ;
+
+      writeln( "Lopt: ", Lopt );
       
       assertExecute
-        ( [ compiler, "-O", "-c", tmpfilename_d, "-fPIC" ] );
+        ( [ compiler, "-O", "-c", tmpfilename_d, "-fPIC" ]
+          ~ Lopt
+          );
 
       string tmpfn( in string ext )
       {
         return tmpfilename_base ~ ext;
       }
 
-      assertExecute
+       assertExecute
         ( [ compiler, "-O", "-of"~tmpfn(".o")
-            , "-c", tmpfilename_d, "-fPIC" ] );
-
+            , "-c", tmpfilename_d, "-fPIC" ]
+          ~ Lopt
+          );
+      
       assertExecute
-        ( [ compiler, "-of"~tmpfn(".so"), tmpfn(".o")
-            , "-shared", "-defaultlib=libphobos2.so" ] );
-
+        ( [ compiler, "-O", "-of"~tmpfn(".so"), tmpfn(".o")
+            , "-shared", "-defaultlib=libphobos2.so" ]
+          ~ Lopt
+          );
+      
       auto tmpfn_so = tmpfn(".so");
       
       void* lh = dlopen( toStringz( tmpfn_so ), RTLD_LAZY);

@@ -25,4 +25,7 @@ CODE=$(echo "$CODE_0" | tr '\n' ' ' | tr '\r' ' ')
 
 # Execute
 cd "$(dirname $0)"/..
+
+echo "$RUNNER" --eval="$CODE"
+
 "$RUNNER" --eval="$CODE"
