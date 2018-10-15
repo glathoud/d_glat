@@ -82,7 +82,9 @@ long json_get_long( in JSONValue jv )
 
 string json_get_string( in JSONValue jv )
 {
-  assert( jv.type == JSON_TYPE.STRING );
+  assert( jv.type == JSON_TYPE.STRING
+          , "Expected a STRING, got "~to!string(jv.type)
+          ~": "~jv.toPrettyString );
   return jv.str; 
 }
 

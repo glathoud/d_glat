@@ -417,3 +417,43 @@ private bool _json_walk_until_sub( alias test )
   
   return ret;
 }
+
+string json_white_out_comments( in string extended_json_string )
+/*
+  Very simple comment removal, that does not care about syntax, double
+quotes etc. Simplistic but enough for most practical purposes.
+*/
+  {
+    auto modifiable = cast( char[] )( extended_json_string );
+    json_white_out_comments_inplace( modifiable );
+    return modifiable.idup;
+  }
+
+void json_white_out_comments_inplace( char[] ca )
+{
+  immutable N   = ca.length
+    ,       Nm1 = N - 1
+    ;
+  for (size_t i = 0; i < Nm1; ++i)
+    {
+      auto ca_i = ca[ i ];
+      if (ca_i == '/')
+        {
+          auto ca_ip1 = ca[ i+1 ];
+
+          if (ca_ip1 == '/')
+            {
+              while (i < N  &&  !(ca[ i ] == '\r'  ||  ca[ i ] == '\n'))
+                ca[ i++ ] = ' ';
+            }
+          else if (ca_ip1 == '*')
+            {
+              while (i < N  &&  !(ca[ i ] == '*'  &&  ca[ i+1 ] == '/'))
+                ca[ i++ ] = ' ';
+
+              ca[ i ]   = ' ';
+              ca[ i+1 ] = ' ';
+            }
+        }
+    }
+}

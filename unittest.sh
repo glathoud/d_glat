@@ -16,7 +16,7 @@ cd "$MY_DIR"/..
 function doit {
     echo
     echo ">>>>>>>>>> $1 <<<<<<<<<<"
-    rdmd --force -debug -inline -O --main -i -unittest $1
+    rdmd --force -debug -g -gs -gf -gx -inline -O --main -i -unittest $1
 }
 export -f doit
 
