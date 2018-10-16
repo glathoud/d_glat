@@ -9,7 +9,8 @@ class ModifiedSlice(T)
 
   alias sli this;
   
-  this( in ModifiedSlice!T in_modsli, in size_t nmodif_max = NMODIF_MAX_DFLT )
+  this( in ModifiedSlice!T in_modsli
+        , in size_t nmodif_max = NMODIF_MAX_DFLT )
     {
       /*
         No need for `.dup` here => performance gain.  Safety
