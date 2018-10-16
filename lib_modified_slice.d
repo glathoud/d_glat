@@ -76,6 +76,13 @@ class ModifiedSlice(T)
     return value;
   }
 
+  auto opUnary(string s)() if (s == "~")
+    {
+      assert( false
+              , "~= is not supported: a fixed length is assumed."
+              );
+    }
+  
  private:
   T[]       sli;
   T[size_t] modif;  
