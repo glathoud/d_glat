@@ -16,13 +16,14 @@ cd "$MY_DIR"/..
 function doit {
     echo
     echo ">>>>>>>>>> $1 <<<<<<<<<<"
-    rdmd --force -debug -g -gs -gf -gx -inline -O --main -i -unittest $1
+    # rdmd --force -debug -g -gs -gf -gx -inline -O --main -i -unittest $1
+    rdmd --force -debug -g -gs -gf -inline -O --main -i -unittest $1
 }
 export -f doit
 
-#find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
+#find "${MY_DIR}" -name '*.d' | sort | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
 
-find "${MY_DIR}" -name '*.d' | xargs -n 1 grep -l unittest | parallel --no-notice ${PAR_OPT[@]} doit "{}"
+find "${MY_DIR}" -name '*.d' | sort | xargs -n 1 grep -l unittest | parallel --no-notice ${PAR_OPT[@]} doit "{}"
 RESULT=$?
 
 echo
