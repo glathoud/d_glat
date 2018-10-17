@@ -4,36 +4,36 @@ import std.stdio;
 
 class ModifiedSlice(T)
 {
-  immutable size_t nmodif_max;
-  enum NMODIF_MAX_DFLT = 100;
+  immutable double propmodif_max;
+  enum PROPMODIF_MAX_DFLT = 10.0;
 
   alias sli this;
   
   this( in ModifiedSlice!T in_modsli
-        , in size_t nmodif_max = NMODIF_MAX_DFLT )
+        , in double propmodif_max = PROPMODIF_MAX_DFLT )
     {
       /*
         No need for `.dup` here => performance gain.  Safety
         guaranteed by the `.dup` in `_flatten_modif_if_needed`.
       */
-      this.sli        = cast( T[] )( in_modsli.sli );
-      
-      this.nmodif_max = nmodif_max;
+      this.sli = cast( typeof( this.sli ) )( in_modsli.sli );
+
+      // trade-off: we must copy this one
+      this.modif =
+        cast( typeof( this.modif ) )( in_modsli.modif.dup );
+        
+      this.propmodif_max = propmodif_max;
     }
   
-  this( in T[] in_sli, in size_t nmodif_max = NMODIF_MAX_DFLT )
+  this( in T[] in_sli
+        , in double propmodif_max = PROPMODIF_MAX_DFLT )
     {
       // In this particular case the `.dup` is needed for safety.
       this.sli = in_sli.dup;
       
-      this.nmodif_max = nmodif_max;
+      this.propmodif_max = propmodif_max;
     }
   
-  this( in size_t nmodif_max = NMODIF_MAX_DFLT )
-    {
-      this.nmodif_max = nmodif_max;
-    }
-
   bool opEquals( in ModifiedSlice!T other ) const
   {
     if (this.length != other.length)
@@ -91,7 +91,7 @@ class ModifiedSlice(T)
   
   void _flatten_modif_if_needed()
   {
-    if (modif.length > nmodif_max)
+    if (modif.length > sli.length / propmodif_max)
       {
         sli = sli.dup;
         foreach (k, v; modif)
@@ -114,8 +114,8 @@ unittest
   {
     int[] a = [ 1, 3, 5, 7, 9, 11, 123, 456 ];
     auto  b = a.idup;
-    auto  c = new ModifiedSlice!int( b, 3 );
-    auto  d = new ModifiedSlice!int( c, 3 );
+    auto  c = new ModifiedSlice!int( b, 8.0 / 3.0 );
+    auto  d = new ModifiedSlice!int( c, 8.0 / 3.0 );
     
     void do_one_and_check( in size_t i, in int v )
     {
