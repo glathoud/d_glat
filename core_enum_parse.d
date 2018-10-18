@@ -2,7 +2,7 @@ module d_glat_common.core_enum_parse;
 
 import std.algorithm;
 import std.array;
-import std.exception;
+public import std.exception;
 
 /*
    

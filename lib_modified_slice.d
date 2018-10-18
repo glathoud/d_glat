@@ -7,6 +7,9 @@ class ModifiedSlice(T)
   immutable double propmodif_max;
   enum PROPMODIF_MAX_DFLT = 10.0;
 
+  private T[]       sli;
+  private T[size_t] modif;  
+  
   alias sli this;
   
   this( in ModifiedSlice!T in_modsli
@@ -33,6 +36,22 @@ class ModifiedSlice(T)
       
       this.propmodif_max = propmodif_max;
     }
+
+  this( in size_t in_length, in T v_init
+        , in double propmodif_max = PROPMODIF_MAX_DFLT )
+    {
+      this.sli   = new T[ in_length ];
+      this.sli[] = v_init;
+
+      this.propmodif_max = propmodif_max;
+    }
+  
+  
+  @property size_t length() pure const
+  {
+    return sli.length;
+  }
+
   
   bool opEquals( in ModifiedSlice!T other ) const
   {
@@ -84,12 +103,7 @@ class ModifiedSlice(T)
               );
     }
   
- private:
-  T[]       sli;
-  T[size_t] modif;  
-
-  
-  void _flatten_modif_if_needed()
+ private void _flatten_modif_if_needed()
   {
     if (modif.length > sli.length / propmodif_max)
       {
