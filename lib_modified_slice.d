@@ -1,11 +1,12 @@
 module d_glat_common.lib_modified_slice;
 
+import core.exception;
 import std.stdio;
 
 class ModifiedSlice(T)
 {
   immutable double propmodif_max;
-  enum PROPMODIF_MAX_DFLT = 10.0;
+  enum PROPMODIF_MAX_DFLT = 0.03;
 
   private T[]       sli;
   private T[size_t] modif;  
@@ -83,7 +84,16 @@ class ModifiedSlice(T)
     if (auto p = i in modif)
       return *p;
 
-    return sli[ i ];
+    try
+      {
+        return sli[ i ];
+      }
+    catch (core.exception.RangeError e)
+      {
+        stderr.writefln( "RangeError ; length: %d, i: %d"
+                         , length, i );
+        throw e;
+      }
   }
 
   
