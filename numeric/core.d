@@ -1,4 +1,4 @@
-module d_glat_common.numeric;
+module d_glat_common.numeric.core;
 
 import std.algorithm;
 import std.stdio;
@@ -321,6 +321,47 @@ unittest  // ------------------------------
             );
   }
 
+  {
+    auto va = [ 1.0, 2.0, 3.0, 4.0 ];
+    auto vb = [ 10.0, 100.0, 1000.0, 10000.0 ];
+
+    assert( numeric_direct_add( va, vb )
+            == [ 11.0, 102.0, 1003.0, 10004.0 ]
+            );
+
+    assert( numeric_direct_sub( va, vb )
+            == [ -9.0, -98.0, -997.0, -9996.0 ]
+            );
+
+    assert( numeric_direct_mul( va, vb )
+            == [ 10.0, 200.0, 3000.0, 40000.0 ]
+            );
+
+    assert( numeric_direct_div( vb, va )
+            == [ 10.0, 50.0, 1000.0/3.0, 2500.0 ]
+            );
+  }
+  
+  {
+    auto A = [ [ 1.0, 2.0 ], [ 3.0, 4.0 ] ];
+    auto B = [ [ 10.0, 100.0], [ 1000.0, 10000.0 ] ];
+
+    assert( numeric_direct_add( A, B )
+            == [ [ 11.0, 102.0], [ 1003.0, 10004.0 ] ]
+            );
+
+    assert( numeric_direct_sub( A, B )
+            == [ [ -9.0, -98.0], [ -997.0, -9996.0 ] ]
+            );
+
+    assert( numeric_direct_mul( A, B )
+            == [ [ 10.0, 200.0], [ 3000.0, 40000.0 ] ]
+            );
+
+    assert( numeric_direct_div( B, A )
+            == [ [ 10.0, 50.0], [ 1000.0/3.0, 2500.0 ] ]
+            );
+  }
   
   
   writeln( "unittest passed: "~__FILE__ );
