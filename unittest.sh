@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
+# Option: restricted test
+TEST_PATTERN_IN="$1"
+if [ "$TEST_PATTERN_IN" != "" ]; then
+    TEST_PATTERN="$TEST_PATTERN_IN"
+else
+    TEST_PATTERN="*.d"
+fi
+
 # Option: number of parallel tasks (default: == number of CPU cores)
-N_PAR_TASK="$1"
+N_PAR_TASK="$2"
 PAR_OPT=()
 if [ "$N_PAR_TASK" != "" ]; then
     echo "N_PAR_TASK: ${N_PAR_TASK}"
@@ -23,7 +31,7 @@ export -f doit
 
 #find "${MY_DIR}" -name '*.d' | sort | xargs -n 1 grep -l unittest | xargs -n 1 bash -c 'doit "$@"' _
 
-find "${MY_DIR}" -name '*.d' | sort | xargs -n 1 grep -l unittest | parallel --no-notice ${PAR_OPT[@]} doit "{}"
+find "${MY_DIR}" -name "${TEST_PATTERN}" | sort | xargs -n 1 grep -l unittest | parallel --no-notice ${PAR_OPT[@]} doit "{}"
 RESULT=$?
 
 echo

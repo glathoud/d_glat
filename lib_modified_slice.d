@@ -1,6 +1,7 @@
 module d_glat_common.lib_modified_slice;
 
 import core.exception;
+import std.conv;
 import std.stdio;
 
 class ModifiedSlice(T)
@@ -53,6 +54,16 @@ class ModifiedSlice(T)
     return sli.length;
   }
 
+  override
+  string toString() const 
+  {
+    double[] tmp = new double[length];
+    foreach (k; 0..length)
+      tmp[k] = this[ k ];
+    
+    return to!string(tmp);
+  }
+  
   
   bool opEquals( in ModifiedSlice!T other ) const
   {

@@ -1,0 +1,8 @@
+Partial port of numeric.js from S. Loisel.
+https://github.com/sloisel/numeric
+
+Boost license.
+
+Motivation: in case you need minimal linear algebra support, fully in
+D, because you don't want to have to link with CBLAS & LAPACK (needed
+by lubeck https://github.com/kaleidicassociates/lubeck/).
