@@ -15,32 +15,32 @@ immutable double numeric_epsilon = 2.220446049250313e-16;
 
   Each line creates a pair of functions:
   
-  `numeric_direct_add(a,b)`,`numeric_direct_add_inplace(a,b,ret)`
-  `numeric_direct_sub(a,b)`,`numeric_direct_sub_inplace(a,b,ret)`
+  `direct_add(a,b)`,`direct_add_inplace(a,b,ret)`
+  `direct_sub(a,b)`,`direct_sub_inplace(a,b,ret)`
   etc.
 */
 // ...on vectors
-mixin(_numeric_direct_code(`numeric_direct_add`,`+`,`double[]`));
-mixin(_numeric_direct_code(`numeric_direct_sub`,`-`,`double[]`));
-mixin(_numeric_direct_code(`numeric_direct_mul`,`*`,`double[]`));
-mixin(_numeric_direct_code(`numeric_direct_div`,`/`,`double[]`));
+mixin(_direct_code(`direct_add`,`+`,`double[]`));
+mixin(_direct_code(`direct_sub`,`-`,`double[]`));
+mixin(_direct_code(`direct_mul`,`*`,`double[]`));
+mixin(_direct_code(`direct_div`,`/`,`double[]`));
 // ...on matrices
-mixin(_numeric_direct_code(`numeric_direct_add`,`+`,`double[][]`));
-mixin(_numeric_direct_code(`numeric_direct_sub`,`-`,`double[][]`));
-mixin(_numeric_direct_code(`numeric_direct_mul`,`*`,`double[][]`));
-mixin(_numeric_direct_code(`numeric_direct_div`,`/`,`double[][]`));
+mixin(_direct_code(`direct_add`,`+`,`double[][]`));
+mixin(_direct_code(`direct_sub`,`-`,`double[][]`));
+mixin(_direct_code(`direct_mul`,`*`,`double[][]`));
+mixin(_direct_code(`direct_div`,`/`,`double[][]`));
 
 
-double[][] numeric_clone( in double[][] X )
+double[][] clone( in double[][] X )
 {
   immutable m = X.length;
   immutable n = X[ 0 ].length; 
   auto ret = new double[][]( m, n );
 
-  return numeric_clone_inplace( X, ret );
+  return clone_inplace( X, ret );
 }
 
-double[][] numeric_clone_inplace( in double[][] X
+double[][] clone_inplace( in double[][] X
                                   , ref double[][] ret
                                   )
 {
@@ -58,17 +58,47 @@ double[][] numeric_clone_inplace( in double[][] X
 
 
 
-double[][] numeric_div( T )( in double[][] X, T s )
+double[][] diag( in double[] x )
+{
+  immutable n = x.length;
+  double[][] ret = new double[][]( n, n );
+  return diag_inplace( x, ret );
+}
+
+double[][] diag_inplace( in double[] x
+                                     , ref double[][] ret
+                                     )
+{
+  debug
+    {
+      assert( x.length == ret.length );
+      assert( x.length == ret[ 0 ].length );
+    }
+
+  foreach (i,v; x)
+    {
+      ret[ i ][] = 0.0;
+      ret[ i ][ i ] = v;
+    }
+
+  return ret;
+}
+
+
+
+
+
+double[][] div( T )( in double[][] X, T s )
 // matrix ./ scalar
 {
   size_t m = X.length;
   size_t n = X[ 0 ].length;
   double[][] ret = new double[][]( m, n );
 
-  return numeric_div_inplace!T( X, s, ret );
+  return div_inplace!T( X, s, ret );
 }
 
-double[][] numeric_div_inplace( T )( in double[][] X, T s
+double[][] div_inplace( T )( in double[][] X, T s
                                      , ref double[][] ret
                                      )
 {
@@ -90,7 +120,7 @@ double[][] numeric_div_inplace( T )( in double[][] X, T s
 
 
 
-double[] numeric_dot( in double[][] X, in double[] y )
+double[] dot( in double[][] X, in double[] y )
 // matrix * vector
 {
   immutable size_t p = X.length, q = y.length;
@@ -98,10 +128,10 @@ double[] numeric_dot( in double[][] X, in double[] y )
 
   double[] ret = new double[]( p );
 
-  return numeric_dot_inplace( X, y, ret );
+  return dot_inplace( X, y, ret );
 }
 
-double[] numeric_dot_inplace( in double[][] X, in double[] y
+double[] dot_inplace( in double[][] X, in double[] y
                               , ref double[] ret
                               )
 {
@@ -129,7 +159,7 @@ double[] numeric_dot_inplace( in double[][] X, in double[] y
 
 
 
-double[][] numeric_dot( in double[][] X, in double[][] Y )
+double[][] dot( in double[][] X, in double[][] Y )
 // matrix * matrix
 {
   immutable size_t p = X.length, q = Y.length, r = Y[0].length;
@@ -137,10 +167,10 @@ double[][] numeric_dot( in double[][] X, in double[][] Y )
 
   double[][] ret = new double[][]( p, r );
 
-  return numeric_dot_inplace( X, Y, ret );
+  return dot_inplace( X, Y, ret );
 }
 
-double[][] numeric_dot_inplace( in double[][] X, in double[][] Y
+double[][] dot_inplace( in double[][] X, in double[][] Y
                                 , ref double[][] ret
                                 )
 {
@@ -172,13 +202,13 @@ double[][] numeric_dot_inplace( in double[][] X, in double[][] Y
 }
 
 
-double[][] numeric_rep( in size_t m, in size_t n, in double v )
+double[][] rep( in size_t m, in size_t n, in double v )
 {
   auto ret = new double[][]( m, n );
-  return numeric_rep_inplace( m, n, v, ret );
+  return rep_inplace( m, n, v, ret );
 }
 
-double[][] numeric_rep_inplace( in size_t m, in size_t n, in double v
+double[][] rep_inplace( in size_t m, in size_t n, in double v
                                 , ref double[][] ret
                                 )
 {
@@ -196,12 +226,37 @@ double[][] numeric_rep_inplace( in size_t m, in size_t n, in double v
 
 
 
+double[][] transpose( in double[][] A )
+{
+  double[][] ret = new double[][]( A[ 0 ].length, A.length );
+  return transpose_inplace( A, ret );
+}
+
+double[][] transpose_inplace( in double[][] A
+                                      , ref double[][] ret 
+                                      )
+{
+  debug
+    {
+      assert( A.length == ret[ 0 ].length );
+      assert( A[ 0 ].length == ret.length );
+    }
+
+  foreach (i,Ai; A)
+    foreach (j,Aij; Ai)
+    ret[ j ][ i ] = Aij;
+  
+  return ret;
+}
+
+
+
 
 
 
 private: // ------------------------------
 
-string _numeric_direct_code( in string fname, in string op, in string type ) pure
+string _direct_code( in string fname, in string op, in string type ) pure
 // Returns code that declares two functions named `fname` and
 // `fname~"_inplace"`.
 {
@@ -272,7 +327,17 @@ unittest  // ------------------------------
   writeln;
   writeln( "unittest starts: "~__FILE__ );
 
-  assert( numeric_rep( 3, 4, 1.234 )
+  assert( diag( [ 1.0, 2.0, 3.0, 4.0 ] )
+          == [
+              [ 1.0, 0.0, 0.0, 0.0 ],
+              [ 0.0, 2.0, 0.0, 0.0 ],
+              [ 0.0, 0.0, 3.0, 0.0 ],
+              [ 0.0, 0.0, 0.0, 4.0 ]
+              ]
+          );
+
+  
+  assert( rep( 3, 4, 1.234 )
           == [
               [ 1.234, 1.234, 1.234, 1.234 ]
               , [ 1.234, 1.234, 1.234, 1.234 ]
@@ -287,7 +352,7 @@ unittest  // ------------------------------
 
     auto v = [ 10.0, 100.0, 1000.0 ];
     
-    assert( numeric_dot( m, v )
+    assert( dot( m, v )
             == [ 3210.0, 6540.0 ] );
   }
 
@@ -301,7 +366,7 @@ unittest  // ------------------------------
                 [ 1e9, 1e10, 1e11, 1e12 ]
                 ];
 
-    assert( numeric_dot( ma, mb )
+    assert( dot( ma, mb )
             == [
                 [ 3000200010.0, 30002000100.0, 300020001000.0, 3000200010000.0 ],
                 [ 6000500040.0, 60005000400.0, 600050004000.0, 6000500040000.0 ]
@@ -314,7 +379,7 @@ unittest  // ------------------------------
                [ 40.0, 50.0, 60.0 ]
                ];
 
-    assert( numeric_div( m, 10.0 )
+    assert( div( m, 10.0 )
             == [ [ 1.0, 2.0, 3.0 ],
                  [ 4.0, 5.0, 6.0 ]
                  ]
@@ -325,19 +390,19 @@ unittest  // ------------------------------
     auto va = [ 1.0, 2.0, 3.0, 4.0 ];
     auto vb = [ 10.0, 100.0, 1000.0, 10000.0 ];
 
-    assert( numeric_direct_add( va, vb )
+    assert( direct_add( va, vb )
             == [ 11.0, 102.0, 1003.0, 10004.0 ]
             );
 
-    assert( numeric_direct_sub( va, vb )
+    assert( direct_sub( va, vb )
             == [ -9.0, -98.0, -997.0, -9996.0 ]
             );
 
-    assert( numeric_direct_mul( va, vb )
+    assert( direct_mul( va, vb )
             == [ 10.0, 200.0, 3000.0, 40000.0 ]
             );
 
-    assert( numeric_direct_div( vb, va )
+    assert( direct_div( vb, va )
             == [ 10.0, 50.0, 1000.0/3.0, 2500.0 ]
             );
   }
@@ -346,28 +411,34 @@ unittest  // ------------------------------
     auto A = [ [ 1.0, 2.0 ], [ 3.0, 4.0 ] ];
     auto B = [ [ 10.0, 100.0], [ 1000.0, 10000.0 ] ];
 
-    assert( numeric_direct_add( A, B )
+    assert( direct_add( A, B )
             == [ [ 11.0, 102.0], [ 1003.0, 10004.0 ] ]
             );
 
-    assert( numeric_direct_sub( A, B )
+    assert( direct_sub( A, B )
             == [ [ -9.0, -98.0], [ -997.0, -9996.0 ] ]
             );
 
-    assert( numeric_direct_mul( A, B )
+    assert( direct_mul( A, B )
             == [ [ 10.0, 200.0], [ 3000.0, 40000.0 ] ]
             );
 
-    assert( numeric_direct_div( B, A )
+    assert( direct_div( B, A )
             == [ [ 10.0, 50.0], [ 1000.0/3.0, 2500.0 ] ]
             );
   }
-  
+
+
+  {
+    auto A = [ [ 1.0, 2.0, 3.0 ],
+               [ 4.0, 5.0, 6.0 ] ];
+
+    assert( transpose( A )
+            == [ [ 1.0, 4.0 ],
+                 [ 2.0, 5.0 ],
+                 [ 3.0, 6.0 ] ] );
+  } 
+
   
   writeln( "unittest passed: "~__FILE__ );
 }
-
-
-
-
-
