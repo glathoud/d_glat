@@ -15,7 +15,6 @@ struct SvdResult
 
 
 SvdResult svd( in double[][] A )
-// See also: ./pca_wrapper.d
 {
   //Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
 
