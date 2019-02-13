@@ -8,16 +8,69 @@ struct SvdResult
 {
   size_t dim;
   Matrix U;  // dim*dim
-  Matrix S;  // dim*1
+
+  double[] q; // dim (diagonal of S)
+  Matrix S;  // dim*dim (diagonal)
+
   Matrix V;  // dim*dim
   Matrix VT; // dim*dim
+
+  // Buffer for internal computations
+  // (put here for the inplace version)
+  
+  double[] e; // dim
 };
 
 SvdResult svd( in Matrix A )
+//Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
 {
-  //Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
-
   debug assert( A.ndim == 2 );
+
+  SvdResult ret;
+  svd_inplace( A, ret );
+  return ret;
+}
+
+void svd_inplace( in Matrix A
+                  , ref SvdResult ret
+                  )
+//Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
+{
+  debug assert( A.ndim == 2 );
+
+  immutable m= A.nrow;
+  immutable n= A.ncol;
+  enforce( m >= n, "Need more rows than columns" );
+  
+  double[] u;
+  double[] q;
+  double[] v;
+  double[] e;
+  if (ret.dim == n)
+    {
+      clone_inplace( A, ret.U );
+      u = ret.U.data;
+      q = ret.q;
+      v = ret.V.data;
+      v[] = 0.0;
+      e = ret.e;
+    }
+  else
+    {
+      ret.dim = n;
+
+      clone_inplace( A, ret.U );
+      u = ret.U.data;
+
+      q = ret.q = new double[ n ];
+
+      ret.V = Matrix( [n, n], 0.0 );
+      v = ret.V.data;
+
+      ret.VT = Matrix( [n, n] );
+      
+      e = ret.e = new double[ n ];
+    }
   
   double temp;
   double prec= numeric_epsilon; //Math.pow(2,-52) // assumes double prec
@@ -28,23 +81,10 @@ SvdResult svd( in Matrix A )
   long j=0;
   long k=0;
   long l=0;
-	
-  auto u = clone(A);
-
-  immutable m= A.m;
-	
-  immutable n= A.n;
-	
-  enforce( m >= n, "Need more rows than columns" );
   
-  double[] e = new double[ n ];
-  double[] q = new double[ n ];
+  e[] = 0.0;
+  q[] = 0.0;
   
-  for (i=0; i<n; i++) e[i] = q[i] = 0.0;
-  
-  auto v = rep(n,n,0.0);
-  //	v.zero();
-	
   double pythag( in double a_0, in double b_0 )
   {
     auto a = abs(a_0 );
@@ -68,14 +108,19 @@ SvdResult svd( in Matrix A )
   double y= 0.0;
   double z= 0.0;
   double s= 0.0;
-	
-  for (i=0, size_t rowi_offset = 0; i < n; i++, rowi_offset += n)
+
+  long rowi_offset, rowj_offset, rowk_offset
+    ,  j_l1_offset, j_i_offset, j_k_offset
+    ,  k_i_offset, k_j_offset
+    ;
+  
+  for (i=0, rowi_offset = 0; i < n; i++, rowi_offset += n)
     {
       e[i]= g;
       s= 0.0;
       l= i+1;
 
-      for (j=i, size_t rowj_offset = j*n; j < m; j++, rowj_offset += n)
+      for (j=i, rowj_offset = j*n; j < m; j++, rowj_offset += n)
         {
           // s += (u[j][i]*u[j][i]);
           double tmp = u[ rowj_offset + i ];
@@ -87,7 +132,7 @@ SvdResult svd( in Matrix A )
       else
         {
           // f= ui[i];
-          auto ii_offset = rowi_offset + i
+          auto ii_offset = rowi_offset + i;
           f= u[ ii_offset ];
           
           g= sqrt(s);
@@ -100,7 +145,7 @@ SvdResult svd( in Matrix A )
           for (j=l; j < n; j++)
             {
               s= 0.0;
-              for (k=i, size_t rowk_offset = k * n; k < m; k++, rowk_offset += n)
+              for (k=i, rowk_offset = k * n; k < m; k++, rowk_offset += n)
                 {
                   // s += u[k][i]*u[k][j];
                   s += u[ rowk_offset + i ] * u[ rowk_offset + j ];
@@ -108,7 +153,7 @@ SvdResult svd( in Matrix A )
 
               f= s/h;
 
-              for (k=i, size_t rowk_offset = k * n; k < m; k++, rowk_offset += n)
+              for (k=i, rowk_offset = k * n; k < m; k++, rowk_offset += n)
                 {
                   // u[k][j]+=f*u[k][i];
                   u[ rowk_offset + j ] += f * u[ rowk_offset + i ];
@@ -142,13 +187,13 @@ SvdResult svd( in Matrix A )
           // for (j=l; j < n; j++) e[j]= ui[j]/h;
           for (j=l; j < n; j++) e[j]= u[ rowi_offset + j ]/h;
           
-          for (j=l, size_t rowj_offset = j*n; j < m; j++, rowj_offset += n)
+          for (j=l, rowj_offset = j*n; j < m; j++, rowj_offset += n)
             {	
               s=0.0;
               for (k=l; k < n; k++)
                 {
                   //s += (u[j][k]*ui[k]);
-                  s += (u[ rowj_offset + k ]*u[ rowi_offset + k ]);
+                  s += (u[ rowj_offset + k ] * u[ rowi_offset + k ]);
                 }
               
               for (k=l; k < n; k++)
@@ -164,14 +209,14 @@ SvdResult svd( in Matrix A )
     }
   
   // accumulation of right hand gtransformations
-  for (i=n-1, size_t rowi_offset = i * n; i != -1; i+= -1, rowi_offset -= n)
+  for (i=n-1, rowi_offset = i * n; i != -1; i+= -1, rowi_offset -= n)
     {
       if (g != 0.0)
         {
           // h= g*ui[i+1];
           h= g*u[ rowi_offset + i+1];
           
-          for (j=l, size_t rowj_offset = j*n; j < n; j++, rowj_offset += n)
+          for (j=l, rowj_offset = j*n; j < n; j++, rowj_offset += n)
             {
               // v[j][i]=ui[j]/h;
               v[ rowj_offset + i ]=u[ rowi_offset + j ]/h;
@@ -179,13 +224,13 @@ SvdResult svd( in Matrix A )
           for (j=l; j < n; j++)
             {	
               s=0.0;
-              for (k=l, size_t rowk_offset = k*n; k < n; k++, rowk_offset += n)
+              for (k=l, rowk_offset = k*n; k < n; k++, rowk_offset += n)
                 {
                   // s += ui[k]*v[k][j];
-                  s += u[ rowi_offset + k ]*v[ rowk_offset + j ];
+                  s += u[ rowi_offset + k ] * v[ rowk_offset + j ];
                 }
 
-              for (k=l, size_t rowk_offset = k*n; k < n; k++, rowk_offset += n)
+              for (k=l, rowk_offset = k*n; k < n; k++, rowk_offset += n)
                 {
                   // v[k][j]+=(s*v[k][i]);
                   v[ rowk_offset + j ] += (s*v[ rowk_offset + i ]);
@@ -193,7 +238,7 @@ SvdResult svd( in Matrix A )
             }	
         }
 
-      for (j=l, size_t rowj_offset = j * n; j < n; j++, rowj_offset += n)
+      for (j=l, rowj_offset = j * n; j < n; j++, rowj_offset += n)
         {
           // vi[j] = 0.0;
           v[ rowi_offset + j ] = 0.0;
@@ -210,7 +255,7 @@ SvdResult svd( in Matrix A )
     }
   
   // accumulation of left hand transformations
-  for (i=n-1, size_t rowi_offset = i * n; i != -1; i+= -1, rowi_offset -= n)
+  for (i=n-1,  rowi_offset = i * n; i != -1; i+= -1, rowi_offset -= n)
     {	
       l= i+1;
       g= q[i];
@@ -232,7 +277,7 @@ SvdResult svd( in Matrix A )
               s=0.0;
 
               // for (k=l; k < m; k++) s += u[k][i]*u[k][j];
-              for (k=l, size_t rowk_offset = k*n; k < m; k++, rowk_offset += n)
+              for (k=l,  rowk_offset = k*n; k < m; k++, rowk_offset += n)
                 {
                   // s += u[k][i]*u[k][j];
                   s += u[ rowk_offset + i ] * u[ rowk_offset + j ];
@@ -240,14 +285,14 @@ SvdResult svd( in Matrix A )
               
               f= s/h;
               // for (k=i; k < m; k++) u[k][j]+=f*u[k][i];
-              for (k=i, size_t rowk_offset = k * n; k < m; k++, rowk_offset += n)
+              for (k=i,  rowk_offset = k * n; k < m; k++, rowk_offset += n)
                 {
                   // u[k][j]+=f*u[k][i];
                   u[ rowk_offset + j ] += f * u[ rowk_offset + i ];
                 }
             }
           // for (j=i; j < m; j++) u[j][i] = u[j][i]/g;
-          for (j=i, size_t rowj_offset = j*n; j < m; j++, rowj_offset += n)
+          for (j=i,  rowj_offset = j*n; j < m; j++, rowj_offset += n)
             {
               // u[j][i] = u[j][i]/g;
               u[ rowj_offset + i ] /= g;
@@ -256,7 +301,7 @@ SvdResult svd( in Matrix A )
       else
         {
           // for (j=i; j < m; j++) u[j][i] = 0.0;
-          for (j=i, size_t rowj_offset = j*n; j < m; j++, rowj_offset += n)
+          for (j=i,  rowj_offset = j*n; j < m; j++, rowj_offset += n)
             {
               // u[j][i] = 0.0;
               u[ rowj_offset + i ] = 0.0;
@@ -300,13 +345,14 @@ SvdResult svd( in Matrix A )
                   c= g/h;
                   s= -f/h;
                   for (j=0
-                         , size_t j_l1_offset = l1
-                         , size_t j_i_offset = i
+                         ,  j_l1_offset = l1
+                         ,  j_i_offset = i
                          ;
                        j < m;
                        j++
                          , j_l1_offset += n
                          , j_i_offset  += n
+                       )
                     {
                       // y= uj[l1];
                       y = u[ j_l1_offset ];
@@ -329,7 +375,7 @@ SvdResult svd( in Matrix A )
               if (z<0.0)
                 {	//q[k] is made non-negative
                   q[k]= -z;
-                  for (j=0, size_t j_k_offset = k; j < n; j++, j_k_offset += n)
+                  for (j=0,  j_k_offset = k; j < n; j++, j_k_offset += n)
                     {
                       // v[j][k] = -v[j][k];
                       v[ j_k_offset ] = -v[ j_k_offset ];
@@ -370,7 +416,7 @@ SvdResult svd( in Matrix A )
               g= -x*s+g*c;
               h= y*s;
               y= y*c;
-              for (j=0, size_t j_i_offset = i;
+              for (j=0,  j_i_offset = i;
                    j < n;
                    j++, j_i_offset += n
                    )
@@ -395,7 +441,7 @@ SvdResult svd( in Matrix A )
               s= h/z;
               f= c*g+s*y;
               x= -s*g+c*y;
-              for (j=0, size_t j_i_offset = i;
+              for (j=0,  j_i_offset = i;
                    j < m;
                    j++, j_i_offset += n)
                 {
@@ -438,7 +484,7 @@ SvdResult svd( in Matrix A )
               q[j] = q[i];
               q[i] = c;
               // for(k=0;k<u.length;k++) { auto uk = u[ k ]; temp = uk[i]; uk[i] = uk[j]; uk[j] = temp; }
-              for (k=0, size_t k_i_offset = i, size_t k_j_offset = j;
+              for (k=0,  k_i_offset = i,  k_j_offset = j;
                    k < m;
                    j++, k_i_offset += n, k_j_offset += n)
                 {
@@ -448,7 +494,7 @@ SvdResult svd( in Matrix A )
                 }
 
               // for(k=0;k<v.length;k++) { auto vk = v[ k ]; temp = vk[i]; vk[i] = vk[j]; vk[j] = temp; }
-              for (k=0, size_t k_i_offset = i, size_t k_j_offset = j;
+              for (k=0,  k_i_offset = i,  k_j_offset = j;
                    k < n;
                    j++, k_i_offset += n, k_j_offset += n)
                 {
@@ -464,8 +510,9 @@ SvdResult svd( in Matrix A )
         }	
     }
 
-  SvdResult ret = {U:u,S:q,V:v,VT:v.transpose};
-  return ret;
+  diag_inplace( q, ret.S );
+
+  transpose_inplace( ret.V, ret.VT );
 }
 
 
@@ -485,7 +532,12 @@ unittest  // --------------------------------------------------
                           )
   {
     {
-      assert( approxEqual( res.VT, res.V.transpose, 1e-10, 1e-10 ) );
+      immutable n = ma.ncol;
+      assert( res.U.dim == [n, n] );
+      assert( res.S.dim == [n, n] );
+      assert( res.V.dim == [n, n] );
+      assert( res.VT.dim == [n, n] );
+      assert( approxEqual( res.VT.data, res.V.transpose.data, 1e-10, 1e-10 ) );
     }
     
     {
@@ -500,6 +552,8 @@ unittest  // --------------------------------------------------
          res.S.diag
          .dot( res.V.transpose )
          );
+
+      assert( )
       assert( approxEqual( mb, ma, 1e-10, 1e-10 ) );
     }
   }
@@ -526,7 +580,8 @@ unittest  // --------------------------------------------------
 
     const res = svd( ma );
    
-    assert( res.S.approxEqual( Matrix( [ -1, 1 ], [ sqrt( 1248.0 ), 20.0, sqrt( 384.0 ), 0.0, 0.0 ] ), 1e-10, 1e-10 ) );
+    assert( res.dim == [ 5, 5 ] );
+    assert( res.data.approxEqual( [sqrt( 1248.0 ), 20.0, sqrt( 384.0 ), 0.0, 0.0 ], 1e-10, 1e-10 ) ) ;
     
     check_consistency( ma, res );
   }
