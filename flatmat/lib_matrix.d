@@ -107,8 +107,10 @@ increase the use of the Garbage Collector.
 */
 
   void clone_inplace( T )
-  ( in MatrixT!T X, ref MatrixT!T ret ) pure nothrow @safe @nogc
+  ( in ref MatrixT!T X
+    , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
+  pragma( inline, true );
   ret.dim[]  = X.dim[];
   ret.data[] = X.data[];
 }
@@ -121,9 +123,11 @@ MatrixT!T diag( T )( in T[] x ) pure nothrow @safe
   return ret;
 }
 
-
-void diag_inplace( T )( in T[] x, ref MatrixT!T ret ) pure nothrow @safe @nogc
+void diag_inplace( T )( in T[] x
+                        , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
+  pragma( inline, true );
+
   debug assert( ret.dim == [ x.length, x.length ] );
 
   ret.data[] = 0;
@@ -149,10 +153,11 @@ T[] dot( T )( in MatrixT!T X, in T[] y ) pure nothrow @safe
   return ret;
 }
 
-void dot_inplace( T )( in MatrixT!T X, in T[] y
+void dot_inplace( T )( in ref MatrixT!T X, in T[] y
                        , ref T[] ret
                        ) pure nothrow @safe @nogc
 {
+  pragma( inline, true );
   debug
     {
       assert( X.ndim == 2 );
@@ -184,10 +189,12 @@ MatrixT!T dot( T )( in MatrixT!T X, in MatrixT!T Y ) pure nothrow @safe
   return ret;
 }
 
-void dot_inplace( T )( in MatrixT!T X, in MatrixT!T Y
+void dot_inplace( T )( in ref MatrixT!T X, in ref MatrixT!T Y
                        , ref MatrixT!T ret
                        ) pure nothrow @safe @nogc
 {
+  pragma( inline, true );
+
   immutable size_t p = X.nrow, q = X.ncol, r = Y.ncol;
   debug
     {
@@ -250,9 +257,10 @@ MatrixT!T transpose( T )
   return ret;
 }
 
-void transpose_inplace( T )( in MatrixT!T A
+void transpose_inplace( T )( in ref MatrixT!T A
                              , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
+  pragma( inline, true );
   debug
     {
       assert( A.ndim == 2 );
@@ -293,10 +301,12 @@ string _direct_code( in string fname, in string op ) pure
       return RET;
     }
   
-  void `~fname~`_inplace( in Matrix A, in Matrix B
+  void `~fname~`_inplace( in ref Matrix A, in ref Matrix B
                           , ref Matrix RET
                           ) pure nothrow @safe @nogc
   {
+      pragma( inline, true );
+      
       debug
         {
           assert( A.dim == B.dim );
