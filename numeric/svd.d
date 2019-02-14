@@ -356,11 +356,16 @@ unittest  // --------------------------------------------------
     }
     
     {
+      /*
       writeln();
       writeln("res.U ", res.U);
       writeln();
       writeln("res.U * diag_sigma", res.U.dot(res.S.diag));
 
+      writeln();
+      writeln("res.V", res.V);
+      */
+      
       const mb = res.U
         .dot
         (

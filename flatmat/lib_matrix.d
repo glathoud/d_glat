@@ -1,6 +1,18 @@
 module d_glat_common.flatmat.lib_matrix;
 
-// Boost license.
+/*
+  Flat matrix computations. Purpose: lightweight
+  implementation, @nogc as often as possible.
+  
+  By Guillaume Lathoud, 2019
+  glat@glat.info
+  
+  Boost Software License version 1.0, see ../LICENSE
+*/
+
+import std.format;
+import std.math;
+import std.stdio;
 
 immutable double numeric_epsilon = 2.220446049250313e-16;
 
@@ -21,6 +33,10 @@ struct MatrixT( T )
     {
       this.dim = dim;
       this.data = data;
+
+      // One of the `dim[i]` numbers may be `0` => will be
+      // automatically computed
+      complete_dim();
     }
   
   this( in size_t[] dim, in T init_val ) pure nothrow @safe
@@ -33,6 +49,10 @@ struct MatrixT( T )
 
       this.data = new T[ total ];
       this.data[] = init_val;
+
+      // One of the `dim[i]` numbers may be `0` => will be
+      // automatically computed
+      complete_dim();
     }
 
   this( in size_t[] dim ) pure nothrow @safe
@@ -44,9 +64,72 @@ struct MatrixT( T )
       for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
         total *= dim[ i ];
 
+      // Here we cannot support `0` since there is no data.
+      debug if (!(0 < total ))
+        {
+          this.dim = [];
+          this.data = [];
+          auto x = this.dim[ 0 ];
+        }
+
       this.data = new T[ total ];
     }
 
+  void complete_dim() pure nothrow @safe
+  // Find at most one `0` value in the `dim` array, and compute that
+  // dimension out of `data.length` and the other `dim[i]` values.
+  {
+    size_t sub_total   = 1;
+    bool   has_missing = false;
+    size_t i_missing;
+    foreach (i,d; dim)
+      {
+        if (d == 0)
+          {
+            debug
+              {
+                if (has_missing)
+                  {
+                    // At most one `0` value is allowed in `dim`.
+                    dim = [];
+                    data = [];
+                    auto x = dim[ 0 ];
+                  }
+              }
+            has_missing = true;
+            i_missing   = i;
+          }
+        else
+          {
+            sub_total *= d;
+          }
+      }
+
+    if (has_missing)
+      {
+        const total = data.length;
+        debug
+          {
+            if (0 != total % sub_total)
+              {
+                // Cannot divide total `total` by `sub_total`.
+                dim = [];
+                data = [];
+                auto x = dim[ 0 ];
+              }
+          }
+        dim[ i_missing ] = total / sub_total;
+      }
+  }
+
+  // --- API: Comparison
+
+  bool approxEqual( in ref Matrix other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
+  {
+    return this.dim == other.dim
+      &&  std.math.approxEqual( this.data, other.data, maxRelDiff, maxAbsDiff );
+  }
+  
   // --- API: Operators overloading
 
   bool opEquals( in Matrix other ) const pure nothrow @safe @nogc
@@ -55,6 +138,17 @@ struct MatrixT( T )
       &&  this.data == other.data;
   }
 
+  void toString(scope void delegate(const(char)[]) sink) const
+  {
+    sink( format( "Matrix(%s):[\n", dim ) );
+
+    immutable tab = "  ";
+    
+    _spit_d!T( sink, tab, dim, data );
+    
+    sink( "]\n" );
+  }
+  
   // --- Convenience shortcuts
   
   size_t ndim() const @property pure nothrow @safe @nogc
@@ -290,6 +384,49 @@ void transpose_inplace( T )( in ref MatrixT!T A
 
 private: // ------------------------------
 
+void _spit_d( T )( scope void delegate(const(char)[]) sink
+                   , in string tab
+                   , in ref size_t[] dim
+                   , in ref T[] data
+                   )
+{
+  size_t i_data;
+  _spit_d!T( sink, tab, dim, data, 0, i_data );
+}
+  
+void _spit_d( T )( scope void delegate(const(char)[]) sink
+                   , in string tab
+                   , in ref size_t[] dim
+                   , in ref T[] data
+                   , in size_t i_dim
+
+                   , ref size_t i_data
+                   )
+{
+  immutable  dim_length = dim.length;
+  immutable data_length = data.length;
+  
+  if (i_data >= data_length)
+    return;
+
+  if (i_dim + 1 == dim_length)
+    {
+      sink( tab );
+      auto new_i_data = i_data + dim[ $-1 ];
+      sink( format( "%( %+18.12g%)\n", data[ i_data..new_i_data ] ) );
+      i_data = new_i_data;
+      return;
+    }
+
+  if (i_dim + 2 == dim_length)
+      sink( "\n" );
+
+  immutable d = dim[ i_dim ];
+  foreach (_; 0..d)
+    _spit_d!T( sink, tab, dim, data, i_dim + 1, i_data );
+}
+
+
 string _direct_code( in string fname, in string op ) pure
 // Returns code that declares two functions named `fname` and
 // `fname~"_inplace"`.
@@ -329,27 +466,58 @@ unittest  // ------------------------------
   writeln;
   writeln( "unittest starts: "~__FILE__ );
 
-  assert( diag( [ 1.0, 2.0, 3.0, 4.0 ] )
-          == Matrix( [4, 4]
-                     , [
-                        1.0, 0.0, 0.0, 0.0,
-                        0.0, 2.0, 0.0, 0.0,
-                        0.0, 0.0, 3.0, 0.0,
-                        0.0, 0.0, 0.0, 4.0
-                        ]
-                     )
-          );
+  {
+    // Automatic dimension (at most one `0` value).
+    assert( Matrix( [ 2, 0 ]
+                    , [ 1.0, 2.0, 3.0, 4.0,
+                        5.0, 6.0, 7.0, 8.0 ]
+                    )
+            == Matrix( [ 2, 4 ]
+                       , [ 1.0, 2.0, 3.0, 4.0,
+                           5.0, 6.0, 7.0, 8.0 ]
+                       )
+            );
+  }
+
+  {
+    // Automatic dimension (at most one `0` value).
+    assert( Matrix( [ 0, 4 ]
+                    , [ 1.0, 2.0, 3.0, 4.0,
+                        5.0, 6.0, 7.0, 8.0 ]
+                    )
+            == Matrix( [ 2, 4 ]
+                       , [ 1.0, 2.0, 3.0, 4.0,
+                           5.0, 6.0, 7.0, 8.0 ]
+                       )
+            );
+  }
 
 
-  assert( rep( 3, 4, 1.234 )
-          == Matrix( [3, 4]
-                     , [ 1.234, 1.234, 1.234, 1.234,
-                         1.234, 1.234, 1.234, 1.234,
-                         1.234, 1.234, 1.234, 1.234
-                         ]
-                     )
-          );
-  
+  {
+    assert( diag( [ 1.0, 2.0, 3.0, 4.0 ] )
+            == Matrix( [4, 4]
+                       , [
+                          1.0, 0.0, 0.0, 0.0,
+                          0.0, 2.0, 0.0, 0.0,
+                          0.0, 0.0, 3.0, 0.0,
+                          0.0, 0.0, 0.0, 4.0
+                          ]
+                       )
+            );
+  }
+
+
+  {
+    assert( rep( 3, 4, 1.234 )
+            == Matrix( [3, 4]
+                       , [ 1.234, 1.234, 1.234, 1.234,
+                           1.234, 1.234, 1.234, 1.234,
+                           1.234, 1.234, 1.234, 1.234
+                           ]
+                       )
+            );
+  }
+
   
   {
     auto A = Matrix( [4, 4], 0.0 );

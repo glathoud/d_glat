@@ -6,71 +6,105 @@ import std.math;
 
 struct SvdResult
 {
-  size_t dim;
-  Matrix U;  // dim*dim
+  size_t m;
+  size_t n;
+  
+  Matrix U;  // m*n
 
-  double[] q; // dim (diagonal of S)
-  Matrix S;  // dim*dim (diagonal)
+  double[] q; // n (diagonal of S)
+  Matrix S;  // n*n (diagonal)
 
-  Matrix V;  // dim*dim
-  Matrix VT; // dim*dim
+  Matrix V;  // n*n
+  Matrix VT; // n*n
 
   // Buffer for internal computations
   // (put here for the inplace version)
   
-  double[] e; // dim
+  double[] e; // n
+
+  // --- API
+
+  this( in size_t m, in size_t n ) pure nothrow @safe
+  {
+    setDim( m, n );
+  }
+
+  void setDim( in size_t m, in size_t n ) pure nothrow @safe
+  {
+    pragma( inline, true );
+    if (this.m != m  ||  this.n != n)
+      {
+        this.m = m;
+        this.n = n;
+
+        this.U   = Matrix([m, n]);
+        this.q   = new double[ n ];
+        this.S   = Matrix([n, n]);
+        this.V   = Matrix([n, n]);
+        this.VT  = Matrix([n, n]);
+        this.e   = new double[ n ];
+      }
+  }
 };
 
-SvdResult svd( in Matrix A )
+SvdResult svd( in Matrix A ) pure @safe
 //Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
 {
   debug assert( A.ndim == 2 );
 
-  SvdResult ret;
-  svd_inplace( A, ret );
+  immutable m = A.nrow;
+  immutable n = A.ncol;
+
+  enforce( m >= n, "Need more rows than columns" );
+
+  auto ret = SvdResult( m, n );
+  
+  bool converged = svd_inplace( A, ret );
+  enforce( converged, "SVD error: did not converge." );
+
   return ret;
 }
 
-void svd_inplace( in Matrix A
+bool svd_inplace( in Matrix A
                   , ref SvdResult ret
-                  )
-//Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
+                  ) pure nothrow @safe @nogc
+/*
+  Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
+
+  Returns `true` if it converged, `false` otherwise.
+*/
 {
+  pragma( inline, true );
+  
   debug assert( A.ndim == 2 );
 
   immutable m= A.nrow;
   immutable n= A.ncol;
-  enforce( m >= n, "Need more rows than columns" );
+
+  debug
+    {
+      assert( m >= n );
+      assert( m == ret.m );
+      assert( n == ret.n );
+    }
   
   double[] u;
   double[] q;
   double[] v;
   double[] e;
-  if (ret.dim == n)
-    {
-      clone_inplace( A, ret.U );
-      u = ret.U.data;
-      q = ret.q;
-      v = ret.V.data;
-      v[] = 0.0;
-      e = ret.e;
-    }
-  else
-    {
-      ret.dim = n;
 
-      clone_inplace( A, ret.U );
-      u = ret.U.data;
+  // Init: as fast as possible
 
-      q = ret.q = new double[ n ];
+  clone_inplace( A, ret.U );
 
-      ret.V = Matrix( [n, n], 0.0 );
-      v = ret.V.data;
+  u = ret.U.data;
 
-      ret.VT = Matrix( [n, n] );
-      
-      e = ret.e = new double[ n ];
-    }
+  q = ret.q;
+
+  v = ret.V.data;
+  v[] = 0.0;
+
+  e = ret.e;
   
   double temp;
   double prec= numeric_epsilon; //Math.pow(2,-52) // assumes double prec
@@ -384,9 +418,8 @@ void svd_inplace( in Matrix A
               break;  //break out of iteration loop and move on to next k value
             }
 
-          enforce( iteration < itmax-1
-                   , "Error: no convergence."
-                   );
+          if (!(iteration < itmax-1))
+            return false; // Error: no convergence.
           
           // shift from bottom 2x2 minor
           x= q[l];
@@ -486,7 +519,7 @@ void svd_inplace( in Matrix A
               // for(k=0;k<u.length;k++) { auto uk = u[ k ]; temp = uk[i]; uk[i] = uk[j]; uk[j] = temp; }
               for (k=0,  k_i_offset = i,  k_j_offset = j;
                    k < m;
-                   j++, k_i_offset += n, k_j_offset += n)
+                   k++, k_i_offset += n, k_j_offset += n)
                 {
                   temp = u[ k_i_offset ];
                   u[ k_i_offset ] = u[ k_j_offset ];
@@ -496,7 +529,7 @@ void svd_inplace( in Matrix A
               // for(k=0;k<v.length;k++) { auto vk = v[ k ]; temp = vk[i]; vk[i] = vk[j]; vk[j] = temp; }
               for (k=0,  k_i_offset = i,  k_j_offset = j;
                    k < n;
-                   j++, k_i_offset += n, k_j_offset += n)
+                   k++, k_i_offset += n, k_j_offset += n)
                 {
                   temp = v[ k_i_offset ];
                   v[ k_i_offset ] = v[ k_j_offset ];
@@ -513,6 +546,8 @@ void svd_inplace( in Matrix A
   diag_inplace( q, ret.S );
 
   transpose_inplace( ret.V, ret.VT );
+
+  return true; // Converged
 }
 
 
@@ -532,8 +567,13 @@ unittest  // --------------------------------------------------
                           )
   {
     {
+      immutable m = ma.nrow;
       immutable n = ma.ncol;
-      assert( res.U.dim == [n, n] );
+      assert( res.m == m );
+      assert( res.n == n );
+      assert( res.q.length == n );
+      assert( res.e.length == n );
+      assert( res.U.dim == [m, n] );
       assert( res.S.dim == [n, n] );
       assert( res.V.dim == [n, n] );
       assert( res.VT.dim == [n, n] );
@@ -541,20 +581,25 @@ unittest  // --------------------------------------------------
     }
     
     {
-      writeln();
-      writeln("res.U ", res.U);
-      writeln();
-      writeln("res.U * diag_sigma", res.U.dot(res.S.diag));
-
+      
       const mb = res.U
         .dot
         (
-         res.S.diag
+         res.S
          .dot( res.V.transpose )
          );
 
-      assert( )
-      assert( approxEqual( mb, ma, 1e-10, 1e-10 ) );
+      /*
+      writeln();
+      writeln("res.U ", res.U);
+      writeln();
+      writeln("res.U * diag_sigma", res.U.dot(res.S));
+      writeln;
+      writeln("ma: ", ma );
+      writeln;
+      writeln("mb: ", mb);
+      */      
+      assert( mb.approxEqual( ma, 1e-10, 1e-10 ) );
     }
   }
 
@@ -566,22 +611,21 @@ unittest  // --------------------------------------------------
       http://people.duke.edu/~hpgavin/SystemID/References/Golub+Reinsch-NM-1970.pdf
     */
 
-    immutable ma = Matrix( [-1, 5]
-                           , [22.0, 10.0,  2.0,   3.0,  7.0,
-                              14.0,  7.0, 10.0,   0.0,  8.0,
-                              -1.0, 13.0, -1.0, -11.0,  3.0,
-                              -3.0, -2.0, 13.0,  -2.0,  4.0,
-                               9.0,  8.0,  1.0,  -2.0,  4.0,
-                               9.0,  1.0, -7.0,   5.0, -1.0,
-                               2.0, -6.0,  6.0,   5.0,  1.0,
-                               4.0,  5.0,  0.0,  -2.0,  2.0
-                              ]
-                           );
+    const ma = Matrix( [0, 5]
+                       , [22.0, 10.0,  2.0,   3.0,  7.0,
+                          14.0,  7.0, 10.0,   0.0,  8.0,
+                          -1.0, 13.0, -1.0, -11.0,  3.0,
+                          -3.0, -2.0, 13.0,  -2.0,  4.0,
+                          9.0,  8.0,  1.0,  -2.0,  4.0,
+                          9.0,  1.0, -7.0,   5.0, -1.0,
+                          2.0, -6.0,  6.0,   5.0,  1.0,
+                          4.0,  5.0,  0.0,  -2.0,  2.0
+                          ]
+                       );
 
     const res = svd( ma );
    
-    assert( res.dim == [ 5, 5 ] );
-    assert( res.data.approxEqual( [sqrt( 1248.0 ), 20.0, sqrt( 384.0 ), 0.0, 0.0 ], 1e-10, 1e-10 ) ) ;
+    assert( res.q.approxEqual( [sqrt( 1248.0 ), 20.0, sqrt( 384.0 ), 0.0, 0.0 ], 1e-10, 1e-10 ) ) ;
     
     check_consistency( ma, res );
   }
@@ -590,15 +634,15 @@ unittest  // --------------------------------------------------
   {
     // Test copied from the lubeck library
 
-    immutable ma = Matrix( [-1, 4]
-                           , [ 7.52,  -1.10,  -7.95,   1.08,
-                               -0.76,  0.62,   9.34,  -7.10,
-                               5.13,   6.62,  -5.66,   0.87,
-                               -4.75,  8.52,   5.75,   5.30,
-                               1.33,   4.91,  -5.49,  -3.52,
-                               -2.40, -6.77,   2.34,   3.95
-                               ]
-                           );
+    const ma = Matrix( [0, 4]
+                       , [ 7.52,  -1.10,  -7.95,   1.08,
+                           -0.76,  0.62,   9.34,  -7.10,
+                           5.13,   6.62,  -5.66,   0.87,
+                           -4.75,  8.52,   5.75,   5.30,
+                           1.33,   4.91,  -5.49,  -3.52,
+                           -2.40, -6.77,   2.34,   3.95
+                           ]
+                       );
 
     const res = svd( ma );
 
