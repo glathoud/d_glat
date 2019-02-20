@@ -1,6 +1,6 @@
-module d_glat_common.lib_search_dichotomy;
+module d_glat.lib_search_dichotomy;
 
-import d_glat_common.lib_search_bisection;
+import d_glat.lib_search_bisection;
 
 // Backwards compatibility aliases
 

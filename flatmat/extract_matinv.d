@@ -1,4 +1,4 @@
-module d_glat_common.flatmat.extract_matinv;
+module d_glat.flatmat.extract_matinv;
 
 import std.algorithm;
 import std.array;
@@ -8,7 +8,7 @@ import std.range;
 import std.stdio;
 import std.typecons;
 
-import d_glat_common.flatmat.mat_id;
+import d_glat.flatmat.mat_id;
 
 // ---------- Runtime strategy
 

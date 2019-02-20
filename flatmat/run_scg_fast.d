@@ -1,6 +1,6 @@
-module d_glat_common.flatmat.run_scg_fast;
+module d_glat.flatmat.run_scg_fast;
 
-import d_glat_common.flatmat.lib_vector;
+import d_glat.flatmat.lib_vector;
 import std.algorithm;
 import std.conv;
 import std.math;

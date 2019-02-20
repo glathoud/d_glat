@@ -1,4 +1,4 @@
-module d_glat_common.core_process;
+module d_glat.core_process;
 
 import std.array;
 import std.process;

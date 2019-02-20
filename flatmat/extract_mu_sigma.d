@@ -1,4 +1,4 @@
-module d_glat_common.flatmat.extract_mu_sigma;
+module d_glat.flatmat.extract_mu_sigma;
 
 import std.algorithm;
 import std.array;

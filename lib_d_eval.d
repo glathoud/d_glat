@@ -1,10 +1,10 @@
-module d_glat_common.lib_d_eval;
+module d_glat.lib_d_eval;
 
 import core.stdc.stdio;
 import core.stdc.stdlib;
 import core.sys.posix.dlfcn;
-import d_glat_common.core_assoc_array;
-import d_glat_common.core_process;
+import d_glat.core_assoc_array;
+import d_glat.core_process;
 import std.algorithm;
 import std.array;
 import std.compiler;

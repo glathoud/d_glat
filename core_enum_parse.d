@@ -1,4 +1,4 @@
-module d_glat_common.core_enum_parse;
+module d_glat.core_enum_parse;
 
 import std.algorithm;
 import std.array;

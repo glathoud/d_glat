@@ -1,4 +1,4 @@
-module d_glat_common.lib_json_manip;
+module d_glat.lib_json_manip;
 
 /* Utilities to manipulate `JSONValue`s
 
@@ -7,7 +7,7 @@ By Guillaume Lathoud - glat@glat.info
 Boost license, as described in the file ./LICENSE
 */
 
-public import d_glat_common.core_json;
+public import d_glat.core_json;
 
 import std.algorithm;
 import std.array;

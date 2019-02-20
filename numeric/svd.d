@@ -1,7 +1,7 @@
-module d_glat_common.numeric.svd;
+module d_glat.numeric.svd;
 
 
-import d_glat_common.numeric.core;
+import d_glat.numeric.core;
 import std.exception;
 import std.math;
 

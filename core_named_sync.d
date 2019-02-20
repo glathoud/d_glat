@@ -1,4 +1,4 @@
-module d_glat_common.core_named_sync;
+module d_glat.core_named_sync;
 
 /*
   Name-based synchronization. Useful e.g. in a multi-thread

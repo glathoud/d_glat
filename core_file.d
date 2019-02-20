@@ -4,7 +4,7 @@
  
  Distributed under the Boost License, see file ./LICENSE
 */
-module d_glat_common.core_file;
+module d_glat.core_file;
 
 import core.stdc.stdlib;
 import std.conv;

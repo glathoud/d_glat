@@ -1,4 +1,4 @@
-module d_glat_common.lib_modified_slice;
+module d_glat.lib_modified_slice;
 
 import core.exception;
 import std.conv;

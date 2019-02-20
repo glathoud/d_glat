@@ -1,4 +1,4 @@
-module d_glat_common.flatmat.lib_vector;
+module d_glat.flatmat.lib_vector;
 
 import std.algorithm;
 import std.math;

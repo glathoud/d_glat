@@ -1,4 +1,4 @@
-module d_glat_common.core_assoc_array;
+module d_glat.core_assoc_array;
 
 import std.stdio;
 

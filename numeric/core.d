@@ -1,4 +1,4 @@
-module d_glat_common.numeric.core;
+module d_glat.numeric.core;
 
 import std.algorithm;
 import std.stdio;

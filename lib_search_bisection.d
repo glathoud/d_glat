@@ -1,4 +1,4 @@
-module d_glat_common.lib_search_bisection;
+module d_glat.lib_search_bisection;
 
 import std.math;
 import std.stdio;
