@@ -47,12 +47,12 @@ SExpr parse_sexpr( alias maybe_check_fun = false )( in char[] a )
 abstract class SExpr
 {
   // For convenience, esp. for `maybe_check_fun`
-  bool isEmpty() { return false; } pure const @property @safe @nogc
-  bool isAtom()  { return false; } pure const @property @safe @nogc
-  bool isList()  { return false; } pure const @property @safe @nogc
+  bool isEmpty() pure const @property @safe @nogc { return false; }
+  bool isAtom()  pure const @property @safe @nogc { return false; }
+  bool isList()  pure const @property @safe @nogc { return false; }
                                      
-                                     abstract bool firstEquals( in string a );
-  override abstract string toString() pure const @safe @nogc;
+  abstract bool firstEquals( in string a ) pure const @nogc;
+  override abstract string toString()  pure const @safe @nogc;
 }
 
 
