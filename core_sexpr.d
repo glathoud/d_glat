@@ -2,8 +2,10 @@ module d_glat.core_sexpr;
 
 /*
   Minimalistic S-Expression parser - only what I need.
-  
+
   Use at your own risk. Boost license, see file ./LICENSE
+
+  Example of use: ./lib_json_manip.d
 
   Guillaume Lathoud
   glat@glat.info

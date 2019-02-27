@@ -9,6 +9,9 @@ Boost license, as described in the file ./LICENSE
 
 public import d_glat.core_json;
 
+import d_glat.core_sexpr;
+import d_glat.lib_json_manip;
+import d_oa_common.core_unittest;
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -19,6 +22,8 @@ import std.json;
 import std.regex;
 import std.stdio;
 import std.typecons;
+
+immutable string JSON_P_CALC = "(calc)";
 
 alias Jsonplace = string[]; // position in the JSON
 
@@ -292,6 +297,139 @@ void json_set_place
   if (!is_leaf)
       json_set_place( j_deeper, place[ 1..$ ], v );
 }
+
+
+
+
+
+
+
+JSONValue json_solve_calc( in ref JSONValue o )
+{
+  mixin(_nfrc!`o.type == JSON_TYPE.OBJECT`);
+
+  auto ret = json_deep_copy( o );
+
+  bool modified = true;
+  while (modified)
+    {
+      modified = false;
+      ret.json_walk_until!( (place, v) {
+
+          if (place.length > 0  &&  place[ $-1 ] == JSON_P_CALC)
+            {
+              auto new_v = json_solve_calc_one( ret, v );
+              json_set_place( ret, place[ 0..($-1)], new_v );
+              modified = true;
+            }
+
+          return modified;
+        });
+    }
+  
+  return ret;
+}
+
+unittest
+{
+  import std.stdio;
+  
+  writeln( "unittest starts: "~__FILE__~": json_solve_calc" );
+
+  auto o0 = parseJSON( `{"a":123,"b":{"c":{"(calc)":"(- (* a 2) 7)"}}}` );
+
+  auto o1 = json_solve_calc( o0 );
+
+  assert( o0.toString != o1.toString );
+  assert( o1.toString == `{"a":123,"b":{"c":239}}`);
+  
+  writeln( "unittest passed: "~__FILE__~": json_solve_calc" );
+
+}
+
+
+JSONValue json_solve_calc_one( in ref JSONValue o
+                               , in ref JSONValue v )
+{
+  mixin(_nfrc!`o.type == JSON_TYPE.OBJECT`); 
+  mixin(_nfrc!`v.type == JSON_TYPE.STRING`);
+  
+  auto e = parse_sexpr( v.str );
+
+  double v_dbl = json_solve_calc_one( o, e );
+
+  JSONValue new_v = JSONValue( v_dbl );
+  
+  enforce( new_v.toString != v.toString
+           , "Forbidden: json_solve_calc_one gave the same output:" ~ new_v.toString~"    from v:"~v.toString
+           );
+
+  return new_v;
+}
+
+double json_solve_calc_one( in ref JSONValue o
+                            , in ref SExpr e
+                            )
+{
+  mixin(_nfrc!`o.type == JSON_TYPE.OBJECT`);
+
+  mixin(_nfrc!`!e.isEmpty`);
+
+  if (e.isAtom)
+    {
+      immutable string s = e.toString;
+      if (auto p = s in o.object)
+        {
+          return json_get_double( *p );
+        }
+      else
+        {
+          try
+            {
+              return to!double( s );
+            }
+          catch (std.conv.ConvException e)
+            {
+              stderr.writeln( "json_solve_calc_one: failed to convert to double: \""~s
+                              ~"\". Or maybe could not find a value for \""~s~"\" at the top level of o: "
+                              ~o.toString
+                              );
+              throw e;
+            }
+        }
+    }
+
+  mixin(_asrt!`e.isList`);
+
+  const li = cast( SList )( e );
+  
+  double[] operands =
+    li.rest.map!( x => json_solve_calc_one( o, x ) ).array;
+
+  enforce( 1 < operands.length, li.toString );
+
+  const op = li.first.toString;
+  switch (op)
+    {
+      case "+": return operands.reduce!"a+b"; break;
+      case "-": return operands.reduce!"a-b"; break;
+      case "*": return operands.reduce!"a*b"; break;
+      case "/": return operands.reduce!"a/b"; break;
+        
+    default:
+      throw new Exception
+        ( "Unknown operator "~op~" from "~li.toString );
+    }
+}
+
+
+
+
+
+
+
+
+
 
 
 
