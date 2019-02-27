@@ -1,4 +1,4 @@
-module d_glat.flatmat.extract_matinv;
+module d_glat.flatcode.extract_matinv;
 
 import std.algorithm;
 import std.array;
@@ -8,7 +8,7 @@ import std.range;
 import std.stdio;
 import std.typecons;
 
-import d_glat.flatmat.mat_id;
+import d_glat.flatcode.mat_id;
 
 // ---------- Runtime strategy
 
@@ -239,7 +239,7 @@ matinvImplT[ ulong ] matinvImpl_of_key;
 matinvImplT make_matinvImpl( in ulong I, in ulong J )
 {
   // Implementation translated from JavaScript:
-  // https://github.com/glathoud/flatorize/blob/master/lib/flatmat.j
+  // https://github.com/glathoud/flatorize/blob/master/lib/flatcode.j
 
   immutable ulong IJ = I*J;
 

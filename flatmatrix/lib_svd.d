@@ -1,6 +1,6 @@
-module d_glat.flatmat.svd;
+module d_glat.flatmatrix.lib_svd;
 
-import d_glat.flatmat.lib_matrix;
+import d_glat.flatmatrix.core_matrix;
 import std.exception;
 import std.math;
 

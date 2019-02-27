@@ -1,4 +1,4 @@
-module d_glat.flatmat.mat_id;
+module d_glat.flatcode.mat_id;
 
 import std.algorithm;
 import std.stdio;

@@ -1,4 +1,4 @@
-module d_glat.flatmat.lib_matrix;
+module d_glat.flatmatrix.core_matrix;
 
 /*
   Flat matrix computations. Purpose: lightweight

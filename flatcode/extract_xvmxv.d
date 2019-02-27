@@ -1,4 +1,4 @@
-module d_glat.flatmat.extract_xvmxv;
+module d_glat.flatcode.extract_xvmxv;
 
 import std.algorithm;
 import std.math;

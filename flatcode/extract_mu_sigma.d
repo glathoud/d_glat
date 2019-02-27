@@ -1,4 +1,4 @@
-module d_glat.flatmat.extract_mu_sigma;
+module d_glat.flatcode.extract_mu_sigma;
 
 import std.algorithm;
 import std.array;
@@ -130,7 +130,7 @@ muSigmaImplT[ ulong ] muSigmaImpl_of_key;
 muSigmaImplT makeImpl( alias I )()
 {
   // Implementation translated from JavaScript:
-  // https://github.com/glathoud/flatorize/blob/master/lib/flatmat.js
+  // https://github.com/glathoud/flatorize/blob/master/lib/flatcode.js
  
   return delegate( ref double[] mu, ref double[] sigma
                    , in double[][] datavect_arr
