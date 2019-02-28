@@ -38,13 +38,13 @@ pure nothrow @safe @nogc
   mean[] /= cast( T )( i_end / i_step );
 }
 
-
-void mean_var_inplace( bool unbiased = true, T )
+void mean_var_inplace
+( bool unbiased = true, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_var
     )
-  nothrow @safe
+  pure nothrow @safe @nogc
 {
   pragma( inline, true );
 
@@ -68,16 +68,16 @@ void mean_var_inplace( bool unbiased = true, T )
   immutable i_end = data.length;
   immutable i_step = mean.length;
 
-  mixin( static_array_code( T.stringof, `tmp`, `i_step` ) );
-  
   while (i < i_end)
     {
       size_t i_next = i + i_step;
 
-      tmp[] = data[ i..i_next ][] - mean[];
-      var[] += tmp[] * tmp[];
-
-      i = i_next;
+      size_t j = 0;
+      while (i < i_next)
+        {
+          double tmp = data[ i++ ] - mean[ j ];
+          var[ j++ ] += tmp*tmp;
+        }
     }
   
   static if (unbiased)
