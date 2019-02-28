@@ -1,12 +1,25 @@
 module d_glat.flatmatrix.lib_corr;
 
-import d_glat.flatmatrix.core_matrix;
+public import d_glat.flatmatrix.core_matrix;
+
 import std.math;
 
-void corr_one_inplace
-( in   ref Matrix m_one
-  , in ref Matrix m_many
-  ,    ref Matrix m_corr)
+MatrixT!T corr_one( T )( in MatrixT!T m_one, in MatrixT!T m_many )
+  nothrow @safe
+// Functional wrapper around `corr_one_inplace`.
+{
+  pragma( inline, true );
+
+  auto m_corr = Matrix!T( [ 1, m_many.dim[ 1 ] ] );
+  corr_one_inplace!T( m_one, m_many, m_corr );
+  return m_corr;
+}
+
+
+void corr_one_inplace( T )
+  ( in   ref MatrixT!T m_one
+    , in ref MatrixT!T m_many
+    ,    ref MatrixT!T m_corr) nothrow @safe
 /*
   Corration of `m_one` (vector) with each dimension of `m_many`.
   In-place computations for speed.
@@ -26,6 +39,57 @@ void corr_one_inplace
   glat@glat.info
 */
 {
+  pragma( inline, true );
+
+  immutable d = m_many.dim[ 1 ];
+
+  static MatrixT!T m_many_mean;
+  static MatrixT!T m_many_var;
+
+  m_many_mean.setDim( [ 1, d ] );
+  m_many_var .setDim( [ 1, d ] );
+  
+  corr_one_inplace!T( m_one, m_many, m_corr
+                      , m_many_mean, m_many_var 
+                      );
+}
+
+
+void corr_one_inplace( T )
+( /* inputs: */
+ in   ref MatrixT!T m_one
+ , in ref MatrixT!T m_many
+ /* outputs: */
+ ,    ref MatrixT!T m_corr
+ ,    ref MatrixT!T m_many_mean
+ ,    ref MatrixT!T m_many_var
+  ) pure nothrow @safe @nogc
+/*
+  Corration of `m_one` (vector) with each dimension of `m_many`.
+  In-place computations for speed.  
+
+  We also output `m_many_mean`, and `m_many_var` (uncorrected
+  variance).
+
+  Input dimensions (n is the number of samples):
+
+  `m_one`:  `[n,1]`
+  `m_many`: `[n,d]`
+
+  Output dimensions:
+
+  `m_corr`:      `[1,d]`
+  `m_many_mean`: `[1,d]`
+  `m_many_var`:  `[1,d]`
+
+  Boost license, as described in file ../LICENSE
+
+  By Guillaume Lathoud
+  glat@glat.info
+*/
+{
+  pragma( inline, true );
+
   immutable n = m_one.data.length;
   immutable d = m_many.dim[ 1 ];
 
@@ -41,17 +105,28 @@ void corr_one_inplace
       assert( m_many.dim[ 0 ] == n );
       assert( m_many.dim[ 1 ] == d );
 
-      assert( m_corr.dim.length == 1  &&  m_corr.dim[ 0 ] == d
-              ||  m_corr.dim.length == 2
-              &&  m_corr.dim[ 0 ] == 1  &&  m_corr.dim[ 1 ] ==d
-              );
+      static foreach (name;
+                      [`m_corr`, `m_many_mean`, `m_many_var`])
+      {
+        mixin
+          ( `assert
+            ( `~name~`.dim.length == 2
+              &&  `~name~`.dim[ 0 ] == 1  &&  `~name~`.dim[ 1 ] ==d
+
+              || `~name~`.dim.length == 1
+              &&  `~name~`.dim[ 0 ] == d
+              );`
+            );
+      }
     }
 
   // all are `double[]`
   auto one  = m_one .data;
   auto many = m_many.data;
   auto corr = m_corr.data;
-  
+  auto many_mean = m_many_mean.data;
+  auto many_var  = m_many_var .data;
+
   immutable one_over_n_dbl = 1.0 / cast( double )( n );
 
   immutable many_len = many.length;
@@ -78,17 +153,6 @@ void corr_one_inplace
 
   // many
 
-  string setup_acc_code( in string name ) pure
-  {
-    return `static double[] `~name~`;
-    if (`~name~`.length != d)
-      `~name~` = new double[ d ];
-    `;
-  }
-
-
-  mixin( setup_acc_code( `many_mean` ) );
-  
   many_mean[] = 0.0;
   {
     size_t i = 0;
@@ -110,8 +174,6 @@ void corr_one_inplace
      (sum_i(x_i * y_i) / n - mean_x * mean_y) 
      / sqrt(var_x * var_y)
   */
-  mixin( setup_acc_code( `many_var` ) );
-  
   many_var[] = 0.0;
   corr[] = 0.0;
 
@@ -141,7 +203,7 @@ void corr_one_inplace
       assert( i_one   == n-1 );
       assert( i_mod_d == d );
     }
-  many_var[] *= one_over_n_dbl;
+  many_var[] *= one_over_n_dbl; // uncorrected variance
   
   // Implement the formula
 
@@ -149,12 +211,8 @@ void corr_one_inplace
   
   corr[] -= one_mean * many_mean[];
   
-  // At this point `many_var` looses its meaning, modified in-place
-  // for speed.
-  foreach (i,x; many_var)
-    many_var[ i ] = sqrt( one_var * x );
-  
-  corr[] /= many_var[];
+  foreach (i,v; many_var)
+    corr[ i ] /= sqrt( one_var * v );
 }
 
 unittest
@@ -164,7 +222,7 @@ unittest
   import std.range;
   import std.stdio;
 
-  immutable verbose = true;
+  immutable verbose = false;
   
   writeln;
   writeln( "unittest starts: "~__FILE__ );

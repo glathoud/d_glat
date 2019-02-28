@@ -1,6 +1,7 @@
 module d_glat.flatmatrix.lib_svd;
 
-import d_glat.flatmatrix.core_matrix;
+public import d_glat.flatmatrix.core_matrix;
+
 import std.exception;
 import std.math;
 
@@ -65,7 +66,7 @@ SvdResult svd( in Matrix A ) pure @safe
   return ret;
 }
 
-bool svd_inplace( in Matrix A
+bool svd_inplace( in ref Matrix A
                   , ref SvdResult ret
                   ) pure nothrow @safe @nogc
 /*

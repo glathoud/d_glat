@@ -58,27 +58,15 @@ struct MatrixT( T )
   this( in size_t[] dim ) pure nothrow @safe
     // Typically a `double.nan` initialization.
     {
-      this.dim = dim.dup;
-
-      size_t total = dim[ 0 ];
-      for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
-        total *= dim[ i ];
-
-      // Here we cannot support `0` since there is no data.
-      debug if (!(0 < total ))
-        {
-          this.dim = [];
-          this.data = [];
-          auto x = this.dim[ 0 ];
-        }
-
-      this.data = new T[ total ];
+      this.setDim( dim );
     }
 
   void complete_dim() pure nothrow @safe
   // Find at most one `0` value in the `dim` array, and compute that
   // dimension out of `data.length` and the other `dim[i]` values.
   {
+    pragma( inline, true );
+
     size_t sub_total   = 1;
     bool   has_missing = false;
     size_t i_missing;
@@ -120,12 +108,43 @@ struct MatrixT( T )
           }
         dim[ i_missing ] = total / sub_total;
       }
+    else
+      {
+        assert( sub_total == data.length );
+      }
   }
 
+  // --- API: reinitialization
+
+  void setDim( in size_t[] dim ) pure nothrow @safe
+  {
+    pragma( inline, true );
+
+    size_t total = dim[ 0 ];
+    for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
+      total *= dim[ i ];
+
+    // Here we cannot support `0` since there is no data.
+    debug if (!(0 < total ))
+      {
+        this.dim = [];
+        this.data = [];
+        auto x = this.dim[ 0 ];
+      }
+
+    if (this.dim != dim)
+      {
+        this.dim = dim.dup;
+        this.data = new T[ total ];
+      }
+  }
+  
   // --- API: Comparison
 
   bool approxEqual( in ref Matrix other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
   {
+    pragma( inline, true );
+    
     return this.dim == other.dim
       &&  std.math.approxEqual( this.data, other.data, maxRelDiff, maxAbsDiff );
   }
@@ -134,6 +153,8 @@ struct MatrixT( T )
 
   bool opEquals( in Matrix other ) const pure nothrow @safe @nogc
   {
+    pragma( inline, true );
+
     return this.dim == other.dim
       &&  this.data == other.data;
   }
@@ -152,15 +173,36 @@ struct MatrixT( T )
   // --- Convenience shortcuts
   
   size_t ndim() const @property pure nothrow @safe @nogc
-  { return dim.length; }
+  {
+    pragma( inline, true );
+    
+    return dim.length;
+  }
 
+  size_t restdim() const @property pure nothrow @safe @nogc
+  {
+    pragma( inline, true );
+
+    size_t rd = dim[ 1 ];
+    foreach (d; dim[ 2..$ ])
+      rd *= d;
+
+    return rd;
+  }
+  
   // --- Convenience shortcuts for 2D matrices
 
   size_t nrow() const @property pure nothrow @safe @nogc
-  { return dim[ 0 ]; }
+  {
+    pragma( inline, true );
+    return dim[ 0 ];
+  }
   
   size_t ncol() const @property pure nothrow @safe @nogc
-  { return dim[ 1 ]; }
+  {
+    pragma( inline, true );
+    return dim[ 1 ];
+  }
 };
 
 alias Matrix = MatrixT!double;
@@ -184,6 +226,7 @@ mixin(_direct_code(`direct_div`,`/`));
 
 MatrixT!T clone( T )( in MatrixT!T X ) pure nothrow @safe
 {
+  pragma( inline, true );
   return MatrixT!T( X.dim.dup, X.data.dup );
 }
 
