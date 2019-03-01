@@ -53,7 +53,7 @@ abstract class SExpr
   bool isAtom()  pure const @property @safe @nogc { return false; }
   bool isList()  pure const @property @safe @nogc { return false; }
                                      
-  abstract bool firstEquals( in string a ) pure const @nogc;
+  abstract bool firstEquals( in string a ) pure const @safe @nogc;
   override abstract string toString()  pure const @safe @nogc;
 }
 
@@ -63,7 +63,7 @@ class SEmpty : SExpr
   override bool isEmpty() pure const @property @safe @nogc
   { return true; }
   
-  override bool firstEquals( in string a ) pure const  @nogc
+  override bool firstEquals( in string a ) const pure @safe @nogc
   {
     return a.length == 0;
   }
@@ -91,7 +91,7 @@ class SAtom : SExpr
       this.v = v;
     }
 
-  override bool firstEquals( in string a ) pure const  @nogc
+  override bool firstEquals( in string a ) pure const @safe @nogc
   {
     return v == a;
   }
@@ -104,7 +104,7 @@ class SAtom : SExpr
 
 class SList : SExpr
 {
-  override bool isList() pure const @property @safe @nogc
+  override bool isList() @property pure const @safe @nogc
   { return true; }
     
   const SExpr   first;
@@ -134,7 +134,7 @@ class SList : SExpr
       _str = app.data;
     }
 
-  override bool firstEquals( in string a ) pure const  @nogc
+  override bool firstEquals( in string a ) pure const @safe @nogc
   {
     return first.firstEquals( a );
   }
