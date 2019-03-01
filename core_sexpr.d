@@ -81,12 +81,12 @@ class SAtom : SExpr
     
   immutable string v;
 
-  this( in char[] c ) pure
+  this( in char[] c ) pure @safe
     {
-      this.v = cast( string )( c );
+      this.v = c.idup;
     }
 
-  this( in string v ) pure  @nogc
+  this( in string v ) pure @safe @nogc
     {
       this.v = v;
     }
@@ -114,7 +114,7 @@ class SList : SExpr
 
   private immutable string _str;
   
-  this( in SExpr[] all ) pure 
+  this( in SExpr[] all ) pure @safe
     {
       this.all   = all;
       this.first = all[ 0 ];
@@ -148,7 +148,7 @@ class SList : SExpr
 private: // --------------------
 
 void _parse_sexpr( in char[] a, ref size_t i, ref SExpr expr)
-pure 
+pure @safe
 {
   immutable i_end = a.length;
 
@@ -170,7 +170,7 @@ pure
 }
 
 SAtom _parse_satom( in char[] a, ref size_t i )
-  pure  
+  pure @safe
 {
   immutable i0    = i;
   immutable i_end = a.length;
@@ -186,7 +186,7 @@ SAtom _parse_satom( in char[] a, ref size_t i )
 
 
 SExpr _parse_slist( in char[] a, ref size_t i )
-  pure  
+  pure @safe
 {
   debug assert( a[ i ] == '(' ); ++i;
 
@@ -218,7 +218,7 @@ SExpr _parse_slist( in char[] a, ref size_t i )
   return 0 < arr.length  ?  new SList( arr )  :  new SEmpty;
 }
 
-bool _is_space( in char c ) pure  @nogc
+bool _is_space( in char c ) pure @safe @nogc
 {
   pragma( inline, true );
   return c == ' ';
