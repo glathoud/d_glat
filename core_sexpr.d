@@ -18,13 +18,13 @@ import std.stdio;
 import std.string;
 
 SExpr parse_sexpr( alias maybe_check_fun = false )( in string a )
-  
+pure
 {
   return parse_sexpr!maybe_check_fun( cast( char[] )( a ) );
 }
 
 SExpr parse_sexpr( alias maybe_check_fun = false )( in char[] a )
-  
+pure
 {
   SExpr ret;
 
