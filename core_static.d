@@ -10,20 +10,20 @@ module d_glat.core_static;
 */
 
 string static_array_code
-( in string type, in string name, in string n ) pure
+( in string name, in string type, in string n ) pure
 /*
   Code to setup a static buffer local to a function.
 
 
   Example:
 
-  mixin( setup_static_array( `double`, `arr`, `n_elt` ) );
+  mixin( setup_static_array( `arr`, `double`, `n_elt` ) );
 
   is equivalent to:
 
   static double[] arr;
   if (arr.length != n_elt)
-    arr.length = n_elt;
+    arr.length = new double[ n_elt ];
 
 
   Beware that `new` won't be called if `n` has not changed, so you

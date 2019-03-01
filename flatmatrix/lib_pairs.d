@@ -2,6 +2,8 @@ module d_glat.flatmatrix.lib_pairs;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import std.math; // for expstr
+
 /*
   The Boost license applies, as described in ./LICENSE
 
@@ -21,11 +23,11 @@ void pairs( alias opstr_or_fun, T )
   return ret;
 }
 
-void pairs_inplace( alias opstr_or_fun, T )
+void pairs_inplace( alias expstr_or_fun, T )
   ( in ref MatrixT!T m, ref MatrixT!T m_pairdelta )
   pure nothrow @safe @nogc
 /*
-  Compute pair-wise "deltas" according to `opstr_or_fun` (e.g. "-")
+  Compute pair-wise "deltas" according to `expstr_or_fun` (e.g. "-" or "(a-b)^^2")
   
   Input: `m` has dimensionality >= 2 and dim = [ n, p, ... ]
 
@@ -52,8 +54,7 @@ void pairs_inplace( alias opstr_or_fun, T )
   auto data = m.data;
   auto pairdelta = m_pairdelta.data;
 
-  static immutable bool is_opstr = typeof(opstr_or_fun).stringof == "string";
-  // xxx add impl for special case restdim == 1 and op string
+  static immutable bool is_expstr = typeof(expstr_or_fun).stringof == "string";
 
   size_t i = 0;
   immutable i_end = data.length;
@@ -64,10 +65,21 @@ void pairs_inplace( alias opstr_or_fun, T )
   debug immutable ipd_end = pairdelta.length;
 
 
-  static if (is_opstr)
+  static if (is_expstr)
     {
-      // `iopstr` case (e.g. "+", "-", "*", "/")
+      // `iexpstr` case (e.g. shortcuts "+", "-", "*", "/" or expr
+      // e.g. "(a-b)^^2")
 
+      static immutable string expstr =
+        1 == expstr_or_fun.length
+        &&  expstr_or_fun[0] != 'a'
+        &&  expstr_or_fun[0] != 'b'
+        
+        ?  "a"~expstr_or_fun~"b"
+
+        :  expstr_or_fun
+        ;
+      
       if (1 == restdim)
         {
           // Scalar case: no vector operation needed
@@ -75,19 +87,15 @@ void pairs_inplace( alias opstr_or_fun, T )
           while (i < i_end)
             {
               immutable i_next = i+1;
-              auto x_i = data[ i ];
+              auto b = data[ i ];
       
               size_t i2 = i_next;
               while (i2 < i_end)
                 {
-                  mixin
-                    (
-                     `pairdelta[ ipd ] = 
-                     data[ i2 ] `
-                     ~opstr_or_fun~
-                     ` x_i;`
-                     );
-              
+                  auto a = data[ i2 ];
+                  
+                  mixin( `pairdelta[ ipd ] = `~expstr~`;` );
+                  
                   ipd       = ipd_next;
                   ipd_next++;
           
@@ -107,28 +115,16 @@ void pairs_inplace( alias opstr_or_fun, T )
             {
               immutable i_next = i + restdim;
               
-              auto v_i = data[ i..i_next ];
-              
               size_t i2 = i_next;
               while (i2 < i_end)
                 {
-                  immutable i2_next = i2 + restdim;
-                  
-                  mixin
-                    (
-                     `pairdelta[ ipd..ipd_next ][] = 
-                     data[ i2..i2_next ][] `
-                     ~opstr_or_fun~
-                     ` v_i[];`
-                     );
-              
-                  ipd       = ipd_next;
-                  ipd_next += restdim;
-          
-                  i2 = i2_next;
+                  foreach (i_b; i..i_next)
+                    {
+                      auto a = data[ i2++ ];
+                      auto b = data[ i_b ];
+                      pairdelta[ ipd++ ] = mixin( expstr );
+                    }
                 }
-
-              debug assert( i2 == i_end );
 
               i = i_next;
             }
@@ -149,7 +145,7 @@ void pairs_inplace( alias opstr_or_fun, T )
             {
               immutable i2_next = i2 + restdim;
 
-              opstr_or_fun( data[ i2..i2_next ], v_i
+              expstr_or_fun( data[ i2..i2_next ], v_i
                             , pairdelta[ ipd..ipd_next ]
                             );
               
@@ -185,7 +181,7 @@ unittest
   writeln;
   writeln( "unittest starts: "~__FILE__ );
 
-  // opstr
+  // expstr
   
   {
     auto m = Matrix( [ 4, 1 ], [ 1.0,
@@ -257,6 +253,58 @@ unittest
                         13.0 - 3.0,  100.0,    1000.0,  10000.0,
                                                               
                         13.0 - 7.0,   60.0,     600.0,   6000.0,
+                        ] ) );
+  }
+
+  {
+    // 3-D matrix and full expression `a-b`
+    auto m = Matrix( [ 4, 2, 2 ], [ 1.0,   10.0,     100.0,  1000.0,
+                                    3.0,   30.0,     300.0,  3000.0,
+                                    7.0,   70.0,     700.0,  7000.0,
+                                    13.0, 130.0,    1300.0, 13000.0,
+                                    ] );
+    auto m_pairdelta = Matrix( [ 4*3/2, 2, 2 ] );
+    pairs_inplace!"a-b"( m, m_pairdelta );
+
+    if (verbose)
+      writeln( "m_pairdelta: ", m_pairdelta );
+    
+    assert( m_pairdelta ==
+            Matrix( [ 4*3/2, 2, 2 ]
+                    , [ 3.0  - 1.0,   20.0,     200.0,   2000.0,
+                        7.0  - 1.0,   60.0,     600.0,   6000.0,
+                        13.0 - 1.0,  120.0,    1200.0,  12000.0,
+                                                              
+                        7.0  - 3.0,   40.0,     400.0,   4000.0,
+                        13.0 - 3.0,  100.0,    1000.0,  10000.0,
+                                                              
+                        13.0 - 7.0,   60.0,     600.0,   6000.0,
+                        ] ) );
+  }
+
+  {
+    // 3-D matrix and full expression `(a-b)^^2`
+    auto m = Matrix( [ 4, 2, 2 ], [ 1.0,   10.0,     100.0,  1000.0,
+                                    3.0,   30.0,     300.0,  3000.0,
+                                    7.0,   70.0,     700.0,  7000.0,
+                                    13.0, 130.0,    1300.0, 13000.0,
+                                    ] );
+    auto m_pairdelta = Matrix( [ 4*3/2, 2, 2 ] );
+    pairs_inplace!"(a-b)^^2"( m, m_pairdelta );
+
+    if (verbose)
+      writeln( "m_pairdelta: ", m_pairdelta );
+    
+    assert( m_pairdelta ==
+            Matrix( [ 4*3/2, 2, 2 ]
+                    , [ (3.0  - 1.0)^^2,  ( 20.0)^^2,    ( 200.0)^^2,  ( 2000.0)^^2,
+                        (7.0  - 1.0)^^2,  ( 60.0)^^2,    ( 600.0)^^2,  ( 6000.0)^^2,
+                        (13.0 - 1.0)^^2,  (120.0)^^2,    (1200.0)^^2,  (12000.0)^^2,
+
+                        (7.0  - 3.0)^^2,  ( 40.0)^^2,    ( 400.0)^^2,  ( 4000.0)^^2,
+                        (13.0 - 3.0)^^2,  (100.0)^^2,    (1000.0)^^2,  (10000.0)^^2,
+
+                        (13.0 - 7.0)^^2,  ( 60.0)^^2,    ( 600.0)^^2,  ( 6000.0)^^2,
                         ] ) );
   }
 

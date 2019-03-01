@@ -10,7 +10,7 @@ import std.stdio;
 
 // ---------- Runtime strategy
 
-void flatmat_extract_mu_sigma
+void flatcode_extract_mu_sigma
 // glat@glat.info
 // 2017
 (
@@ -21,12 +21,12 @@ void flatmat_extract_mu_sigma
  , in double[][] datavect_arr
  )
 {
-  flatmat_extract_mu_sigma( mu, sigma
+  flatcode_extract_mu_sigma( mu, sigma
                             , datavect_arr, datavect_arr.length
                             );
 }
 
-void flatmat_extract_mu_sigma
+void flatcode_extract_mu_sigma
 // glat@glat.info
 // 2017
 (
@@ -78,7 +78,7 @@ void flatmat_extract_mu_sigma
 // ---------- Compile-time strategy: should be faster. Cost: `I`
 // must be known at compile time.
  
-void flatmat_extract_mu_sigma( alias I )
+void flatcode_extract_mu_sigma( alias I )
 // glat@glat.info
 // 2017
   (
@@ -89,12 +89,12 @@ void flatmat_extract_mu_sigma( alias I )
    , in double[][] datavect_arr
    )
 {
-  flatmat_extract_mu_sigma!( I )( mu, sigma, datavect_arr
+  flatcode_extract_mu_sigma!( I )( mu, sigma, datavect_arr
                                   , datavect_arr.length
                                   );
 }
 
-void flatmat_extract_mu_sigma( alias I )
+void flatcode_extract_mu_sigma( alias I )
 // glat@glat.info
 // 2017
   (
@@ -265,7 +265,7 @@ unittest
   writeln( "unittest starts: extract_mu_sigma" );
 
   /*
-    http://glat.info/flatorize/lib/flatmat_speedtest.html
+    http://glat.info/flatorize/lib/flatcode_speedtest.html
 
     JavaScript to generate the "truth":
     
@@ -317,7 +317,7 @@ unittest
   mu[]    = double.nan;
   sigma[] = double.nan;
   
-  flatmat_extract_mu_sigma( mu, sigma, data );
+  flatcode_extract_mu_sigma( mu, sigma, data );
 
   {
     double[] tmp_v = new double[ 4 ];
@@ -335,7 +335,7 @@ unittest
   mu[]    = double.nan;
   sigma[] = double.nan;
   
-  flatmat_extract_mu_sigma( mu, sigma, data2, n_datavect );
+  flatcode_extract_mu_sigma( mu, sigma, data2, n_datavect );
 
   {
     double[] tmp_v = new double[ 4 ];
@@ -353,7 +353,7 @@ unittest
   mu[]    = double.nan;
   sigma[] = double.nan;
   
-  flatmat_extract_mu_sigma!( 4 )( mu, sigma, data );
+  flatcode_extract_mu_sigma!( 4 )( mu, sigma, data );
 
   {
     double[] tmp_v = new double[ 4 ];
@@ -371,7 +371,7 @@ unittest
   mu[]    = double.nan;
   sigma[] = double.nan;
   
-  flatmat_extract_mu_sigma!( 4 )( mu, sigma, data2, n_datavect );
+  flatcode_extract_mu_sigma!( 4 )( mu, sigma, data2, n_datavect );
 
   {
     double[] tmp_v = new double[ 4 ];

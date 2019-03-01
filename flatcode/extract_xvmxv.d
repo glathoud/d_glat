@@ -7,7 +7,7 @@ import std.stdio;
 
 // ---------- Runtime strategy
 
-class FlatmatExtractXvmxvWorkspace {
+class FlatcodeExtractXvmxvWorkspace {
 
   double[] x_minus_v;
 
@@ -17,7 +17,7 @@ class FlatmatExtractXvmxvWorkspace {
     
     if (dim != x_minus_v.length)
       {
-        debug writeln( " FlatmatExtractXvmxvWorkspace reinit "
+        debug writeln( " FlatcodeExtractXvmxvWorkspace reinit "
                        , dim );
 
         x_minus_v.length = dim;
@@ -27,11 +27,11 @@ class FlatmatExtractXvmxvWorkspace {
 }
 
 // Inner workspace cache for particular dimensions
-private FlatmatExtractXvmxvWorkspace[ulong] ws_of_dim;
+private FlatcodeExtractXvmxvWorkspace[ulong] ws_of_dim;
 private ulong[] last_dim_arr;
 private immutable LAST_DIM_ARR_LENGTH_MAX = 10;
 
-void flatmat_extract_xvmxv
+void flatcode_extract_xvmxv
 ( // Output
  double[] out_xvmxv_arr
  // Inputs
@@ -46,7 +46,7 @@ void flatmat_extract_xvmxv
   // Automatic workspace allocation
   // Try to maximize re-use (cache)
 
-  FlatmatExtractXvmxvWorkspace ws;
+  FlatcodeExtractXvmxvWorkspace ws;
 
   bool ws_found = false;
   if (auto p = dim in ws_of_dim)
@@ -72,7 +72,7 @@ void flatmat_extract_xvmxv
 
       // Add the new workspace
 
-      ws = new FlatmatExtractXvmxvWorkspace;
+      ws = new FlatcodeExtractXvmxvWorkspace;
       ws.reinit( dim );
       
       ws_of_dim[ dim ] = ws;
@@ -80,18 +80,18 @@ void flatmat_extract_xvmxv
       last_dim_arr = [ dim ] ~ last_dim_arr;
     }
   
-  flatmat_extract_xvmxv( out_xvmxv_arr
+  flatcode_extract_xvmxv( out_xvmxv_arr
                          , ws
                          , in_v, in_m, datavect_arr
                          );
 }
 
 
-void flatmat_extract_xvmxv
+void flatcode_extract_xvmxv
 ( // Output
  double[] out_xvmxv_arr
  // Temporary workspace (to spare the GC)
- , ref FlatmatExtractXvmxvWorkspace ws
+ , ref FlatcodeExtractXvmxvWorkspace ws
  // Inputs
  , in ref double[] in_v  // `dim*1` vector
  , in ref double[] in_m  // `dim*dim` matrix
@@ -147,7 +147,7 @@ unittest  // ------------------------------
     Existing, proofed JavaScript implementation to generate the test
     data:
 
-    http://glat.info/flatorize/lib/flatmat_speedtest.html#speedtest-xvmxv
+    http://glat.info/flatorize/lib/flatcode_speedtest.html#speedtest-xvmxv
     
     hand_xvmxv = hand_xvmxv_of_dim(4);
     
@@ -184,8 +184,8 @@ unittest  // ------------------------------
   double[] obtained = new double[ datavect_arr.length ];
 
   // When running with -debug this time the message
-  // "FlatmatExtractXvmxvWorkspace reinit 4" should appear
-  flatmat_extract_xvmxv( obtained, v, m, datavect_arr );
+  // "FlatcodeExtractXvmxvWorkspace reinit 4" should appear
+  flatcode_extract_xvmxv( obtained, v, m, datavect_arr );
 
   immutable double[] expected =
     [
@@ -209,8 +209,8 @@ unittest  // ------------------------------
   obtained[] = double.nan;
 
   // When running with -debug this time the message
-  // "FlatmatExtractXvmxvWorkspace reinit 4" should NOT appear
-  flatmat_extract_xvmxv( obtained, v, m, datavect_arr );
+  // "FlatcodeExtractXvmxvWorkspace reinit 4" should NOT appear
+  flatcode_extract_xvmxv( obtained, v, m, datavect_arr );
 
   {
     double max_diff = zip( obtained, expected )

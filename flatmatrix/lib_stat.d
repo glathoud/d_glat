@@ -88,7 +88,7 @@ void mean_var_inplace
 
 
 void var_inplace( T )( in ref MatrixT!T m,  ref MatrixT!T m_var )
-  pure nothrow @safe /*gc*/
+  /*!pure*/ nothrow @safe /*!@nogc*/
 {
   static MatrixT!T m_mean;
   m_mean.setDim( m_var.dim );

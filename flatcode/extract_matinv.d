@@ -12,19 +12,19 @@ import d_glat.flatcode.mat_id;
 
 // ---------- Runtime strategy
 
-class FlatmatExtractMatinvWorkspace {
+class FlatcodeExtractMatinvWorkspace {
 
   ulong I, J;
   
   ulong IJ;
 
-  mixin( flatmat_extract_matinv_decl_code() );
+  mixin( flatcode_extract_matinv_decl_code() );
   
   void reinit( in ulong I, in ulong J )
   {
     if (this.I != I  ||  this.J != J)
       {
-        debug writeln(" Flatmat_Extract_Matinv_Decl_Code reinit ", I
+        debug writeln(" Flatcode_Extract_Matinv_Decl_Code reinit ", I
                       , " ", J
                       );
         this.I = I;
@@ -32,13 +32,13 @@ class FlatmatExtractMatinvWorkspace {
         
         IJ = I*J;
         
-        mixin( flatmat_extract_matinv_init_code() );
+        mixin( flatcode_extract_matinv_init_code() );
       }
   }
   
 }
 
-bool flatmat_extract_matinv
+bool flatcode_extract_matinv
 // Returns `true` if the matrix inversion was a success,
 // `false` otherwise.
 //
@@ -53,15 +53,15 @@ bool flatmat_extract_matinv
 )
 {
   // Default: square matrix
-  return flatmat_extract_matinv( matinv, mat, in_I, in_I );
+  return flatcode_extract_matinv( matinv, mat, in_I, in_I );
 }
 
 // Inner workspace cache for particular dimensions
-private FlatmatExtractMatinvWorkspace[ulong][ulong] ws_of_IJ;
+private FlatcodeExtractMatinvWorkspace[ulong][ulong] ws_of_IJ;
 private Tuple!(const(ulong),const(ulong))[] last_IJ_arr;
 private immutable LAST_IJ_ARR_LENGTH_MAX = 10;
 
-bool flatmat_extract_matinv
+bool flatcode_extract_matinv
 // Returns `true` if the matrix inversion was a success,
 // `false` otherwise.
 //
@@ -79,7 +79,7 @@ bool flatmat_extract_matinv
   // Automatic workspace allocation
   // Try to maximize re-use (cache)
 
-  FlatmatExtractMatinvWorkspace ws;
+  FlatcodeExtractMatinvWorkspace ws;
 
   bool ws_found = false;
   if (auto pI = in_I in ws_of_IJ)
@@ -114,7 +114,7 @@ bool flatmat_extract_matinv
 
       // Add the new workspace
 
-      ws = new FlatmatExtractMatinvWorkspace;
+      ws = new FlatcodeExtractMatinvWorkspace;
       ws.reinit( in_I, in_J );
       
       ws_of_IJ[ in_I ][ in_J ] = ws;
@@ -122,13 +122,13 @@ bool flatmat_extract_matinv
       last_IJ_arr = [ tuple( in_I, in_J ) ] ~ last_IJ_arr;
     }
   
-  return flatmat_extract_matinv( matinv, ws, mat, in_I, in_J );
+  return flatcode_extract_matinv( matinv, ws, mat, in_I, in_J );
 }
 
 
 
 
-bool flatmat_extract_matinv
+bool flatcode_extract_matinv
 // Returns `true` if the matrix inversion was a success,
 // `false` otherwise.
 //
@@ -138,17 +138,17 @@ bool flatmat_extract_matinv
    // output
    ref double[] matinv  // `matinv.length == dim*dim`: square matrix
    // storage for temporary computation
-   , ref FlatmatExtractMatinvWorkspace ws
+   , ref FlatcodeExtractMatinvWorkspace ws
    // input
    , in ref double[] mat  // `mat.length == dim*dim`: square matrix
    , in ulong in_I
 )
 {
   // Default: square matrix
-  return flatmat_extract_matinv( matinv, ws, mat, in_I, in_I );
+  return flatcode_extract_matinv( matinv, ws, mat, in_I, in_I );
 }
 
-bool flatmat_extract_matinv
+bool flatcode_extract_matinv
 // Returns `true` if the matrix inversion was a success,
 // `false` otherwise.
 //
@@ -158,7 +158,7 @@ bool flatmat_extract_matinv
    // output
    ref double[] matinv  // `matinv.length == dim*dim`: square matrix
    // storage for temporary computation
-   , ref FlatmatExtractMatinvWorkspace ws
+   , ref FlatcodeExtractMatinvWorkspace ws
    // input
    , in ref double[] mat  // `mat.length == dim*dim`: square matrix
    , in ulong in_I
@@ -168,14 +168,14 @@ bool flatmat_extract_matinv
   ws.reinit( in_I, in_J );
   with( ws )
   {
-    mixin( flatmat_extract_matinv_do_code() );
+    mixin( flatcode_extract_matinv_do_code() );
   }
 }
 
 // ---------- Compile-time strategy: should be faster, but `I,J`
 // must be known at compile time.
 
-bool flatmat_extract_matinv( alias I, alias J = I )
+bool flatcode_extract_matinv( alias I, alias J = I )
 // Returns `true` if the matrix inversion was a success,
 // `false` otherwise.
 //
@@ -223,7 +223,7 @@ unittest
      , 0.1574295505834409, -0.03253536166625731, 0.00033875009498698656, 0.0029466950714567243
      ];
 
-  double[] id = flatmat_mat_id( 4 );
+  double[] id = flatcode_mat_id( 4 );
   
   double[] tmp = new double[ 16 ];
   double epsilon = 1e-16;
@@ -243,12 +243,12 @@ matinvImplT make_matinvImpl( in ulong I, in ulong J )
 
   immutable ulong IJ = I*J;
 
-  mixin( flatmat_extract_matinv_decl_code() );
-  mixin( flatmat_extract_matinv_init_code() );
+  mixin( flatcode_extract_matinv_decl_code() );
+  mixin( flatcode_extract_matinv_init_code() );
 
   return delegate( ref double[] matinv, in ref double[] mat )
     {
-      mixin( flatmat_extract_matinv_do_code() );
+      mixin( flatcode_extract_matinv_do_code() );
     };
   
 }
@@ -257,7 +257,7 @@ matinvImplT make_matinvImpl( in ulong I, in ulong J )
 
 // ---------- String mixin
 
-string flatmat_extract_matinv_decl_code()
+string flatcode_extract_matinv_decl_code()
 {
   return q{
     double[] A_flat, B_flat, B_flat_init;
@@ -265,7 +265,7 @@ string flatmat_extract_matinv_decl_code()
   };
 }
 
-string flatmat_extract_matinv_init_code()
+string flatcode_extract_matinv_init_code()
 {
   return q{
   
@@ -274,7 +274,7 @@ string flatmat_extract_matinv_init_code()
     // B will be initialized with the identity matrix
 
     B_flat.length = IJ;
-    B_flat_init = flatmat_mat_id( I, J );
+    B_flat_init = flatcode_mat_id( I, J );
 
     // For matrix inversion it is faster to work in 2-D the whole
     // time, probably because of faster row swaps.
@@ -293,7 +293,7 @@ string flatmat_extract_matinv_init_code()
   };
 }
   
-string flatmat_extract_matinv_do_code()
+string flatcode_extract_matinv_do_code()
 {
   return q{
 
@@ -395,7 +395,7 @@ unittest  // ------------------------------
      , 0.1574295505834409, -0.03253536166625731, 0.00033875009498698656, 0.0029466950714567243
      ];
 
-  immutable double[] mid = assumeUnique( flatmat_mat_id( 4 ) );
+  immutable double[] mid = assumeUnique( flatcode_mat_id( 4 ) );
 
   double[] tmp = new double[ 16 ];
   double epsilon = 1e-10;
@@ -408,7 +408,7 @@ unittest  // ------------------------------
   zeros[] = 0;
 
   assert( tmp[ 0 ] == 123 );
-  flatmat_extract_matinv( tmp, zeros, 4 );
+  flatcode_extract_matinv( tmp, zeros, 4 );
   assert( isNaN( tmp[ 0 ] ) );
   
 
@@ -418,8 +418,8 @@ unittest  // ------------------------------
   tmp[] = double.nan;
 
   // When running with -debug this time the message
-  // "Flatmat_Extract_Matinv_Decl_Code reinit 4 4" should appear
-  flatmat_extract_matinv( tmp, m, 4 );
+  // "Flatcode_Extract_Matinv_Decl_Code reinit 4 4" should appear
+  flatcode_extract_matinv( tmp, m, 4 );
   {
     double[] diff = new double[ 16 ];
     diff[] = tmp[] - minv[];
@@ -433,8 +433,8 @@ unittest  // ------------------------------
   tmp[] = double.nan;
 
   // When running with -debug this time the message
-  // "Flatmat_Extract_Matinv_Decl_Code reinit 4 4" should NOT appear
-  flatmat_extract_matinv( tmp, m, 4 );
+  // "Flatcode_Extract_Matinv_Decl_Code reinit 4 4" should NOT appear
+  flatcode_extract_matinv( tmp, m, 4 );
   {
     double[] diff = new double[ 16 ];
     diff[] = tmp[] - minv[];
@@ -448,13 +448,13 @@ unittest  // ------------------------------
   debug writeln
     ( " // ---------- Runtime strategy with manual workspace" );
   
-  auto ws = new FlatmatExtractMatinvWorkspace;
+  auto ws = new FlatcodeExtractMatinvWorkspace;
 
   tmp[] = double.nan;
 
   // When running with -debug this time the message
-  // "Flatmat_Extract_Matinv_Decl_Code reinit 4 4" should appear
-  flatmat_extract_matinv( tmp, ws, m, 4 );
+  // "Flatcode_Extract_Matinv_Decl_Code reinit 4 4" should appear
+  flatcode_extract_matinv( tmp, ws, m, 4 );
   {
     double[] diff = new double[ 16 ];
     diff[] = tmp[] - minv[];
@@ -467,8 +467,8 @@ unittest  // ------------------------------
   tmp[] = double.nan;
 
   // When running with -debug this time the message
-  // "Flatmat_Extract_Matinv_Decl_Code reinit 4 4" should NOT appear
-  flatmat_extract_matinv( tmp, ws, m, 4 );
+  // "Flatcode_Extract_Matinv_Decl_Code reinit 4 4" should NOT appear
+  flatcode_extract_matinv( tmp, ws, m, 4 );
   {
     double[] diff = new double[ 16 ];
     diff[] = tmp[] - minv[];
@@ -484,7 +484,7 @@ unittest  // ------------------------------
   
   tmp[] = double.nan;
 
-  flatmat_extract_matinv!( 4 )( tmp, m );
+  flatcode_extract_matinv!( 4 )( tmp, m );
 
   {
     double[] diff = new double[ 16 ];
