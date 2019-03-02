@@ -10,9 +10,8 @@ module d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
-import std.format;
+import std.format : format;
 import std.math;
-import std.stdio;
 
 immutable double numeric_epsilon = 2.220446049250313e-16;
 
