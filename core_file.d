@@ -6,11 +6,11 @@
 */
 module d_glat.core_file;
 
-import core.stdc.stdlib;
-import std.conv;
-import std.file;
-import std.path;
-import std.stdio;
+import core.stdc.stdlib : exit;
+import std.conv : octal;
+import std.file : exists, getAttributes, isDir, isFile, mkdirRecurse;
+import std.path : baseName, dirName;
+import std.stdio : stderr, writefln, writeln;
 
 alias FilenameSet = bool[ string ];
 

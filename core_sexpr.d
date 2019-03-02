@@ -11,11 +11,10 @@ module d_glat.core_sexpr;
   glat@glat.info
  */
 
-import std.array;
-import std.conv;
-import std.exception;
-import std.stdio;
-import std.string;
+import std.array : appender;
+import std.conv : to;
+import std.exception : enforce;
+import std.string : StringException;
 
 SExpr parse_sexpr( alias maybe_check_fun = false )( in string a )
 pure

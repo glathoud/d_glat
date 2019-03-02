@@ -1,8 +1,8 @@
 module d_glat.core_enum_parse;
 
-import std.algorithm;
-import std.array;
-public import std.exception;
+import std.algorithm : map;
+import std.array : array, join, replace;
+public import std.exception : enforce;
 
 /*
    

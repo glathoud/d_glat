@@ -7,15 +7,14 @@
 
 module d_glat.core_json;
 
-import std.conv;
-import std.exception;
+import std.conv : to;
+import std.exception : enforce;
 import std.json;
-import std.stdio;
 
 double get_double_of_json( in JSONValue jv )
 {
   // Uncomment this line to debug your data:
-  // writeln("xxx ____ get_double_of_json jv.type, jv:", jv.type, jv );
+  // import std.stdio; writeln("xxx ____ get_double_of_json jv.type, jv:", jv.type, jv );
   
   return jv.type == JSON_TYPE.INTEGER  
     ?  cast( double )( jv.integer )
@@ -98,4 +97,3 @@ bool json_get_bool( in JSONValue jv )
 
   assert( false, "bug or wrong data" );
 }
-
