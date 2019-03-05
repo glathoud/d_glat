@@ -410,10 +410,10 @@ double json_solve_calc_one( in ref JSONValue o
   const op = li.first.toString;
   switch (op)
     {
-      case "+": return operands.reduce!"a+b"; break;
-      case "-": return operands.reduce!"a-b"; break;
-      case "*": return operands.reduce!"a*b"; break;
-      case "/": return operands.reduce!"a/b"; break;
+      case "+": return operands.reduce!"a+b";
+      case "-": return operands.reduce!"a-b";
+      case "*": return operands.reduce!"a*b";
+      case "/": return operands.reduce!"a/b";
         
     default:
       throw new Exception
