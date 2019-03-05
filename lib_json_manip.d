@@ -305,7 +305,7 @@ void json_set_place
 
 JSONValue json_solve_calc( in ref JSONValue o )
 {
-  mixin(_nfrc!`o.type == JSON_TYPE.OBJECT`);
+  enforce( o.type == JSON_TYPE.OBJECT );
 
   auto ret = json_deep_copy( o );
 
@@ -350,8 +350,8 @@ unittest
 JSONValue json_solve_calc_one( in ref JSONValue o
                                , in ref JSONValue v )
 {
-  mixin(_nfrc!`o.type == JSON_TYPE.OBJECT`); 
-  mixin(_nfrc!`v.type == JSON_TYPE.STRING`);
+  enforce( o.type == JSON_TYPE.OBJECT ); 
+  enforce( v.type == JSON_TYPE.STRING );
   
   auto e = parse_sexpr( v.str );
 
@@ -370,9 +370,9 @@ double json_solve_calc_one( in ref JSONValue o
                             , in ref SExpr e
                             )
 {
-  mixin(_nfrc!`o.type == JSON_TYPE.OBJECT`);
+  enforce( o.type == JSON_TYPE.OBJECT );
 
-  mixin(_nfrc!`!e.isEmpty`);
+  enforce( !e.isEmpty );
 
   if (e.isAtom)
     {
