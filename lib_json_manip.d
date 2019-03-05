@@ -11,7 +11,6 @@ public import d_glat.core_json;
 
 import d_glat.core_sexpr;
 import d_glat.lib_json_manip;
-import d_oa_common.core_unittest;
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -399,7 +398,7 @@ double json_solve_calc_one( in ref JSONValue o
         }
     }
 
-  mixin(_asrt!`e.isList`);
+  assert( e.isList );
 
   const li = cast( SList )( e );
   
