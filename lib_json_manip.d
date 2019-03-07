@@ -18,13 +18,10 @@ import std.digest.sha;
 import std.exception;
 import std.format;
 import std.json;
-import std.regex;
 import std.stdio;
 import std.typecons;
 
 immutable string JSON_P_CALC = "(calc)";
-
-alias Jsonplace = string[]; // position in the JSON
 
 JSONValue json_ascii_inplace( ref JSONValue jv )
 /*
@@ -99,67 +96,6 @@ string json_get_hash( in ref JSONValue j
   return format( "%(%02x%)", sha1Of( sorted_str_json ) );
 }
 
-JSONValue json_get_place( in ref JSONValue j, in string place_str
-                          , in JSONValue j_default )
-{
-  return json_get_place( j, [ place_str ], j_default );
-}
-
-
-JSONValue json_get_place( in ref JSONValue j, in Jsonplace place
-                          , in JSONValue j_default )
-{
-  auto j_n = json_get_place( j, place );
-  return j_n.isNull  ?  j_default  :  j_n;
-}
-
-
-Nullable!JSONValue json_get_place( in ref JSONValue j, in string place_str )
-{
-  return json_get_place( j, [ place_str ] );
-}
-
-
-Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
-{
-  Nullable!JSONValue j_ret;
-
-  auto plen = place.length;
-  if (plen < 1)
-    {
-      j_ret = j;
-    }
-  else
-    {
-      Nullable!JSONValue j_deeper;
-  
-      if (j.type == JSON_TYPE.OBJECT)
-        {
-	  if (auto p = place[ 0 ] in j.object)
-	    j_deeper = *p;
-        }
-      else if (j.type == JSON_TYPE.ARRAY)
-        {
-	  auto ctnum = ctRegex!( `^[0-9]+$` );
-
-	  auto sp0 = place[ 0 ];
-	  auto  cnum = matchFirst( sp0, ctnum );
-	  if (!cnum.empty)
-	    {
-	      auto p0 = to!size_t( place[ 0 ] );
-	      if (0 <= p0  &&  p0 < j.array.length)
-		j_deeper = j.array[ p0 ];
-	    }
-	}
-
-      if (!j_deeper.isNull)
-        {
-          j_ret = json_get_place( j_deeper, place[ 1..$ ] );
-        }
-    }
-  
-  return j_ret;
-}
 
 JSONValue json_get_replaced_many_places_with_placeholder_string
 ( in ref JSONValue j
@@ -208,94 +144,6 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 
 
 
-bool json_is_integer( in ref Nullable!JSONValue j )
-{
-  pragma( inline, true );
-  return !j.isNull  &&  j.type == JSON_TYPE.INTEGER;
-}
-
-
-
-
-bool json_is_string( in ref Nullable!JSONValue j )
-// Should work well together with `json_get_place`.
-{
-  pragma( inline, true );
-  return !j.isNull  &&  j.type == JSON_TYPE.STRING;
- }
-
-bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
-{
-  pragma( inline, true );
-  auto maybe_j = json_get_place( j, place );
-  return json_is_string_equal( maybe_j , s );
-}
-
-
-bool json_is_string_equal( T )( in ref T j, in string s )
-// Should work well together with `json_get_place`.
-{
-  pragma( inline, true );
-  return json_is_string( j )  &&  j.str == s;
-}
-
-
-
-bool json_is_true( in ref Nullable!JSONValue j )
-{
-  pragma( inline, true );
-  return !j.isNull  &&  j.type == JSON_TYPE.TRUE;
-}
-
-
-
-void json_set_place
-( /*ref xxx commented out because of issue with -O */ JSONValue j, in string place_str, in JSONValue v )
-{
-  json_set_place( j, [ place_str ], v );
-}
-
-
-void json_set_place
-( /*ref xxx commented out because of issue with -O */ JSONValue j, in Jsonplace place, in JSONValue v )
-{
-  auto plen = place.length;
-  assert( 0 < plen );
-  
-  auto is_leaf = 1 == plen;
-
-  string    place_0 = place[ 0 ];
-
-  JSONValue j_deeper;
-  
-  if (j.type == JSON_TYPE.OBJECT)
-    {
-      if (is_leaf)
-          j.object[ place_0 ] = v;
-
-      else
-          j_deeper = j.object[ place_0 ];
-    }
-  else if (j.type == JSON_TYPE.ARRAY)
-    {
-      if (is_leaf)
-          j.array[ to!size_t( place_0 ) ] = v;
-
-      else
-          j_deeper = j.array[ to!size_t( place_0 ) ];
-    }
-  else
-    {
-      stderr.writeln( "json_set_place: structure mismatch bug" );
-      stderr.writeln( "v: ", v );
-      stderr.writeln( "place: ", place );
-      stderr.writeln( "j: ", j.toPrettyString );
-      enforce( false, "json_set_place: structure mismatch bug" );
-    }
-  
-  if (!is_leaf)
-      json_set_place( j_deeper, place[ 1..$ ], v );
-}
 
 
 

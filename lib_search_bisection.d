@@ -3,6 +3,7 @@ module d_glat.lib_search_bisection;
 import std.math;
 import std.stdio;
 
+
 /**
    Convenience wrapper for the T=string use case.
 
@@ -30,6 +31,7 @@ bool search_bisection_string
   return search_bisection!( fun, T, T_prop_between_code, T_equal_code, T_le_code, T_lt_code )
     ( v, a0, b0, ind0, ind1, prop );
 }
+
 
 /**
    Search sorted values accessible through `fun( ulong ) -> double`

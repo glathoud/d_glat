@@ -11,17 +11,25 @@ import std.math; // for expstr
   glat@glat.info
 */
 
-void pairs( alias opstr_or_fun, T )
-  ( in Matrix!T m ) pure nothrow @safe
+alias PairsFunT( T ) = MatrixT!T function( in MatrixT!T );
+alias PairsFun       = PairsFunT!double;
+
+MatrixT!T pairs( alias opstr_or_fun, T )
+  ( in MatrixT!T m ) pure nothrow @safe
 // Functional wrapper around `pairs_inplace`.
 {
   pragma( inline, true );
   
   immutable n = m.dim[ 0 ];
-  auto ret = Matrix( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
+  auto ret = MatrixT!T( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
   pairs_inplace!( opstr_or_fun, T )( m, ret );
   return ret;
 }
+
+alias PairsInplaceFunT( T ) =
+  void function( in ref MatrixT!T, ref MatrixT!T );
+
+alias PairsInplaceFun = PairsInplaceFunT!double;
 
 void pairs_inplace( alias expstr_or_fun, T )
   ( in ref MatrixT!T m, ref MatrixT!T m_pairdelta )
@@ -54,7 +62,10 @@ void pairs_inplace( alias expstr_or_fun, T )
   auto data = m.data;
   auto pairdelta = m_pairdelta.data;
 
-  static immutable bool is_expstr = typeof(expstr_or_fun).stringof == "string";
+  static immutable bool is_expstr =
+    is( typeof(expstr_or_fun) == string )
+    || is( typeof(expstr_or_fun) == immutable(string) );
+
 
   size_t i = 0;
   immutable i_end = data.length;
