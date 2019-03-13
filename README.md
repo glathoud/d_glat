@@ -119,10 +119,7 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
    string json_get_hash( in ref JSONValue j );
    string json_get_hash( in ref JSONValue j, out string sorted_str_json );
    JSONValue json_get_replaced_many_places_with_placeholder_string
-   ( in ref JSONValue j
-     , in Jsonplace[] place_arr
-     , in string      placeholder_string
-    );
+   ( in ref JSONValue j, in Jsonplace[] place_arr, in string      placeholder_string );
 
    // Replace SExpr values with computed doubles out of `o`
    JSONValue json_solve_calc( in ref JSONValue o );
