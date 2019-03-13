@@ -142,12 +142,12 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
  * [lib\_modified\_slice.d](lib_modified_slice.d) Experiment with modified slices, with dynamic flattening. Still, in the end I prefered simple arrays and a smart algorithm.
 
  * [lib\_search\_bisection.d](lib_search_bisection.d)
-   ```D
+  ```D
    bool search_bisection_string( alias fun, ... )
   ( in T v, in ulong a0, in ulong b0
     , out size_t ind0, out size_t ind1, out double prop );
 
-  bool search_bisection( alias fun, T = double, ... )
+  bool search_bisection( alias fun, T = double, .. )
   ( in T v, in ulong a0, in ulong b0
     , out size_t ind0, out size_t ind1, out double prop );
   ```
