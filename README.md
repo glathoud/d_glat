@@ -38,6 +38,7 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
 
  * [core\_json.d](core_json.d):
   ```D
+   alias Jsonplace = string[]; // position in the JSON
    JSONValue json_array()
    JSONValue json_object()
    double json_get_double( in JSONValue jv )
