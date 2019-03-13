@@ -236,7 +236,7 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
     ;
 }
 
-struct Block( bool fext_debug )
+private struct Block( bool fext_debug )
 {
   immutable string   top_switch_label;
   const ArgOfName    arg_of_name; // Populate `arg_of_name` with all dependencies (e.g. mutual recursion), then later call .toString

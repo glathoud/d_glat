@@ -12,8 +12,6 @@ import std.file : exists, getAttributes, isDir, isFile, mkdirRecurse;
 import std.path : baseName, dirName;
 import std.stdio : stderr, writefln, writeln;
 
-alias FilenameSet = bool[ string ];
-
 void ensure_dir_exists( in string dir_name )
 {
   if (!exists( dir_name ))

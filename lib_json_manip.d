@@ -414,7 +414,7 @@ quotes etc. Simplistic but enough for most practical purposes.
     return modifiable.idup;
   }
 
-void json_white_out_comments_inplace( char[] ca )
+void json_white_out_comments_inplace( char[] ca ) pure nothrow @safe @nogc
 {
   immutable N   = ca.length
     ,       Nm1 = N - 1

@@ -8,7 +8,7 @@
 */
 module d_glat.lib_interpolate;
 
-double interpolate( in double a, in double b, in double prop )
+T interpolate( in T a, in T b, in T prop ) pure nothrow @safe @nogc
 {
   pragma( inline, true );
   return a + prop * (b-a);
