@@ -143,7 +143,7 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
 
  * [lib\_search\_bisection.d](lib_search_bisection.d)
   ```D
-   bool search_bisection_string( alias fun, ... )
+  bool search_bisection_string( alias fun, ... )
   ( in T v, in ulong a0, in ulong b0, out size_t ind0, out size_t ind1, out double prop );
 
   bool search_bisection( alias fun, T = double, .. )
