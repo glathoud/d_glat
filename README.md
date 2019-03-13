@@ -64,7 +64,7 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
 
  * [core\_named\_sync.d](core_named_sync.d) Name-based synchronization between threads. For example, to ensure a given file is access by only one thread at a time, `some_variable_name` would be `filename`, a string variable.
    ```D
-   mixin(NAMED_SYNC_DO("some_variable_name",q{
+   mixin(NAMED_SYNC_DO(`some_variable_name`,q{
                 // Some code
         }));
    ```
