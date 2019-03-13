@@ -28,6 +28,7 @@ import std.algorithm.searching : findSplit;
 
 import std.algorithm : all,each,filter,map;
 import std.array;
+import std.conv : to;
 import std.exception : enforce;
 import std.range : zip;
 import std.string : strip;
@@ -94,27 +95,40 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
         auto x = decl.findSplit( "(" );
         name = x[ 0 ].strip.split( " " )[ $-1 ];
 
-        size_t close_paren = size_t.max;
-        {
-          foreach_reverse( j,c; x[ 2 ] )
+        auto x2 = x[ 2 ];
+        immutable size_t close_paren = (){
+          foreach_reverse( j,c; x2 )
             {
               if (c == ')')
-                {
-                  close_paren = j;
-                  break;
-                }
+                  return j;
             }
-        }
-        
+          return size_t.max;
+        }();
+
+        immutable size_t open_paren = (){
+          size_t encaps = 1;
+          foreach_reverse (j,c; x2[ 0..close_paren ])
+          {
+            if (c == ')')
+              ++encaps;
+
+            else if (c == '('  &&  --encaps == 0)
+              return j+1;
+          }
+          return 0;
+        }();
+
         assert( close_paren < size_t.max );
-        
-        auto raw_arg = x[ 2 ][ 0..close_paren ]
+        assert( open_paren < close_paren, to!string(open_paren)~" "~to!string(close_paren)~" \n"~x2~" \n"~x2[open_paren..close_paren] );
+
+        auto raw_arg = x2[ open_paren..close_paren ]
           .split( "," )
           .map!drop_dflt_init
           ;
         
         arg = raw_arg.map!`a.strip.split( " " )[ $-1 ]`.array;
 
+        
         auto argtype = raw_arg.map!`a.strip.split( " " )[ $-2 ]`.array;
 
         zip( arg,argtype ).each!( x => check_set_argtype( x[ 0 ], x[ 1 ] ) );
