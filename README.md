@@ -137,4 +137,20 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
    string json_white_out_comments( in string extended_json_string );
    void json_white_out_comments_inplace( char[] ca );
    ```
-   
+
+ * [lib\_modified\_slice.d](lib_modified_slice.d) Experiment with modified slices, with dynamic flattening. Still, in the end I prefered simple arrays and a smart algorithm.
+
+ * [lib\_search\_bisection.d](lib_search_bisection.d)
+   ```D
+   bool search_bisection_string( alias fun, ... )
+  ( in T v, in ulong a0, in ulong b0
+    , out size_t ind0, out size_t ind1, out double prop );
+
+  bool search_bisection( alias fun, T = double, ... )
+  ( in T v, in ulong a0, in ulong b0
+    , out size_t ind0, out size_t ind1, out double prop );
+  ```
+
+ * [lib\_numeric.d](lib_numeric.d) Linear algebra on matrices represented as 2-dimensional slices. For performance, prefer [flatmatrix/](flatmatrix/).
+
+ * [unittest.sh](unittest.sh) Bash script to run unit tests for all (default) or one file.
