@@ -202,6 +202,14 @@ struct MatrixT( T )
     pragma( inline, true );
     return dim[ 1 ];
   }
+
+  // --- Convenience check when doing unsafe, performance-optimized
+  // modifications.
+
+  void check_dim() const pure @safe @nogc
+  {
+    assert( data.length == dim[ 0 ] * restdim );
+  }
 };
 
 alias Matrix = MatrixT!double;
