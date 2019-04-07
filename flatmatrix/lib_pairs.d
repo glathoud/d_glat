@@ -14,7 +14,7 @@ import std.math; // for expstr
 alias PairsFunT( T ) = MatrixT!T function( in MatrixT!T );
 alias PairsFun       = PairsFunT!double;
 
-MatrixT!T pairs( alias opstr_or_fun, T )
+MatrixT!T pairs( alias expstr_or_fun, T )
   ( in MatrixT!T m ) pure nothrow @safe
 // Functional wrapper around `pairs_inplace`.
 {
@@ -22,9 +22,20 @@ MatrixT!T pairs( alias opstr_or_fun, T )
   
   immutable n = m.dim[ 0 ];
   auto ret = MatrixT!T( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
-  pairs_inplace!( opstr_or_fun, T )( m, ret );
+  pairs_inplace!( expstr_or_fun, T )( m, ret );
   return ret;
 }
+
+
+void pairs_inplace_dim( alias expstr_or_fun, T )
+( in ref MatrixT!T m, ref MatrixT!T m_pairdelta )
+  pure nothrow @safe
+{
+  immutable n = m.dim[ 0 ];
+  m_pairdelta.setDim( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
+  pairs_inplace!( expstr_or_fun, T )( m, m_pairdelta );
+}
+
 
 alias PairsInplaceFunT( T ) =
   void function( in ref MatrixT!T, ref MatrixT!T );

@@ -10,6 +10,9 @@ module d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
+import d_glat.core_static;
+import std.algorithm : max;
+import std.conv : to;
 import std.format : format;
 import std.math;
 
@@ -66,7 +69,7 @@ struct MatrixT( T )
   {
     pragma( inline, true );
 
-    size_t sub_total   = 1;
+    size_t sub_total   = dim.length < 1  ?  0  :  1;
     bool   has_missing = false;
     size_t i_missing;
     foreach (i,d; dim)
@@ -109,7 +112,7 @@ struct MatrixT( T )
       }
     else
       {
-        assert( sub_total == data.length );
+        assert( sub_total == data.length, "Fails to verify: sub_total == data.length" );
       }
   }
 
@@ -182,6 +185,9 @@ struct MatrixT( T )
   {
     pragma( inline, true );
 
+    if (dim.length < 2)
+      return 1;
+    
     size_t rd = dim[ 1 ];
     foreach (d; dim[ 2..$ ])
       rd *= d;
@@ -200,7 +206,7 @@ struct MatrixT( T )
   size_t ncol() const @property pure nothrow @safe @nogc
   {
     pragma( inline, true );
-    return dim[ 1 ];
+    return dim.length < 2  ?  1  :  dim[ 1 ];
   }
 
   // --- Convenience check when doing unsafe, performance-optimized
@@ -378,6 +384,96 @@ void dot_inplace( T )( in ref MatrixT!T X, in ref MatrixT!T Y
     }
 }
 
+
+
+
+void interleave_inplace( T )( in MatrixT!T[] m_arr
+                              , ref MatrixT!T m_out )
+@safe
+// Calls m_out.setDim() and fills it with m_arr's concatenated rows
+{
+  auto first_dim = m_arr[ 0 ].dim;
+  
+  size_t[] restdim_arr;
+  size_t   restdim_total = 0;
+
+  foreach (i,m; m_arr)
+    {
+      // Read
+                  
+      auto restdim = m.restdim;
+      auto dim = m.dim;
+
+      // Write
+                  
+      restdim_arr ~= restdim;
+      restdim_total += restdim;
+
+      // Check
+                  
+      debug if (0 < i)
+        _check_dim_match( i, first_dim, dim );
+    }
+
+  m_out.setDim( first_dim[ 0..max(1,$-1) ] ~ [ restdim_total] );
+              
+  // Fill `m_out` with interleaved data
+
+  auto   m_out_data = m_out.data;
+  size_t i_out = 0;
+  size_t i_end = m_out_data.length;
+
+  mixin(static_array_code(`i_in_arr`, `size_t`, `m_arr.length`));
+  i_in_arr[] = 0;
+  
+  while (i_out < i_end)
+    {
+      foreach (i_m,m; m_arr)
+        {
+          auto rd = restdim_arr[ i_m ];
+
+          auto next_i_out = i_out + rd;
+
+          auto i_in = i_in_arr[ i_m ];
+          auto next_i_in = i_in + rd;
+                      
+          m_out_data[ i_out..next_i_out ][] =
+            m.data[ i_in..next_i_in ][];
+
+          i_in_arr[ i_m ] = next_i_in;
+          i_out = next_i_out;
+        }
+    }
+}
+
+private void _check_dim_match( in size_t i
+                               , in size_t[] da, in size_t[] db )
+@safe
+{
+  
+  // Special case: [4, 1] matches [4]
+        
+  size_t[] da2 = da.dup;
+  size_t[] db2 = db.dup;
+  if (da2.length < 2)  da2 ~= 1;
+  if (db2.length < 2)  db2 ~= 1;
+
+  assert
+    ( da2.length == db2.length
+      , "dim length mismatch: "
+      ~"i: "~to!string(i)
+      ~", first_dim:"~to!string( da2 )
+      ~", dim:"~to!string( db2 )
+      );
+        
+  assert
+    ( da2[ 0..$-1 ] == db2[ 0..$-1 ]
+      , "dimension 0..$-1 mismatch: "
+      ~"i: "~to!string(i)
+      ~", first_dim:"~to!string( da2 )
+      ~", dim:"~to!string( db2 )
+      );
+}
 
 
 
@@ -639,6 +735,79 @@ unittest  // ------------------------------
   }
 
 
+  {
+    auto A = Matrix( [ 4, 1 ], [ 0.1,
+                                 0.3,
+                                 0.5,
+                                 0.7 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+    Matrix C;
+
+    interleave_inplace( [ A, B, A ], C );
+
+    assert( C == Matrix
+            ([4, 5]
+             ,[ +0.1, +1, +2, +3, +0.1,
+                +0.3, +4, +5, +6, +0.3,
+                +0.5, +7, +8, +9, +0.5,
+                +0.7, +10, +11, +12, +0.7,
+                ]));
+
+  }
+
+  {
+    auto A = Matrix( [ 4 ], [ 0.1,
+                              0.3,
+                              0.5,
+                              0.7 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+    Matrix C;
+
+    interleave_inplace( [ A, B, A ], C );
+
+    assert( C == Matrix
+            ([4, 5]
+             ,[ +0.1, +1, +2, +3, +0.1,
+                +0.3, +4, +5, +6, +0.3,
+                +0.5, +7, +8, +9, +0.5,
+                +0.7, +10, +11, +12, +0.7,
+                ]));
+
+  }
+
+  {
+    auto A = Matrix( [ 4, 2 ], [ 0.1, 0.2,
+                                 0.3, 0.4,
+                                 0.5, 0.6,
+                                 0.7, 0.8 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+    Matrix C;
+
+    interleave_inplace( [ A, B, A ], C );
+
+    assert( C == Matrix
+            ([4, 7]
+             ,[ +0.1, +0.2, +1, +2, +3, +0.1, +0.2,
+                +0.3, +0.4, +4, +5, +6, +0.3, +0.4,
+                +0.5, +0.6, +7, +8, +9, +0.5, +0.6,
+                +0.7, +0.8, +10, +11, +12, +0.7, +0.8,
+                ]));
+
+  }
+  
+
     {
       auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
                                  4.0, 5.0, 6.0 ]
@@ -651,8 +820,23 @@ unittest  // ------------------------------
             );
   } 
 
-  
+    {
+      auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                                 4.0, 5.0, 6.0 ]
+                       );
+
+      Matrix f( ref Matrix a )
+      {
+        Matrix q = a;
+        return q;
+      }
+
+      auto B = f(A);
+      A.data[] = 0.0;
+
+      assert( A == B );
+      assert( A.data == B.data );
+    }
   
   writeln( "unittest passed: "~__FILE__ );
 }
-

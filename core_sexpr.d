@@ -11,6 +11,7 @@ module d_glat.core_sexpr;
   glat@glat.info
  */
 
+import std.algorithm : each;
 import std.array : appender;
 import std.conv : to;
 import std.exception : enforce;
@@ -41,10 +42,30 @@ SExpr parse_sexpr( alias maybe_check_fun = false )( in char[] a )
   return ret;
 }
 
+void walk_sexpr( alias iter )( in SExpr sexpr )
+{
+  iter( sexpr );
+  if (sexpr.isList)
+    {
+      auto slist = cast( SList )( sexpr );
+      slist.rest.each!iter;
+    }
+}
+
+
 // ---------- Details ----------
+
+alias SExprId = ulong;
+
+private SExprId _sexpr_id = 0;
 
 abstract class SExpr
 {
+  immutable SExprId id;
+
+  this() @safe @nogc
+    { id = _sexpr_id++; }
+  
   // For convenience, esp. for `maybe_check_fun`
   bool isEmpty() pure const @property @safe @nogc { return false; }
   bool isAtom()  pure const @property @safe @nogc { return false; }
@@ -52,6 +73,12 @@ abstract class SExpr
                                      
   abstract bool firstEquals( in string a ) pure const @safe @nogc;
   override abstract string toString()  pure const @safe @nogc;
+
+  immutable(SExpr) idup() const @trusted
+  {
+    // Not beautiful but does the job
+    return cast(immutable(SExpr))( parse_sexpr( this.toString ) );
+  }
 }
 
 
@@ -78,12 +105,12 @@ class SAtom : SExpr
     
   immutable string v;
 
-  this( in char[] c ) pure @safe
+  this( in char[] c ) @safe
     {
       this.v = c.idup;
     }
 
-  this( in string v ) pure @safe @nogc
+  this( in string v ) @safe @nogc
     {
       this.v = v;
     }
@@ -111,7 +138,7 @@ class SList : SExpr
 
   private immutable string _str;
   
-  this( in SExpr[] all ) pure @safe
+  this( in SExpr[] all ) @safe
     {
       this.all   = all;
       this.first = all[ 0 ];
@@ -145,7 +172,7 @@ class SList : SExpr
 private: // --------------------
 
 void _parse_sexpr( in char[] a, ref size_t i, ref SExpr expr)
-pure @safe
+@safe
 {
   immutable i_end = a.length;
 
@@ -167,7 +194,7 @@ pure @safe
 }
 
 SAtom _parse_satom( in char[] a, ref size_t i )
-  pure @safe
+ @safe
 {
   immutable i0    = i;
   immutable i_end = a.length;
@@ -183,7 +210,7 @@ SAtom _parse_satom( in char[] a, ref size_t i )
 
 
 SExpr _parse_slist( in char[] a, ref size_t i )
-  pure @safe
+ @safe
 {
   debug assert( a[ i ] == '(' ); ++i;
 

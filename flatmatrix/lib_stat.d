@@ -1,5 +1,16 @@
 module d_glat.flatmatrix.lib_stat;
 
+/*
+  A few statistics, like mean and variance.
+
+  Used e.g. by ./lib_nmv.d
+
+  By Guillaume Lathoud, 2019
+  glat@glat.info
+
+  The Boost License applies, as described in file ../LICENSE
+ */
+
 public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_static;
@@ -36,6 +47,22 @@ pure nothrow @safe @nogc
   debug assert( 0 == i_end % i_step );
 
   mean[] /= cast( T )( i_end / i_step );
+}
+
+void mean_var_inplace_dim
+( bool unbiased = true, T )
+  ( in ref MatrixT!T m
+    , ref MatrixT!T m_mean
+    , ref MatrixT!T m_var
+    )
+  pure nothrow @safe
+{
+  pragma( inline, true );
+
+  auto mv_dim = [ 1UL ] ~ m.dim[ 1..$ ];
+  m_mean.setDim( mv_dim );
+  m_var .setDim( mv_dim );
+  mean_var_inplace!( unbiased, T )( m, m_mean, m_var );
 }
 
 void mean_var_inplace

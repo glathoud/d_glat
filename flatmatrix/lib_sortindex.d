@@ -1,4 +1,4 @@
-module d_glat.flatmatrix.lib_sort_index;
+module d_glat.flatmatrix.lib_sortindex;
 
 import d_glat.core_static : static_array_code;
 import d_glat.flatmatrix.core_matrix;
@@ -6,7 +6,26 @@ import std.algorithm : sort;
 import std.array : array;
 import std.range : iota;
 
-void sort_index_inplace( ref Matrix m )
+void sortindex_inplace_dim( in ref Matrix a, ref Matrix b )
+  nothrow @safe
+{
+  pragma( inline, true );
+
+  b.setDim( a.dim );
+  sortindex_inplace( a, b );
+}
+
+void sortindex_inplace( in ref Matrix a, ref Matrix b )
+  nothrow @safe
+{
+  pragma( inline, true );
+
+  b.data[] = a.data[];
+  sortindex_inplace( b );
+}
+
+
+void sortindex_inplace( ref Matrix m )
   nothrow @safe
 {
   pragma( inline, true );
@@ -21,7 +40,7 @@ void sort_index_inplace( ref Matrix m )
   mixin(static_array_code(`index_arr`,`int`,`n`));
   mixin(static_array_code(`value_arr`,`double`,`n`));
 
-  sort_index_inplace
+  sortindex_inplace
     (
      indices_init, n, restdim, n*restdim
      , index_arr, value_arr
@@ -32,7 +51,7 @@ void sort_index_inplace( ref Matrix m )
 
 // ---------- Details ----------
 
-void sort_index_inplace
+void sortindex_inplace
   ( // inputs
    in int[]    indices_init
    , in size_t n
@@ -44,7 +63,7 @@ void sort_index_inplace
    // input & output
    , ref Matrix m
     )
-  pure nothrow @safe
+ pure nothrow @safe
 {
   pragma( inline, true );
 
@@ -88,7 +107,7 @@ void sort_index_inplace
         foreach (i_buff; 0..n)
           {
             data[ d + index_arr[ i_buff ] * restdim ] =
-              cast( double )( i_buff );  // sort_index
+              cast( double )( i_buff );  // sortindex
           }
       }
       
@@ -98,17 +117,17 @@ void sort_index_inplace
           foreach (i; 0..n)
             {
               immutable v_i = value_arr[ i ];
-              immutable sort_index_i
+              immutable sortindex_i
                 = data[ d + i * restdim ];
               
               foreach (j; (i+1)..n)
                 {
                   immutable v_j = value_arr[ j ];
-                  immutable sort_index_j
+                  immutable sortindex_j
                     = data[ d + j * restdim ];
                   
                   if (v_i < v_j)
-                      assert(sort_index_i < sort_index_j );
+                      assert(sortindex_i < sortindex_j );
                 }
             }
         }
