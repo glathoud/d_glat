@@ -100,8 +100,6 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
    char[] get_url_ssl_unsafe( in string url )
    ```
 
- * [flatcode/](flatcode/) A few disparate tools for vectors, linear algebra (mu, sigma), and the Scaled Conjugate Gradient (SCG).
-
  * [flatmatrix/](flatmatrix/) Systematic linear algebra computations for "flat matrices" (flat `double[]` array, dimensions) with an emphasis on performance. Correlation, pair deltas, sort_index, statistics, Singular Value Decomposition (SVD).
 
  * [lib\_d\_eval.d](lib_d_eval.d) Dynamic code compilation (DMD and LDC).
@@ -146,7 +144,5 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
   bool search_bisection( alias fun, T = double, .. )
   ( in T v, in ulong a0, in ulong b0, out size_t ind0, out size_t ind1, out double prop );
   ```
-
- * [lib\_numeric.d](lib_numeric.d) Linear algebra on matrices represented as 2-dimensional slices. For performance, prefer [flatmatrix/](flatmatrix/).
 
  * [unittest.sh](unittest.sh) Bash script to run unit tests for all (default) or one file.
