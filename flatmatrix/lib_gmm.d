@@ -37,4 +37,24 @@ struct GmmT( T )
     assert( false, "xxx ll_inplace not impl yet" );
   }
 
+  void setOfGroupArr( in ref Matrix m_feature
+                      , in ref size_t[][] group_arr
+                      )
+  {
+    dim = m_feature.restdim;
+    _resize();
+    
+    assert( false, "xxx setOfGroupArr not impl yet");
+  }
+
+ private:
+
+  void _resize() pure nothrow @safe
+  {
+    m_mu       .setDim( [1, dim] );
+    m_sigma    .setDim( [dim, dim] );
+    m_sigma_inv.setDim( [dim, dim] );
+  }
+
+  
 }
