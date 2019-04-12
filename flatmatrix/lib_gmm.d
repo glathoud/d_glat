@@ -21,11 +21,11 @@ struct GmmT( T )
 {
   size_t n;
   size_t dim;
-  MatrixT!T m_mu;
-  MatrixT!T m_sigma;
-  MatrixT!T m_sigma_inv;
-  T         one_over_sigmadet;
-
+  MatrixT!T[] m_mean;
+  MatrixT!T[] m_cov;
+  MatrixT!T[] m_cov_inv;
+  T[]         log_factor; // log(1/sqrt((2*pi)^k * det(m_cov)))
+  
   void ll_inplace( in ref Matrix m_feature
                    , /*output:*/ref Matrix m_ll )
     pure const @safe
@@ -41,20 +41,20 @@ struct GmmT( T )
                       , in ref size_t[][] group_arr
                       )
   {
+    n   = group_arr.length;
     dim = m_feature.restdim;
     _resize();
     
     assert( false, "xxx setOfGroupArr not impl yet");
   }
-
+  
  private:
 
   void _resize() pure nothrow @safe
   {
-    m_mu       .setDim( [1, dim] );
-    m_sigma    .setDim( [dim, dim] );
-    m_sigma_inv.setDim( [dim, dim] );
+    if (m_mean.length != n)     m_mean     = new MatrixT!T[ n ];
+    if (m_cov .length != n)     m_cov      = new MatrixT!T[ n ];
+    if (m_cov_inv.length != n)  m_cov_inv  = new MatrixT!T[ n ];
+    if (log_factor.length != n) log_factor = new T[ n ];
   }
-
-  
 }
