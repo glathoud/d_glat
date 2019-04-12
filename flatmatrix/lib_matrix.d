@@ -95,7 +95,9 @@ bool matinv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
   B_flat[] = B_flat_init[];
 
   T[] Ai, Aj, Bi, Bj;
-      
+
+  // Implementation adapted from numeric.js
+  
   for(long j=0;j<J;++j) {
     long i0 = -1;
     T v0 = -1;
