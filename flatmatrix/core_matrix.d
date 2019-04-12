@@ -294,6 +294,25 @@ void diag_inplace( T )( in T[] x
   }
 }
 
+void diag_inplace( T )( in T v
+                        , ref MatrixT!T ret ) pure nothrow @safe @nogc
+{
+  pragma( inline, true );
+
+  ret.data[] = cast( T )( 0.0 );
+  
+  {
+    size_t np1 = ret.ncol + 1;
+    for (size_t i = 0, i_end = ret.data.length;
+         i < i_end;
+         i += np1 )
+      {
+        ret.data[ i ] = v;
+      }
+  }
+}
+
+
 
 T[] dot( T )( in MatrixT!T X, in T[] y ) pure nothrow @safe
 // matrix * vector
@@ -675,6 +694,23 @@ unittest  // ------------------------------
                             0.0, 2.0, 0.0, 0.0,
                             0.0, 0.0, 3.0, 0.0,
                             0.0, 0.0, 0.0, 4.0
+                            ]
+                         )
+            );
+  }
+
+  
+
+  {
+    auto A = Matrix( [4, 4], 0.0 );
+    diag_inplace( 1.5, A );
+
+    assert( A == Matrix( [4, 4]
+                         , [
+                            1.5, 0.0, 0.0, 0.0,
+                            0.0, 1.5, 0.0, 0.0,
+                            0.0, 0.0, 1.5, 0.0,
+                            0.0, 0.0, 0.0, 1.5
                             ]
                          )
             );
