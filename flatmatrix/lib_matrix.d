@@ -10,27 +10,98 @@ module d_glat.flatmatrix.lib_matrix;
   The Boost License applies to this file, as described in the file
   ../LICENSE
   
- */
+*/
 
 public import d_glat.flatmatrix.core_matrix;
 
+import d_glat.core_static;
 import std.math : abs;
 
-MatrixT!T matinv( T )( in ref MatrixT!T m )
+
+T det( T )( in ref MatrixT!T m )
+  nothrow @safe
+{
+  pragma( inline, true );
+
+  immutable n = m.nrow;
+  
+  debug
+    {
+      assert( m.dim.length == 2 );
+      assert( n == m.ncol );
+    }
+
+  mixin(static_array_code(`A`,`T`,`n*n`));
+  A[] = m.data[];
+  
+  mixin(static_array_code(`temp`,`T`,`n`));
+  
+  // Implementation adapted from numeric.js
+
+  T ret = cast( T )( 1.0 ), alpha;
+  long i,j,k,k1,k2,k3;
+
+  immutable nm1 = n-1;
+  
+  for(j=0;j<nm1;++j)
+    {
+      immutable j_offset = j*n;
+      immutable jopn     = j_offset + n;
+      
+      k=j;
+      for(i=j+1;i<n;++i)
+        {
+          if(abs(A[i*n+j]) > abs(A[k*n+j]))
+            k = i;
+        }
+      if(k != j)
+        {
+          immutable k_offset = k*n, kopn = k_offset + n;
+          temp[] = A[k_offset..kopn][];
+          A[k_offset..kopn][] = A[j_offset..jopn][];
+          A[j_offset..jopn][] = temp[];
+          ret *= cast( T )(-1.0);
+        }
+
+      for(i=j+1; i<n; ++i)
+        {
+          immutable i_offset = i*n;
+          alpha = A[i_offset + j] / A[j_offset + j];
+          for(k=j+1;k<nm1;k+=2)
+            {
+              k1 = k+1;
+              A[i_offset + k]  -= A[j_offset + k]*alpha;
+              A[i_offset + k1] -= A[j_offset + k1]*alpha;
+            }
+          if(k != n)
+            A[i_offset + k] -= A[j_offset + k]*alpha;
+        }
+      if(A[j_offset + j] == 0)
+        return cast( T )( 0.0 );
+
+      ret *= A[j_offset + j];
+    }
+  return ret*A[$-1];
+}
+
+
+
+MatrixT!T matinv( T )( in MatrixT!T m )
 // Functional wrapper around `matinv_inplace_dim`
 nothrow @safe
 {
+  pragma( inline, true );
+
   Matrix m_inv;
   matinv_inplace_dim!T( m, m_inv );
   return m_inv;
 }
 
-
 bool matinv_inplace_dim( T )( in ref MatrixT!T m
                               , ref MatrixT!T m_inv )
 /*
   Returns `true` if the inversion was successful (result in `m_inv`),
- `false` otherwise.
+  `false` otherwise.
 */
   nothrow @safe
 {
@@ -175,7 +246,7 @@ unittest  // ------------------------------
 
   import std.algorithm;
   import std.math;
-  
+
   const m = Matrix
     ( [ 4, 4 ]
       , [ 1, 4, 2, 17
@@ -194,6 +265,25 @@ unittest  // ------------------------------
           ]
       );
 
+
+  {
+    if (verbose)
+      writeln( "// ---------- Test determinant" );
+
+    /* octave
+
+       sprintf("%.12g",det([ 1, 4, 2, 17;
+        54, 23, 12, 56;
+         7, 324, 23, 56;
+          542, 3, 23, 43 ]))
+
+          // 9053872
+     */
+
+    auto d = det( m );
+    assert( approxEqual( 9053872.0, d, 1e-10, 1e-10 ) );
+  }
+  
 
   {
     if (verbose)
@@ -279,6 +369,6 @@ unittest  // ------------------------------
     assert( a_inv.dim == [4, 4] );
     assert( a_inv.data.all!isNaN );
   }
-
+  
   writeln( "unittest passed: "~__FILE__ );
 }
