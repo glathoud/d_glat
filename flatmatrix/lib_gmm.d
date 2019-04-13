@@ -51,15 +51,6 @@ struct GmmT( T )
   {
     debug assert( dim == m_feature.restdim );
     
-    /* Implementation note: we could consider moving to a Cholesky
-       factorization-based implementation, see:
-       https://octave.sourceforge.io/statistics/function/mvnpdf.html
-
-       That said, the implementation does not look *that* simple at
-       first sight:
-       http://octave.org/doxygen/4.0/da/d25/chol_8cc_source.html
-    */
-    
     immutable npoints = m_feature.nrow;
     m_ll.setDim( [npoints, n] );
 
@@ -79,8 +70,19 @@ struct GmmT( T )
        (that is the price of @nogc)
     */
   {
+    debug assert( dim == m_feature.restdim );
+
     immutable npoints = m_feature.nrow;
 
+    /* Implementation note: we could consider moving to a Cholesky
+       factorization-based implementation, see:
+       https://octave.sourceforge.io/statistics/function/mvnpdf.html
+       
+       That said, the implementation does not look *that* simple at
+       first sight:
+       http://octave.org/doxygen/4.0/da/d25/chol_8cc_source.html
+    */
+    
     auto feature_data = m_feature.data;
     auto      ll_data = m_ll.data;
     
