@@ -38,20 +38,48 @@ struct GmmT( T )
     , m_invcov_t_xmm, m_xmm_t_invcov_xmm;
 
   
-  void ll_inplace( in ref Matrix m_feature
-                   , /*output:*/ref Matrix m_ll )
-  pure @trusted
-  // Log-likelihoods of each Gaussian, at each point of `m_feature`.
+  void ll_inplace_dim( in ref Matrix m_feature
+                       , /*output:*/ref Matrix m_ll )
+  pure @safe
+    /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
+
+       Input:  m_feature (npoints * <restdim>>) where m_feature.restdim == gmm.dim
+       Output: m_ll      (npoints * gmm.n)
+
+       m_ll will be automatically redimensionned if necessary.
+    */
   {
     debug assert( dim == m_feature.restdim );
     
     /* Implementation note: we could consider moving to a Cholesky
        factorization-based implementation, see:
        https://octave.sourceforge.io/statistics/function/mvnpdf.html
+
+       That said, the implementation does not look *that* simple at
+       first sight:
+       http://octave.org/doxygen/4.0/da/d25/chol_8cc_source.html
     */
     
     immutable npoints = m_feature.nrow;
     m_ll.setDim( [npoints, n] );
+
+    ll_inplace( m_feature, m_ll );
+  }
+
+  
+  void ll_inplace( in ref Matrix m_feature
+                       , /*output:*/ref Matrix m_ll )
+  pure @trusted @nogc
+    /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
+
+       Input:  m_feature (npoints * <restdim>>) where m_feature.restdim == gmm.dim
+       Output: m_ll      (npoints * gmm.n)
+
+       m_ll will NOT be automatically redimensionned, it must have the right dimension.
+       (that is the price of @nogc)
+    */
+  {
+    immutable npoints = m_feature.nrow;
 
     auto feature_data = m_feature.data;
     auto      ll_data = m_ll.data;
@@ -62,7 +90,7 @@ struct GmmT( T )
       {
         size_t next_i_f = i_f + dim;
 
-        // Cast okay, we will not modify it!
+        // Cast okay, we will not modify the data!
         m_x.data = cast( T[] )( feature_data[ i_f..next_i_f ] );
 
         foreach (j; 0..n)
@@ -234,7 +262,7 @@ unittest  // ------------------------------
 
     Matrix m_ll;
 
-    gmm.ll_inplace( m_data, m_ll );
+    gmm.ll_inplace_dim( m_data, m_ll );
 
     assert( m_ll.approxEqual( m_ll_truth, 1e-10, 1e-10 ) );
   }
