@@ -97,18 +97,18 @@ T det( T )( in ref MatrixT!T m )
 
 
 
-MatrixT!T matinv( T )( in MatrixT!T m )
-// Functional wrapper around `matinv_inplace_dim`
+MatrixT!T inv( T )( in MatrixT!T m )
+// Functional wrapper around `inv_inplace_dim`
 nothrow @safe
 {
   pragma( inline, true );
 
   Matrix m_inv;
-  matinv_inplace_dim!T( m, m_inv );
+  inv_inplace_dim!T( m, m_inv );
   return m_inv;
 }
 
-bool matinv_inplace_dim( T )( in ref MatrixT!T m
+bool inv_inplace_dim( T )( in ref MatrixT!T m
                               , ref MatrixT!T m_inv )
 /*
   Returns `true` if the inversion was successful (result in `m_inv`),
@@ -118,10 +118,10 @@ bool matinv_inplace_dim( T )( in ref MatrixT!T m
 {
   pragma( inline, true );
   m_inv.setDim( [m.nrow, m.nrow] );
-  return matinv_inplace!T( m, m_inv );
+  return inv_inplace!T( m, m_inv );
 }
 
-bool matinv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
+bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
   nothrow @safe
 {
   pragma( inline, true );
@@ -228,14 +228,14 @@ bool matinv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
   // row-by-row because B's rows have been swapped
 
   {
-    auto matinv = m_inv.data;
+    auto inv = m_inv.data;
         
     for (size_t i = 0, ind = 0;
          i<I;
          ++i,
            ind += I
          )
-      matinv[ ind..ind+I ] = B[ i ][];
+      inv[ ind..ind+I ] = B[ i ][];
   }
   return true;
 }
@@ -375,7 +375,7 @@ sprintf("%.12f",det(m2))
     auto a = Matrix( [4, 4], 123.0 );
     Matrix b;
 
-    bool success = matinv_inplace_dim( a, b );
+    bool success = inv_inplace_dim( a, b );
 
     assert( !success );
     assert( b.dim == [4, 4] );
@@ -388,7 +388,7 @@ sprintf("%.12f",det(m2))
 
     Matrix m_inv;
     
-    bool success = matinv_inplace_dim( m, m_inv );
+    bool success = inv_inplace_dim( m, m_inv );
 
     assert( success );
     assert( m_inv.dim == [4, 4] );
@@ -408,7 +408,7 @@ sprintf("%.12f",det(m2))
     auto a = Matrix( [4, 4], 123.0 );
     Matrix b;
 
-    bool success = matinv_inplace_dim( a, b );
+    bool success = inv_inplace_dim( a, b );
 
     assert( !success );
     assert( b.dim == [4, 4] );
@@ -421,7 +421,7 @@ sprintf("%.12f",det(m2))
 
     Matrix m_inv;
     
-    bool success = matinv_inplace_dim( m, m_inv );
+    bool success = inv_inplace_dim( m, m_inv );
 
     assert( success );
     assert( m_inv.dim == [4, 4] );
@@ -435,7 +435,7 @@ sprintf("%.12f",det(m2))
     if (verbose)
       writeln( " // ---------- Matrix inversion: more examples" );
     
-    Matrix m2_inv = matinv( m2 );
+    Matrix m2_inv = inv( m2 );
 
     assert( !m2_inv.data.any!isNaN ); // not a failure
     assert( m2_inv.approxEqual( m2_inv_truth, 1e-10, 1e-10 ) );
@@ -448,7 +448,7 @@ sprintf("%.12f",det(m2))
       writeln( " // ---------- Test the functional wrapper" );
 
     
-    Matrix m_inv = matinv( m );
+    Matrix m_inv = inv( m );
 
     assert( m_inv.dim == [4, 4] );
     assert( approxEqual( m_inv.data, m_inv_truth.data
@@ -462,7 +462,7 @@ sprintf("%.12f",det(m2))
 
     auto a = Matrix( [4, 4], 123.0 );
     
-    Matrix a_inv = matinv( a );
+    Matrix a_inv = inv( a );
 
     assert( a_inv.dim == [4, 4] );
     assert( a_inv.data.all!isNaN );
