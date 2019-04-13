@@ -405,6 +405,53 @@ void dot_inplace( T )( in ref MatrixT!T X, in ref MatrixT!T Y
 
 
 
+void dot_inplace_YT( T )( in ref MatrixT!T X, in ref MatrixT!T YT
+                          , ref MatrixT!T ret
+                          ) pure nothrow @safe @nogc
+// YT means "Y transposed"
+{
+  pragma( inline, true );
+
+  immutable size_t p = X.nrow, q = X.ncol, r = YT.nrow;
+  debug
+    {
+      assert( 2 == X.ndim );
+      assert( 2 == YT.ndim );
+      assert( 2 == ret.ndim );
+      
+      assert( q == YT.ncol );
+
+      assert( p == ret.nrow );
+      assert( r == ret.ncol );
+    }
+
+  size_t i_j_ret = 0;
+  size_t rowi_X  = 0;
+
+  auto ret_data = ret.data;
+  
+  foreach (i; 0..p)
+    {
+      size_t pYT = 0;
+      foreach (j; 0..r)
+        {
+          T acc = 0;
+
+          size_t ik_X = rowi_X;
+          foreach (k; 0..q)
+            {
+              acc += X.data[ ik_X++ ] * YT.data[ pYT++ ];
+            }
+          
+          ret_data[ i_j_ret++ ] = acc;
+        }
+
+      rowi_X += q;
+    }
+}
+
+
+
 
 void interleave_inplace( T )( in MatrixT!T[] m_arr
                               , ref MatrixT!T m_out )
@@ -739,6 +786,30 @@ unittest  // ------------------------------
                                 1e9, 1e10, 1e11, 1e12 ] );
 
     assert( dot( ma, mb )
+            == Matrix
+            ( [2, 4],
+              [ 3000200010.0, 30002000100.0, 300020001000.0, 3000200010000.0,
+                6000500040.0, 60005000400.0, 600050004000.0, 6000500040000.0 ]
+              )
+            );
+  }
+
+
+  
+  {
+    auto ma = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                                4.0, 5.0, 6.0 ] );
+
+    auto mbT = transpose( Matrix( [3, 4]
+                                  , [ 1e1, 1e2, 1e3, 1e4,
+                                      1e5, 1e6, 1e7, 1e8,
+                                      1e9, 1e10, 1e11, 1e12 ] ) );
+
+    auto mc = Matrix( [2, 4] );
+
+    dot_inplace_YT( ma, mbT, mc );
+    
+    assert( mc
             == Matrix
             ( [2, 4],
               [ 3000200010.0, 30002000100.0, 300020001000.0, 3000200010000.0,
