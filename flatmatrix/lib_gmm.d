@@ -43,7 +43,7 @@ struct GmmT( T )
   pure @safe
     /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
 
-       Input:  m_feature (npoints * <restdim>>) where m_feature.restdim == gmm.dim
+       Input:  m_feature (npoints * <restdim>) where m_feature.restdim == gmm.dim
        Output: m_ll      (npoints * gmm.n)
 
        m_ll will be automatically redimensionned if necessary.
@@ -63,7 +63,7 @@ struct GmmT( T )
   pure @trusted @nogc
     /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
 
-       Input:  m_feature (npoints * <restdim>>) where m_feature.restdim == gmm.dim
+       Input:  m_feature (npoints * <restdim>) where m_feature.restdim == gmm.dim
        Output: m_ll      (npoints * gmm.n)
 
        m_ll will NOT be automatically redimensionned, it must have the right dimension.
