@@ -59,7 +59,7 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
 
   BlockArrOfName block_arr_of_name;
 
-  immutable top_switch_label = "__fext__";
+  immutable top_switch_label = "_fext_";
 
   void check_set_argtype( in string argname, in string argtype )
   {
@@ -180,7 +180,7 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
   auto decl = decl_of_name[ name_arr[ 0 ] ];
 
       
-  immutable SWITCH_I = "__switch_i__";
+  immutable SWITCH_I = "_switch_i_";
 
   immutable selfrec = 1 == name_arr.length;
   
@@ -217,10 +217,10 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
 
        // Mutual recursion
        
-       : "enum __FextCase__ { "~([name] ~ (name_arr.filter!(x => x != name).array)).map!( x => _fext_case( x ) ).join( "," )~" } "
-       ~"auto "~SWITCH_I~" = __FextCase__."~_fext_case(name)~"; "
+       : "enum _FextCase_ { "~([name] ~ (name_arr.filter!(x => x != name).array)).map!( x => _fext_case( x ) ).join( "," )~" } "
+       ~"auto "~SWITCH_I~" = _FextCase_."~_fext_case(name)~"; "
        ~top_switch_label~": final switch( "~SWITCH_I~" ) {\n"
-       ~(map!( name => "  case __FextCase__."~_fext_case(name)~": "
+       ~(map!( name => "  case _FextCase_."~_fext_case(name)~": "
                ~(block_arr_of_name[ name ].map!"a.toString".join( " " ))
                ~" assert(false,`all must end with a tail call`);"
                ~" break;"
@@ -299,7 +299,7 @@ private struct Block( bool fext_debug )
                 if (selfrec)
                   ap.put( "continue;" );
                 else
-                  ap.put( "goto case __FextCase__."~_fext_case(mret_name)~";" );
+                  ap.put( "goto case _FextCase_."~_fext_case(mret_name)~";" );
                 
                 ap.put( "}" );
               }
@@ -313,7 +313,7 @@ private struct Block( bool fext_debug )
 
 }
 
-private string _fext_arg( in string arg ) pure { return "__"~arg~"__"; }
+private string _fext_arg( in string arg ) pure { return "_"~arg~"_"; }
 
 private string _fext_case( in string arg ) pure { return arg; }
 
