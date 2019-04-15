@@ -3,7 +3,7 @@
 # Option: restricted test
 TEST_PATTERN_IN="$1"
 if [ "$TEST_PATTERN_IN" != "" ]; then
-    TEST_PATTERN="$TEST_PATTERN_IN"
+    TEST_PATTERN="$(basename ${TEST_PATTERN_IN})"
 else
     TEST_PATTERN="*.d"
 fi
