@@ -1,7 +1,18 @@
 module d_glat.flatmatrix.lib_sortindex;
 
+/*
+  Replace, on each dimension, the data with its sorted index values.
+
+  Guillaume Lathoud, 2019
+  glat@glat.info
+
+  The Boost License apply to this file, as described in file
+  ../LICENSE
+*/
+
+public import d_glat.flatmatrix.core_matrix;
+
 import d_glat.core_static : static_array_code;
-import d_glat.flatmatrix.core_matrix;
 import std.algorithm : sort;
 import std.array : array;
 import std.range : iota;

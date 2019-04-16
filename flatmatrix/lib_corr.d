@@ -1,5 +1,15 @@
 module d_glat.flatmatrix.lib_corr;
 
+/*
+  Utility for correlation between 1 and N variables.
+  
+  By Guillaume Lathoud, 2019.
+  glat@glat.info
+
+  The Boost License applies to the present file, as described in the
+  file ../LICENSE
+ */
+
 public import d_glat.flatmatrix.core_matrix;
 
 import std.math;

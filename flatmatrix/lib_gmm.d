@@ -13,7 +13,8 @@ module d_glat.flatmatrix.lib_gmm;
   file ../LICENSE
  */
 
-import d_glat.flatmatrix.lib_matrix;
+public import d_glat.flatmatrix.lib_matrix;
+
 import d_glat.flatmatrix.lib_stat;
 import std.array : array;
 import std.math;

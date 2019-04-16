@@ -1,15 +1,18 @@
 module d_glat.flatmatrix.lib_pairs;
 
-public import d_glat.flatmatrix.core_matrix;
-
-import std.math; // for expstr
-
 /*
-  The Boost license applies, as described in ./LICENSE
+  Compute pairwise differences between point pairs, on each
+  dimension of a matrix.
+  
+  The Boost license applies, as described in ../LICENSE
 
   by Guillaume Lathoud, 2019
   glat@glat.info
 */
+
+public import d_glat.flatmatrix.core_matrix;
+
+import std.math; // for expstr
 
 alias PairsFunT( T ) = MatrixT!T function( in MatrixT!T );
 alias PairsFun       = PairsFunT!double;

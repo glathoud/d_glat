@@ -1,7 +1,7 @@
 module d_glat.flatmatrix.lib_stat;
 
 /*
-  A few statistics, like mean and variance.
+  A few statistics, like mean, variance, and covariance matrix.
 
   Used e.g. by ./lib_nmv.d
 

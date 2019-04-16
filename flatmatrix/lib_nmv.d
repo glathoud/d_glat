@@ -9,6 +9,8 @@ module d_glat.flatmatrix.lib_nmv;
   The Boost License applies, as described in the file ../LICENSE
  */
 
+public import d_glat.flatmatrix.core_matrix;
+
 import d_glat.core_static;
 import d_glat.flatmatrix.lib_stat;
 import std.math;
