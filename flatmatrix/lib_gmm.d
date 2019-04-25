@@ -17,6 +17,8 @@ public import d_glat.flatmatrix.lib_matrix;
 
 import d_glat.flatmatrix.lib_stat;
 import std.array : array;
+import std.conv : to;
+import std.format : format;
 import std.math;
 import std.range : iota;
 
@@ -26,6 +28,7 @@ struct GmmT( T )
 {
   size_t n;
   size_t dim;
+  bool is_finite;// `true` if all numbers are finite, else `false` 
   MatrixT!T[] m_mean_arr;
   MatrixT!T[] m_cov_arr;
   MatrixT!T[] m_invcov_arr;
@@ -146,19 +149,48 @@ struct GmmT( T )
 
     _resize();
 
+    bool new_is_finite = true;
+    
     foreach (i_g, group; group_arr)
       {
         mean_cov_inplace
           ( /*Inputs:*/  m_feature, /*subset:*/group
             /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
         
-        inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ] );
+        bool success =
+          inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ] );
 
-        logfactor_arr[ i_g ] = -0.5 *
-          (/*k:*/dim_T * LOG_TWO_PI
-           + log( det( m_cov_arr[ i_g ] ) )
-           );
+        if (!success)
+          new_is_finite = false;
+        
+        double tmp_det = det( m_cov_arr[ i_g ] );
+        if (abs( tmp_det ) < 1e-10)
+          tmp_det = 0.0; // so that log gives `-inf`, not `nan`
+
+        double lf_g = -0.5 *
+          (/*k:*/dim_T * LOG_TWO_PI + log( tmp_det ));
+        
+        logfactor_arr[ i_g ] = lf_g;
+
+        if (!isFinite( lf_g ))
+          new_is_finite = false;
       }
+
+    is_finite = new_is_finite;
+  }
+
+  // --- API: Operators overloading
+
+  void toString(scope void delegate(const(char)[]) sink) const
+  {
+    sink( format( "Gmm(n:%d,dim:%d): {", n, dim ) );
+    sink( "\n  is_finite:      "~to!string( is_finite ) );
+    sink( "\n  , m_mean_arr:   "~to!string( m_mean_arr ) );
+    sink( "\n  , m_cov_arr:    "~to!string( m_cov_arr ) );
+    sink( "\n  , m_invcov_arr: "~to!string( m_invcov_arr ) );
+    sink( "\n  , logfactor_arr:"~to!string( logfactor_arr ) );
+    
+    sink( "\n}\n" );
   }
   
  private:
