@@ -14,6 +14,57 @@ import std.algorithm : sort;
   The Boost license applies to this file, as described in ./LICENSE
  */
 
+T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
+/* Input: 2 arrays containing `a_i` resp. `log(w_i)`.
+
+   Output: `exp(sum_i( a_i * w_i ))` calculated as precisely as
+   `logsum` permits.
+
+   Implementation: two `logsum` calls, one for positive values
+   (`a_i>0.0`), one for negative values (`a_i<0.0`);
+*/
+  nothrow @safe
+{
+  pragma( inline, true );
+
+  immutable n = a_arr.length;
+  
+  debug assert( n == logw_arr.length );
+
+  // Limit GC costs
+  mixin(static_array_code(`logsum_buffer`,`T`,`n`));
+  mixin(static_array_code(`work`         ,`T`,`n`));
+  
+  size_t j_pos = 0; // positive values => work[0..j_pos]
+  size_t j_neg = n; // negative values => work[j_neg..$]
+
+  foreach (i,a_i; a_arr)
+    {
+      if (a_i > 0.0)
+        work[ j_pos++ ] = log( a_i ) + logw_arr[ i ];
+        
+      else if (a_i < 0.0)
+        work[ --j_neg ] = log( -a_i ) + logw_arr[ i ];
+    }
+  
+  T ret = 0.0;
+
+  if (0 < j_pos)
+    {
+      auto lsb_pos = logsum_buffer[ 0..j_pos ];
+      ret += exp( logsum_nogc( work, 0, j_pos, lsb_pos ) );
+    }
+
+  if (j_neg < n)
+    {
+      auto lsb_neg = logsum_buffer[ j_neg..n ];
+      ret -= exp( logsum_nogc( work, j_neg, n, lsb_neg ) );
+    }
+
+  return ret;
+}
+
+
 T logsum( T )( in T[] arr )
 nothrow @safe
 /* Input log(data), output: log(sum(data))
@@ -115,7 +166,7 @@ unittest
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
-  immutable verbose = false;
+  immutable verbose = true;
   
   import std.random;
   import std.algorithm;
@@ -144,6 +195,37 @@ unittest
       }
 
   }
+
+
+    {
+    
+    auto rnd = MinstdRand0(42);
+    
+    foreach (n; 1..301)
+      {
+        double[] data     = iota(0,n).map!(_ => uniform( cast( double )( -100.0 ), cast( double )( 100.0 ), rnd )).array;
+        if (n > 36) data[ 36 ] = 0.0;
+        if (n > 77) data[ 77 ] = 0.0;
+        
+        double[] wdata    = iota(0,n).map!(_ => uniform( cast( double )( 1.0 ), cast( double )( 100.0 ), rnd )).array;
+        double[] logwdata = wdata.map!"cast( double )( log(a) )".array;
+        
+        immutable double weighted_sum          = e_w_logsum( data, logwdata );
+        immutable double weighted_sum_expected = zip( data, wdata ).map!"a[0]*a[1]".reduce!"a+b";
+        
+        if (verbose)
+          {
+            writeln;
+            writeln("n: ", n);
+            writeln("data: ", data);
+            writeln("weighted_sum, expected: ", [weighted_sum, weighted_sum_expected], " delta:", weighted_sum - weighted_sum_expected);
+          }
+
+        assert( approxEqual( weighted_sum, weighted_sum_expected, 1e-8, 1e-8 ) );
+      }
+
+  }
+
 
   
   {
