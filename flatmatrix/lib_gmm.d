@@ -164,7 +164,7 @@ struct GmmT( T )
           new_is_finite = false;
         
         double tmp_det = det( m_cov_arr[ i_g ] );
-        if (abs( tmp_det ) < 1e-10)
+        if (-1e-10 < tmp_det  &&  tmp_det < 0.0)
           tmp_det = 0.0; // so that log gives `-inf`, not `nan`
 
         double lf_g = -0.5 *
