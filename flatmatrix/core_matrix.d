@@ -555,6 +555,47 @@ MatrixT!T rep( T )( in size_t[] dim, in T v ) pure nothrow @safe
 }
 
 
+
+MatrixT!T subset( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
+{
+  immutable new_nrow = row_arr.length;
+  
+  auto B = MatrixT!T( [ new_nrow ] ~ A.dim[ 1..$ ] );
+  
+  subset_inplace!T( A, row_arr, B );
+
+  return B;
+}
+
+void subset_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
+                          , ref MatrixT!T B ) pure nothrow @safe @nogc 
+{
+  debug
+    {
+      assert( A.restdim == B.restdim );
+      assert( B.nrow == row_arr.length );
+      assert( A.dim[ 1..$ ] == B.dim[ 1..$ ] );
+    }
+
+  immutable rd = A.restdim;
+  
+  auto A_data = A.data;
+  auto B_data = B.data;
+  
+  size_t iB = 0;
+  foreach (row; row_arr)
+    {
+      immutable next_iB = iB + rd;
+
+      immutable      iA = row * rd;
+      B_data[ iB..next_iB ][] = A_data[ iA..(iA+rd) ][];
+
+      iB = next_iB;
+    }
+}
+
+
+
 MatrixT!T transpose( T )
 ( in MatrixT!T A ) pure nothrow @safe
 {
@@ -913,6 +954,24 @@ unittest  // ------------------------------
                 ]));
 
   }
+
+
+  {
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+
+    assert( subset( A, [0,3,4])
+            == Matrix( [ 0, 3 ]
+                       , [ 1.0, 2.0, 3.0,
+                           10.0, 11.0, 12.0,
+                           13.0, 14.0, 15.0 ]
+                       ));
+  }
+
   
 
     {
