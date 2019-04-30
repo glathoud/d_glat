@@ -556,18 +556,18 @@ MatrixT!T rep( T )( in size_t[] dim, in T v ) pure nothrow @safe
 
 
 
-MatrixT!T subset( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
+MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
 {
   immutable new_nrow = row_arr.length;
   
   auto B = MatrixT!T( [ new_nrow ] ~ A.dim[ 1..$ ] );
   
-  subset_inplace!T( A, row_arr, B );
+  subset_row_inplace!T( A, row_arr, B );
 
   return B;
 }
 
-void subset_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
+void subset_row_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
                           , ref MatrixT!T B ) pure nothrow @safe @nogc 
 {
   debug
@@ -964,7 +964,7 @@ unittest  // ------------------------------
                          10.0, 11.0, 12.0,
                          13.0, 14.0, 15.0 ] );
 
-    assert( subset( A, [0,3,4])
+    assert( subset_row( A, [0,3,4])
             == Matrix( [ 0, 3 ]
                        , [ 1.0, 2.0, 3.0,
                            10.0, 11.0, 12.0,
