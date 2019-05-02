@@ -15,7 +15,10 @@ module d_glat.flatmatrix.lib_gmm;
 
 public import d_glat.flatmatrix.lib_matrix;
 
+import d_glat.core_math;
+import d_glat.core_static;
 import d_glat.flatmatrix.lib_stat;
+import std.algorithm : max;
 import std.array : array;
 import std.conv : to;
 import std.format : format;
@@ -27,6 +30,7 @@ alias Gmm = GmmT!double;
 struct GmmT( T )
 {
   size_t n;
+  bool   fallback_zero_var = true;
   size_t dim;
   bool is_finite;// `true` if all numbers are finite, else `false` 
   MatrixT!T[] m_mean_arr;
@@ -156,6 +160,9 @@ struct GmmT( T )
         mean_cov_inplace
           ( /*Inputs:*/  m_feature, /*subset:*/group
             /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
+
+        if (fallback_zero_var)
+          _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ] );
         
         bool success =
           inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ] );
@@ -229,6 +236,52 @@ struct GmmT( T )
     m_xmm_t_invcov_xmm.setDim( [1, 1] );
   }
 }
+
+
+void _do_fallback_zero_var_if_necessary( T )( MatrixT!T m )
+  nothrow @safe
+{
+  pragma( inline, true );
+
+  immutable n = m.nrow;
+  immutable np1 = n+1;
+
+  debug assert( m.dim == [ n, n ] );
+  
+  mixin(static_array_code(`nonzero_var_arr`,`T`,     `n`));
+  mixin(static_array_code(`zero_j_arr`,     `size_t`,`n`));
+
+  immutable T fallback_factor = cast( T )( max( 10, n * n ) );
+  
+  auto data = m.data;
+
+  size_t i_dim = 0;
+  size_t i_zero = 0;
+  size_t i_nonzero = 0;
+
+  for (size_t j = 0, j_end = data.length; j < j_end; j += np1)
+    {
+      T diag_term = data[ j ];
+
+      if (diag_term == 0.0)
+        zero_j_arr[ i_zero++ ] = j;
+        
+      else
+        nonzero_var_arr[ i_nonzero++ ] = diag_term;
+    }
+
+  if (i_zero > 0  &&  i_nonzero > 0)
+    {
+      T fallback_var = fallback_factor
+        * median_inplace( nonzero_var_arr[ 0..i_nonzero ] );
+
+      debug assert( fallback_var > 0 );
+
+      foreach (j; zero_j_arr)
+        data[ j ] = fallback_var;
+    }
+}
+
 
 
 unittest  // ------------------------------
