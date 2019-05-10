@@ -14,8 +14,10 @@ module d_glat.flatmatrix.lib_matrix;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import core.exception : RangeError;
 import d_glat.core_static;
-import std.math : abs;
+import std.algorithm : all;
+import std.math : abs, isFinite;
 
 
 T det( T )( in ref MatrixT!T m )
@@ -122,7 +124,7 @@ bool inv_inplace_dim( T )( in ref MatrixT!T m
 }
 
 bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
-  nothrow @safe
+  nothrow @trusted
 {
   pragma( inline, true );
 
@@ -136,108 +138,119 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
       assert( m    .dim == [I, J] );
       assert( m_inv.dim == [I, I] );
     }
-  
-  // Implementation note: for matrix inversion it is faster to work in
-  // 2-D the whole time, probably because of faster row swaps.
-  
-  static size_t sI, sJ;
-  static T[]    A_flat, B_flat, B_flat_init;
-  static T[][]  A, B, A_init, B_init;
 
-  if (sI != I  ||  sJ != J)
+  try
     {
-      sI = I; sJ = J;
-      A_flat      = new T[ IJ ];
-      B_flat      = new T[ I2 ];
-      B_flat_init = new T[ I2 ];
-
-      Matrix id; id.setDim( [I, I]); diag_inplace( 1.0, id );
-      B_flat_init[] = id.data[];
-
-      A = new T[][ I ];
-      B = new T[][ I ];
-      A_init = new T[][ I ];
-      B_init = new T[][ I ];
       
-      foreach (i; 0..I)
-        {
-          A_init[ i ] = A_flat[ i*J..(i+1)*J ];
-          B_init[ i ] = B_flat[ i*I..(i+1)*I ];
-        }
-    }
-
-  // Init structure: initial row order
-
-  A[] = A_init[];
-  B[] = B_init[];
-
-  // Init data
-
-  A_flat[] = m.data[];
-  B_flat[] = B_flat_init[];
-
-  T[] Ai, Aj, Bi, Bj;
-
-  // Implementation adapted from numeric.js
+      // Implementation note: for matrix inversion it is faster to work in
+      // 2-D the whole time, probably because of faster row swaps.
   
-  for(long j=0;j<J;++j) {
-    long i0 = -1;
-    T v0 = -1;
-    for(long i=j;i!=I;++i) {
-      T k = abs(A[i][j]); if(k>v0) { i0 = i; v0 = k; }
-    }
-        
-    if (i0 == j)
-      {
-        Aj = A[j];
-        Bj = B[j];
-      }
-    else
-      {
-        Aj = A[i0]; A[i0] = A[j]; A[j] = Aj;
-        Bj = B[i0]; B[i0] = B[j]; B[j] = Bj;
-      }
-        
-    auto x = Aj[j];
-    if (x == 0)
-      {
-        // Failed to inverse
-        // 
-        // Matrix not invertible at all and/or not invertible
-        // within the Float64 numerical precision.
-        m_inv.data[] = T.nan;
-        return false;
-      }
-            
-    for(long k=j;k!=J;++k)    Aj[k] /= x; 
-    for(long k=J-1;k!=-1;--k) Bj[k] /= x;
-    for(long i=I-1;i!=-1;--i) {
-      if(i!=j) {
-        Ai = A[i];
-        Bi = B[i];
-        x = Ai[j];
-        long k;
-        for(k=j+1;k!=J;++k)  Ai[k] -= Aj[k]*x;
-        for(k=J-1;k>0;--k) { Bi[k] -= Bj[k]*x; --k; Bi[k] -= Bj[k]*x; }
-        if(k==0) Bi[0] -= Bj[0]*x;
-      }
-    }
-  }
-      
-  // Copy the resulting values: *not* from B_flat, but rather
-  // row-by-row because B's rows have been swapped
+      static size_t sI, sJ;
+      static T[]    A_flat, B_flat, B_flat_init;
+      static T[][]  A, B, A_init, B_init;
 
-  {
-    auto inv = m_inv.data;
+      if (sI != I  ||  sJ != J)
+        {
+          sI = I; sJ = J;
+          A_flat      = new T[ IJ ];
+          B_flat      = new T[ I2 ];
+          B_flat_init = new T[ I2 ];
+
+          Matrix id; id.setDim( [I, I]); diag_inplace( 1.0, id );
+          B_flat_init[] = id.data[];
+
+          A = new T[][ I ];
+          B = new T[][ I ];
+          A_init = new T[][ I ];
+          B_init = new T[][ I ];
+      
+          foreach (i; 0..I)
+            {
+              A_init[ i ] = A_flat[ i*J..(i+1)*J ];
+              B_init[ i ] = B_flat[ i*I..(i+1)*I ];
+            }
+        }
+
+      // Init structure: initial row order
+
+      A[] = A_init[];
+      B[] = B_init[];
+
+      // Init data
+
+      A_flat[] = m.data[];
+      B_flat[] = B_flat_init[];
+
+      T[] Ai, Aj, Bi, Bj;
+
+      // Implementation adapted from numeric.js
+  
+      for(long j=0;j<J;++j) {
+        long i0 = -1;
+        T v0 = -1;
+        for(long i=j;i!=I;++i) {
+          T k = abs(A[i][j]); if(k>v0) { i0 = i; v0 = k; }
+        }
         
-    for (size_t i = 0, ind = 0;
-         i<I;
-         ++i,
-           ind += I
-         )
-      inv[ ind..ind+I ] = B[ i ][];
-  }
+        if (i0 == j)
+          {
+            Aj = A[j];
+            Bj = B[j];
+          }
+        else
+          {
+            Aj = A[i0]; A[i0] = A[j]; A[j] = Aj;
+            Bj = B[i0]; B[i0] = B[j]; B[j] = Bj;
+          }
+        
+        auto x = Aj[j];
+        if (x == 0)
+          {
+            // Failed to inverse
+            // 
+            // Matrix not invertible at all and/or not invertible
+            // within the Float64 numerical precision.
+            m_inv.data[] = T.nan;
+            return false;
+          }
+            
+        for(long k=j;k!=J;++k)    Aj[k] /= x; 
+        for(long k=J-1;k!=-1;--k) Bj[k] /= x;
+        for(long i=I-1;i!=-1;--i) {
+          if(i!=j) {
+            Ai = A[i];
+            Bi = B[i];
+            x = Ai[j];
+            long k;
+            for(k=j+1;k!=J;++k)  Ai[k] -= Aj[k]*x;
+            for(k=J-1;k>0;--k) { Bi[k] -= Bj[k]*x; --k; Bi[k] -= Bj[k]*x; }
+            if(k==0) Bi[0] -= Bj[0]*x;
+          }
+        }
+      }
+      
+      // Copy the resulting values: *not* from B_flat, but rather
+      // row-by-row because B's rows have been swapped
+
+      {
+        auto inv = m_inv.data;
+        
+        for (size_t i = 0, ind = 0;
+             i<I;
+             ++i,
+               ind += I
+             )
+          inv[ ind..ind+I ] = B[ i ][];
+      }
+    }
+  catch( RangeError e )
+    {
+      debug assert( !(m.data.all!isFinite) ); // The implementation should never throw an error on finite data
+      return false;
+    }
+  
   return true;
+    
 }
 
 
@@ -287,12 +300,12 @@ unittest  // ------------------------------
     0.197822,   0.980076,   0.111997,   0.996879,   0.346470,   0.397345,   0.604819;
     0.926194,   0.070189,   0.598575,   0.044587,   0.519265,   0.474527,   0.536617;
     0.715006,   0.433708,   0.796754,   0.737583,   0.041156,   0.667159,   0.811830 ];
-m2_inv = inv(m2); sprintf( "%.12g, ", m2_inv.' )
-# 1.07047132091, 0.62669277972, -0.40527138515, 0.471158676194, -0.645044606512, -0.394003317874, 0.24043583308, -0.0212938497762, 1.81470522082, 1.25024923739, -0.521338354684, -1.22401527701, -1.65446624883, 0.220316168281, 0.723243232078,-0.550242846652, 1.47523733053, -1.29190626206, -0.9647403913, -1.86447933354, 1.62294515541, 1.21849496334, -1.54732786909, -0.562534298632, 0.212295418105, 1.21690396273, -0.662529003411, 0.615573745119, 0.0946850733968, -1.2099940721, 0.168657149906, -0.355295999316, 1.38863733597, 1.30381360059, -1.11708878497, -1.46179434145, 1.73496392685, 0.483628752339, 1.04989712194, -1.40996324221, 0.584692698826, -0.49908832157, -1.55179510586, -0.94003502125, -1.65373989769, 0.0937974371765,2.15154401831, 3.1160818548, -0.782977409577,
+    m2_inv = inv(m2); sprintf( "%.12g, ", m2_inv.' )
+    # 1.07047132091, 0.62669277972, -0.40527138515, 0.471158676194, -0.645044606512, -0.394003317874, 0.24043583308, -0.0212938497762, 1.81470522082, 1.25024923739, -0.521338354684, -1.22401527701, -1.65446624883, 0.220316168281, 0.723243232078,-0.550242846652, 1.47523733053, -1.29190626206, -0.9647403913, -1.86447933354, 1.62294515541, 1.21849496334, -1.54732786909, -0.562534298632, 0.212295418105, 1.21690396273, -0.662529003411, 0.615573745119, 0.0946850733968, -1.2099940721, 0.168657149906, -0.355295999316, 1.38863733597, 1.30381360059, -1.11708878497, -1.46179434145, 1.73496392685, 0.483628752339, 1.04989712194, -1.40996324221, 0.584692698826, -0.49908832157, -1.55179510586, -0.94003502125, -1.65373989769, 0.0937974371765,2.15154401831, 3.1160818548, -0.782977409577,
 
-sprintf("%.12f",det(m2))
-#0.062664340664
-   */
+    sprintf("%.12f",det(m2))
+    #0.062664340664
+  */
   const m2 = Matrix
     ( [ 7, 7 ]
       , [  0.946068,   0.186274,   0.241528,   0.129626,   0.507351,   0.096300,   0.160248,
@@ -324,7 +337,7 @@ sprintf("%.12f",det(m2))
     # -0.268769457224, 0.54990342013, -1.2461483692, 0.177661640135, 0.613666691691, 0.803511914233, -1.39627802534, 0.600368561678, 0.0189455364223, -1.30596472448, 1.03924546357, 1.7886984715, 4.76124504743, 0.43115330184, 1.0113608562, 1.27429115596, -4.13492692713, -4.42441039661, 0.688652451123, -0.756875780723, 0.383001646342, 0.146456550437, 0.44977007184, -0.949183213116, -5.02184309165, -0.990874570291, -1.22691500269, -1.05309921408, 4.33628511425, 5.78701714979, 1.13155848719, 0.0529748345784, 1.27169927481, 1.02969457212, -1.39399452088, -2.31765641514,
 
     sprintf("%.12f",det(m3))
-#0.117622046234
+    #0.117622046234
   */
   const m3 = Matrix
     ( [ 6, 6 ]
@@ -337,7 +350,7 @@ sprintf("%.12f",det(m2))
       );
   const m3_inv = Matrix
     ( [ 6, 6 ]
-    , [ -0.268769457224, 0.54990342013, -1.2461483692, 0.177661640135, 0.613666691691, 0.803511914233, -1.39627802534, 0.600368561678, 0.0189455364223, -1.30596472448, 1.03924546357, 1.7886984715, 4.76124504743, 0.43115330184, 1.0113608562, 1.27429115596, -4.13492692713, -4.42441039661, 0.688652451123, -0.756875780723, 0.383001646342, 0.146456550437, 0.44977007184, -0.949183213116, -5.02184309165, -0.990874570291, -1.22691500269, -1.05309921408, 4.33628511425, 5.78701714979, 1.13155848719, 0.0529748345784, 1.27169927481, 1.02969457212, -1.39399452088, -2.31765641514, ] );
+      , [ -0.268769457224, 0.54990342013, -1.2461483692, 0.177661640135, 0.613666691691, 0.803511914233, -1.39627802534, 0.600368561678, 0.0189455364223, -1.30596472448, 1.03924546357, 1.7886984715, 4.76124504743, 0.43115330184, 1.0113608562, 1.27429115596, -4.13492692713, -4.42441039661, 0.688652451123, -0.756875780723, 0.383001646342, 0.146456550437, 0.44977007184, -0.949183213116, -5.02184309165, -0.990874570291, -1.22691500269, -1.05309921408, 4.33628511425, 5.78701714979, 1.13155848719, 0.0529748345784, 1.27169927481, 1.02969457212, -1.39399452088, -2.31765641514, ] );
   immutable m3_det_truth = 0.117622046234;
   
   {
@@ -347,12 +360,12 @@ sprintf("%.12f",det(m2))
     /* octave
 
        sprintf("%.12g",det([ 1, 4, 2, 17;
-        54, 23, 12, 56;
-         7, 324, 23, 56;
-          542, 3, 23, 43 ]))
+       54, 23, 12, 56;
+       7, 324, 23, 56;
+       542, 3, 23, 43 ]))
 
-          // 9053872
-     */
+       // 9053872
+       */
 
     auto d = det( m );
     assert( approxEqual( 9053872.0, d, 1e-10, 1e-10 ) );

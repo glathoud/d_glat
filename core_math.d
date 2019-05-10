@@ -17,8 +17,8 @@ import std.algorithm : sort;
 T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
 /* Input: 2 arrays containing `a_i` resp. `log(w_i)`.
 
-   Output: `exp(sum_i( a_i * w_i ))` calculated as precisely as
-   `logsum` permits.
+   Output: `sum_i( a_i * w_i )` calculated as precisely as `logsum`
+   permits.
 
    Implementation: two `logsum` calls, one for positive values
    (`a_i>0.0`), one for negative values (`a_i<0.0`);
