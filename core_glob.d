@@ -6,9 +6,11 @@
 */
 module d_glat.core_glob;
 
+public import std.file : SpanMode;
+
 import std.algorithm : map;
 import std.array : array;
-import std.file : dirEntries, SpanMode;
+import std.file : dirEntries;
 import std.path : baseName, dirName;
 
 shared static GLOB_JPG = "*.[jJ][pP][gG]";

@@ -1,6 +1,9 @@
 module d_glat.core_assoc_array;
 
+import std.array : Appender, appender, join;
+import std.conv : to;
 import std.stdio;
+import std.traits : isBasicType, isSomeString;
 
 /*
   Tools for associative arrays. Boost License, see file ./LICENSE
@@ -8,9 +11,8 @@ import std.stdio;
   By Guillaume Lathoud, 2018
  */
 
-// To get/initialize associative arrays having more than one dimension
-
 T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
+// To get/initialize associative arrays having more than one dimension
 {
   auto p = key in aa;
   if (p)
@@ -18,6 +20,38 @@ T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
 
   return &(aa[ key ] = def_val);
 }
+
+string aa_pretty( T )( in T aa )
+{
+  auto app = appender!(string[]);
+  aa_pretty_inplace( aa, "", app );
+  return app.data.join( "\n" );
+}
+
+void aa_pretty_inplace( T )
+  ( in T aa, in string indent_prefix, ref Appender!(string[]) app )
+{
+  if (indent_prefix.length < 1)
+    app.put( indent_prefix~"[" );
+  
+  immutable ip2 = indent_prefix~"  ";
+
+  foreach (k,v; aa)
+    {
+      static if (isBasicType!(typeof(v))  ||  isSomeString!(typeof(v)))
+        {
+          app.put( ip2~to!string(k)~" : "~to!string(v)~", " );
+        }
+      else
+        {
+          app.put( ip2~to!string(k)~" : [" );
+          
+          aa_pretty_inplace( v, ip2, app );
+        }
+    }
+  app.put( indent_prefix~"]" );
+}
+
 
 unittest
 {
