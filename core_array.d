@@ -8,7 +8,8 @@ import std.math : isNaN;
 /*
   Tools for arrays. Boost License, see file ./LICENSE
 
-  By Guillaume Lathoud, 2018
+  By Guillaume Lathoud, 2019
+  glat@glat.info
  */
 
 bool equal_nan( T = double )( in T[] a, in T[] b )
