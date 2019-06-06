@@ -48,7 +48,7 @@ void walk_sexpr( alias iter )( in SExpr sexpr )
   if (sexpr.isList)
     {
       auto slist = cast( SList )( sexpr );
-      slist.rest.each!iter;
+      slist.rest.each!(walk_sexpr!iter);
     }
 }
 
@@ -396,6 +396,24 @@ unittest  // ------------------------------
       check_wrong( s_wrong );
   }
 
+
+  {
+    auto sexpr = parse_sexpr( "(op1 (op2 a b) c (op3 d e) f)" );
+
+    string[] arr;
+
+    void iter( in SExpr s )
+    {
+      if (s.isList)
+        arr ~= (cast( SList )( s )).first.toString;
+      else
+        arr ~= s.toString;
+    }
+
+    walk_sexpr!iter( sexpr );
+
+    assert( arr == ["op1", "op2", "a", "b", "c", "op3", "d", "e", "f"] );
+  }
   
   
   writeln( "unittest passed: "~__FILE__ );
