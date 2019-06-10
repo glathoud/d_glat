@@ -12,13 +12,18 @@ module d_glat.flatmatrix.lib_sortindex;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import core.exception : AssertError;
 import d_glat.core_static : static_array_code;
-import std.algorithm : sort;
+import std.algorithm : any, sort;
 import std.array : array;
+import std.conv : to;
+import std.math : isNaN;
 import std.range : iota;
+import std.stdio;
 
-void sortindex_inplace_dim( in ref Matrix a, ref Matrix b )
-  nothrow @safe
+void sortindex_inplace_dim( T )( in ref MatrixT!T a
+                                 , ref MatrixT!T b )
+nothrow @safe
 {
   pragma( inline, true );
 
@@ -26,8 +31,8 @@ void sortindex_inplace_dim( in ref Matrix a, ref Matrix b )
   sortindex_inplace( a, b );
 }
 
-void sortindex_inplace( in ref Matrix a, ref Matrix b )
-  nothrow @safe
+void sortindex_inplace( T )( in ref MatrixT!T a, ref MatrixT!T b )
+nothrow @safe
 {
   pragma( inline, true );
 
@@ -36,8 +41,8 @@ void sortindex_inplace( in ref Matrix a, ref Matrix b )
 }
 
 
-void sortindex_inplace( ref Matrix m )
-  nothrow @safe
+void sortindex_inplace( T )( ref MatrixT!T m )
+nothrow @safe
 {
   pragma( inline, true );
 
@@ -49,7 +54,7 @@ void sortindex_inplace( ref Matrix m )
     indices_init = iota( 0, cast( int )( n ) ).array;
 
   mixin(static_array_code(`index_arr`,`int`,`n`));
-  mixin(static_array_code(`value_arr`,`double`,`n`));
+  mixin(static_array_code(`value_arr`,`T`,`n`));
 
   sortindex_inplace
     (
@@ -62,7 +67,7 @@ void sortindex_inplace( ref Matrix m )
 
 // ---------- Details ----------
 
-void sortindex_inplace
+void sortindex_inplace( T )
   ( // inputs
    in int[]    indices_init
    , in size_t n
@@ -70,11 +75,11 @@ void sortindex_inplace
    , in size_t n_t_restdim
    // intermediary buffers
    , ref int[]    index_arr
-   , ref double[] value_arr
+   , ref T[] value_arr
    // input & output
-   , ref Matrix m
+   , ref MatrixT!T m
     )
- pure nothrow @safe
+pure nothrow @safe
 {
   pragma( inline, true );
 
@@ -101,24 +106,32 @@ void sortindex_inplace
         size_t i_data = d;
         foreach (i_buff; 0..n)
           {
-            value_arr[ i_buff ] = data[ i_data ];
+            T v = data[ i_data ];
+            static if (is( T == double )
+                       ||  is( T == float )
+                       ||  is( T == real ))
+              {
+                if (isNaN( v ))
+                  v = -T.infinity;
+              }
+            
+            value_arr[ i_buff ] = v;
             i_data += restdim;
           }
       }
       
       // Modify
-      
+
       index_arr
         .sort!((a,b) => value_arr[ a ] < value_arr[ b ]);
       
       // Write
       
       {
-        size_t i_data = d;
         foreach (i_buff; 0..n)
           {
             data[ d + index_arr[ i_buff ] * restdim ] =
-              cast( double )( i_buff );  // sortindex
+              cast( T )( i_buff );  // sortindex
           }
       }
       
@@ -138,7 +151,7 @@ void sortindex_inplace
                     = data[ d + j * restdim ];
                   
                   if (v_i < v_j)
-                      assert(sortindex_i < sortindex_j );
+                      assert( sortindex_i < sortindex_j );
                 }
             }
         }
