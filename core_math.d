@@ -70,6 +70,9 @@ nothrow @safe
 /* Input log(data), output: log(sum(data))
  
  Addition done in a smart way to minimize precision loss.
+
+ Practical node: if the logsum is greater than say 1e10, you might
+ want to post-process (e.g. rescale) to compensate for the overflow.
 */
 {
   pragma( inline, true );
@@ -92,6 +95,9 @@ pure nothrow @safe @nogc
 
  Some explanation can be found e.g. here 
 http://www.glat.info/ma/2006-CHN-USS-TIME-DOMAIN/my_logsum_fast.pdf
+
+ Practical node: if the logsum is greater than say 1e10, you might
+ want to post-process (e.g. rescale) to compensate for the overflow.
 */
 {
   pragma( inline, true );
