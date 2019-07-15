@@ -11,7 +11,7 @@ module d_glat.flatmatrix.core_matrix;
 */
 
 import d_glat.core_static;
-import std.algorithm : max;
+import std.algorithm : max, sort;
 import std.conv : to;
 import std.format : format;
 import std.math;
@@ -512,6 +512,38 @@ void interleave_inplace( T )( in MatrixT!T[] m_arr
     }
 }
 
+
+void sort_inplace( T )( ref MatrixT!T m )
+{
+  immutable restdim = m.restdim;
+  auto data  = m.data;
+  immutable n = data.length / restdim;
+
+  auto c_arr = new double[][]( n, restdim );
+  {
+    for (size_t i = 0, j = 0; i < n; ++i)
+      {
+        immutable next_j = j + restdim;
+        c_arr[ i ] = data[ j..next_j ];
+        j = next_j;
+      }
+  }
+
+  c_arr.sort;
+
+  auto data2 = new double[ data.length ];
+
+  for (size_t i = 0, j = 0; i < n; ++i)
+    {
+      immutable next_j = j + restdim;
+      data2[ j..next_j ][] = c_arr[ i ][];
+      j = next_j;
+    }
+  
+  m.data = data2;
+}
+
+
 private void _check_dim_match( in size_t i
                                , in size_t[] da, in size_t[] db )
 @safe
@@ -1003,6 +1035,28 @@ unittest  // ------------------------------
       assert( A == B );
       assert( A.data == B.data );
     }
-  
+
+    {
+      auto A = Matrix( [0, 4],
+                       [
+                        1.0, 2.0, 4.0, 10.0,
+                        1.0, 8.0, 19.0, 11.0,
+                        1.0, 3.0, 7.0, 2.0,
+                        1.0, 3.0, 4.0, 8.0
+                        ]
+                       );
+      sort_inplace( A );
+
+      assert( A == Matrix( [0, 4],
+                       [
+                        1.0, 2.0, 4.0, 10.0,
+                        1.0, 3.0, 4.0, 8.0,
+                        1.0, 3.0, 7.0, 2.0,
+                        1.0, 8.0, 19.0, 11.0
+                        ]
+                           ) );
+    }
+
+    
   writeln( "unittest passed: "~__FILE__ );
 }
