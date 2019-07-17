@@ -30,7 +30,10 @@ struct JsonBinT( T )
   JSONValue j() @safe pure 
   {
     if (!_j_str_parsed)
-      _j = parseJSON( j_str );
+      {
+        _j_str_parsed = true;
+        _j = parseJSON( j_str );
+      }
   
     return _j;
   }
@@ -152,11 +155,18 @@ unittest  // ------------------------------
   immutable verbose = false;
 
   import std.algorithm;
+  import std.conv;
+  import std.datetime;
   import std.file;
   import std.math;
   import std.path;
 
-  immutable string tmp_filename = __FILE__~".tmpfile4unittest.jsonbin";
+  immutable string tmp_filename = buildPath
+    ( std.file.tempDir
+      , baseName( __FILE__ )~".tmpfile4unittest.jsonbin."~to!string( Clock.currStdTime )
+      );
+
+  writeln(tmp_filename);
 
   if (exists( tmp_filename ))
     std.file.remove( tmp_filename );
