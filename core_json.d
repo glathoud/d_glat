@@ -17,19 +17,36 @@ import std.stdio : stderr,writeln;
 
 alias Jsonplace = string[]; // position in the JSON
 
-double get_double_of_json( in JSONValue jv )
+double get_double_of_json( bool accept_null = false )( in JSONValue jv )
 {
   // Uncomment this line to debug your data:
   // import std.stdio; writeln("xxx ____ get_double_of_json jv.type, jv:", jv.type, jv );
-  
-  return jv.type == JSON_TYPE.INTEGER  
-    ?  cast( double )( jv.integer )
 
-    :  jv.type == JSON_TYPE.UINTEGER
-    ?  cast( double )( jv.uinteger )
-    
-    :  jv.floating
-    ;
+  static if (accept_null)
+    {
+      return jv.type == JSON_TYPE.INTEGER  
+        ?  cast( double )( jv.integer )
+        
+        :  jv.type == JSON_TYPE.UINTEGER
+        ?  cast( double )( jv.uinteger )
+
+        :  jv.type == JSON_TYPE.NULL
+        ?  double.nan
+        
+        :  jv.floating
+        ;
+    }
+  else
+    {
+      return jv.type == JSON_TYPE.INTEGER  
+        ?  cast( double )( jv.integer )
+        
+        :  jv.type == JSON_TYPE.UINTEGER
+        ?  cast( double )( jv.uinteger )
+        
+        :  jv.floating
+        ;
+    }
 }
 
 long get_long_of_json( in JSONValue jv )
