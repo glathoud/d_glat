@@ -698,7 +698,7 @@ void _spit_d( T )( scope void delegate(const(char)[]) sink
     {
       sink( tab );
       auto new_i_data = i_data + dim[ $-1 ];
-      sink( format( "%(%+16.12g,%)\n", data[ i_data..new_i_data ] ) );
+      sink( format( "%(%+16.12g,%),\n", data[ i_data..new_i_data ] ) );
       i_data = new_i_data;
       return;
     }
