@@ -2,6 +2,7 @@ module d_glat.flatmatrix.lib_jsonbin;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import d_glat.core_gzip;
 import std.algorithm;
 import std.bitmanip;
 import std.conv;
@@ -87,10 +88,23 @@ struct JsonBinT( T )
   JSONValue _j;
 };
 
-JsonBinT!T jsonbin_of_filename( T = double )( in string filename )
+enum JsonbinCompress { yes, no, automatic };
+
+JsonBinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )( in string filename )
 {
   pragma( inline, true );
-  return jsonbin_of_chars!T( cast( char[] )( std.file.read( filename ) ) );
+
+  bool is_cprs = _get_is_cprs_of_filename!cprs( filename );
+  
+  if (is_cprs)
+    {
+      auto uncompressed_data = gunzip( cast( ubyte[] )( std.file.read( filename ) ) );
+      return jsonbin_of_ubytes!T( uncompressed_data );
+    }
+  else
+    {
+      return jsonbin_of_chars!T( cast( char[] )( std.file.read( filename ) ) );
+    }
 }
 
 JsonBinT!T jsonbin_of_ubytes( T = double )( in ubyte[] cdata ) pure
@@ -138,9 +152,15 @@ JsonBinT!T jsonbin_of_chars( T = double )( in char[] cdata ) pure
   return JsonBinT!T( j_str, m );      
 }
  
-void jsonbin_write_to_filename( in JsonBin jb, in string filename )
+void jsonbin_write_to_filename( JsonbinCompress cprs = JsonbinCompress.automatic )( in JsonBin jb, in string filename )
 {
-  std.file.write( filename, jb.toUbytes );
+  bool is_cprs = _get_is_cprs_of_filename!cprs( filename );
+
+  auto ubytes  = is_cprs
+    ?  gzip( jb.toUbytes )
+    :  jb.toUbytes;
+
+  std.file.write( filename, ubytes );
 }
 
 
@@ -166,10 +186,16 @@ unittest  // ------------------------------
       , baseName( __FILE__ )~".tmpfile4unittest.jsonbin."~to!string( Clock.currStdTime )
       );
 
-  writeln(tmp_filename);
+  immutable string tmp_filename_gz = tmp_filename~".gz";
 
-  if (exists( tmp_filename ))
-    std.file.remove( tmp_filename );
+  if (verbose)
+    {
+      writeln(tmp_filename);
+      writeln(tmp_filename_gz);
+    }
+
+  if (exists( tmp_filename ))    std.file.remove( tmp_filename );
+  if (exists( tmp_filename_gz )) std.file.remove( tmp_filename_gz );
   
   {
     immutable string j_str = `{abcd:1234,efgh:{xyz:"qrst"}}`;
@@ -224,9 +250,47 @@ unittest  // ------------------------------
 
   }
 
-  if (exists( tmp_filename ))
-    std.file.remove( tmp_filename );
+  {
+    immutable string j_str = `{abcd:1234,efgh:{xyz:"qrst"}}`;
+    auto m = Matrix( [ 0, 3 ]
+                     , [ 1.234, 2.3456, 20.123,
+                         17.123, -12.3, 0.0,
+                         5.0, 6.0, 7.0,
+                         8.0, 9.0, 11.0,
+                         -12.34, +2.65, -123.456
+                         ]
+                     );
+    const jb0 = JsonBin( j_str, m );
+
+    jsonbin_write_to_filename( jb0, tmp_filename_gz );
+    
+    auto jb1 = jsonbin_of_filename( tmp_filename_gz );
+
+    assert( jb0.j_str == jb1.j_str );
+    assert( jb0.m == jb1.m );
+
+    if (verbose)
+      {
+        writeln( jb0 );
+      }
+  }
+
+  {
+    assert( std.file.getSize( tmp_filename_gz ) < std.file.getSize( tmp_filename ) );
+  }
   
+  if (exists( tmp_filename ))    std.file.remove( tmp_filename );
+  if (exists( tmp_filename_gz )) std.file.remove( tmp_filename_gz );
   
   writeln( "unittest passed: "~__FILE__ );
+}
+
+private:
+
+bool _get_is_cprs_of_filename( JsonbinCompress cprs )( in string filename )
+{
+  pragma( inline, true );
+  return cprs == JsonbinCompress.automatic
+    ?  filename.endsWith( ".gz" )
+    :  cprs == JsonbinCompress.yes;
 }
