@@ -27,7 +27,6 @@ function doit {
     # rdmd --force -debug -g -gs -gf -gx -link-defaultlib-debug -inline -O --main -i -unittest $1
     # rdmd --force -debug -g -gs -gf -link-defaultlib-debug -inline -O --main -i -unittest $1
     rdmd --force -debug -g -gs -gf -link-defaultlib-debug --main -i -unittest $1
-    # /media/veracrypt3/bourse/ldc2_impl/bin/rdmd --force -debug -g -gs -gf -link-defaultlib-debug --main -i -unittest $1
 }
 export -f doit
 

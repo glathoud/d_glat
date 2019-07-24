@@ -8,7 +8,8 @@ module d_glat.core_file;
 
 import core.stdc.stdlib : exit;
 import std.conv : octal;
-import std.file : exists, getAttributes, isDir, isFile, mkdirRecurse;
+import std.datetime.systime : SysTime;
+import std.file : exists, getAttributes, getTimes, isDir, isFile, mkdirRecurse;
 import std.path : baseName, dirName;
 import std.stdio : stderr, writefln, writeln;
 
@@ -57,6 +58,17 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
       stderr.writefln( "Output: File already exists, but does not have user-write permission: %s", outfilename );
       exit( -1 );
     }
+}
+
+
+SysTime get_modification_time( in string filename )
+{
+  pragma( inline, true );
+
+  SysTime accessTime, modificationTime;
+  getTimes(filename, accessTime, modificationTime);
+
+  return modificationTime;
 }
 
 
