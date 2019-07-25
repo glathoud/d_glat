@@ -290,7 +290,9 @@ private:
 bool _get_is_cprs_of_filename( JsonbinCompress cprs )( in string filename )
 {
   pragma( inline, true );
-  return cprs == JsonbinCompress.automatic
-    ?  filename.endsWith( ".gz" )
-    :  cprs == JsonbinCompress.yes;
+
+  static if (cprs == JsonbinCompress.automatic)
+    return filename.endsWith( ".gz" );
+  else
+    return cprs == JsonbinCompress.yes;
 }
