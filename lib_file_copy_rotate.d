@@ -13,6 +13,7 @@ import std.array : array;
 import std.datetime;
 import std.datetime.systime;
 import std.file;
+import std.path : baseName;
 import std.range : enumerate;
 
 bool file_copy_rotate

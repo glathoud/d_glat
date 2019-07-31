@@ -31,7 +31,7 @@ MatrixT!T subset_row_unique
 ( in MatrixT!T m
   , in IgnoreIndex ignore_index = ignore_index_dflt )
 /*
-  Return a new matrix where duplicate rows have been eliminated.
+  Returns a new matrix where duplicate rows have been eliminated.
   
   If there are duplicate rows, keep only the last one.
   
@@ -40,6 +40,9 @@ MatrixT!T subset_row_unique
 {
   auto      m_data  = m.data;
   immutable restdim = m.restdim;
+
+  if (m_data.length < 1)
+    return m.clone;
   
   size_t[] compare_index_arr;
   foreach(i; 0..restdim)
