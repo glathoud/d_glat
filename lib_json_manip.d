@@ -143,6 +143,12 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 }
 
 
+bool json_equals( in ref JSONValue j0, in ref JSONValue j1 )
+{
+  pragma( inline, true );
+  return json_get_sorted_hash_material( j0 ) == json_get_sorted_hash_material( j1 );
+}
+
 
 
 
