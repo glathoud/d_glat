@@ -13,9 +13,9 @@ import std.range;
 import std.string : strip;
 import std.system;
 
-alias JsonBin = JsonBinT!double;
+alias Jsonbin = JsonbinT!double;
 
-struct JsonBinT( T )
+struct JsonbinT( T )
 {
   string    j_str;
   MatrixT!T m;
@@ -74,7 +74,7 @@ struct JsonBinT( T )
 
   // --- API: Operators overloading
 
-  bool opEquals( in JsonBinT!T other ) const pure nothrow @safe @nogc
+  bool opEquals( in JsonbinT!T other ) const pure nothrow @safe @nogc
   {
     pragma( inline, true );
 
@@ -90,7 +90,7 @@ struct JsonBinT( T )
 
 enum JsonbinCompress { yes, no, automatic };
 
-JsonBinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )( in string filename )
+JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )( in string filename )
 {
   pragma( inline, true );
 
@@ -107,14 +107,14 @@ JsonBinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompre
     }
 }
 
-JsonBinT!T jsonbin_of_ubytes( T = double )( in ubyte[] cdata ) pure
+JsonbinT!T jsonbin_of_ubytes( T = double )( in ubyte[] cdata ) pure
 {
   pragma( inline, true );
   return jsonbin_of_chars!T( cast( char[] )( cdata ) );
 }
 
 
-JsonBinT!T jsonbin_of_chars( T = double )( in char[] cdata ) pure
+JsonbinT!T jsonbin_of_chars( T = double )( in char[] cdata ) pure
 {
   immutable i     = cdata.countUntil( '\n' );
   immutable j_str = cdata[ 0..i ].idup;
@@ -149,10 +149,10 @@ JsonBinT!T jsonbin_of_chars( T = double )( in char[] cdata ) pure
   
   auto m = MatrixT!T( dim, data );
   
-  return JsonBinT!T( j_str, m );      
+  return JsonbinT!T( j_str, m );      
 }
  
-void jsonbin_write_to_filename( JsonbinCompress cprs = JsonbinCompress.automatic )( in JsonBin jb, in string filename )
+void jsonbin_write_to_filename( JsonbinCompress cprs = JsonbinCompress.automatic )( in Jsonbin jb, in string filename )
 {
   bool is_cprs = _get_is_cprs_of_filename!cprs( filename );
 
@@ -207,7 +207,7 @@ unittest  // ------------------------------
                          -12.34, +2.65, -123.456
                          ]
                      );
-    const jb0 = JsonBin( j_str, m );
+    const jb0 = Jsonbin( j_str, m );
 
     const ubytes = jb0.toUbytes();
 
@@ -234,7 +234,7 @@ unittest  // ------------------------------
                          -12.34, +2.65, -123.456
                          ]
                      );
-    const jb0 = JsonBin( j_str, m );
+    const jb0 = Jsonbin( j_str, m );
 
     jsonbin_write_to_filename( jb0, tmp_filename );
     
@@ -260,7 +260,7 @@ unittest  // ------------------------------
                          -12.34, +2.65, -123.456
                          ]
                      );
-    const jb0 = JsonBin( j_str, m );
+    const jb0 = Jsonbin( j_str, m );
 
     jsonbin_write_to_filename( jb0, tmp_filename_gz );
     
