@@ -27,7 +27,7 @@ MatrixT!T subset_row_unique_of_sorted_matrix( T )
 
 
 MatrixT!T subset_row_unique
-( bool sorted = false, T )
+( bool sorted = false, bool keep_first = false, T )
 ( in MatrixT!T m
   , in IgnoreIndex ignore_index = ignore_index_dflt )
 /*
@@ -59,6 +59,8 @@ MatrixT!T subset_row_unique
     , j = 0, next_j = restdim, j_end = m_data.length - restdim;
 
   auto x = m_data[ 0..next_j ];
+
+  immutable last_rowind = m.nrow - 1;
   
   while (j < j_end)
     {
@@ -93,8 +95,22 @@ MatrixT!T subset_row_unique
             }
         }
 
-      if (!equal)
-        rowind_app.put( rowind );
+      static if (keep_first)
+        {
+          if (!equal)
+            {
+              if (0 < rowind)
+                rowind_app.put( rowind - 1 );
+
+              if (last_rowind == rowind)
+                rowind_app.put( rowind );
+            }
+        }
+      else
+        {
+          if (!equal)
+            rowind_app.put( rowind );
+        }
       
       ++rowind;
       j      = next_j;
@@ -102,7 +118,8 @@ MatrixT!T subset_row_unique
       x      = next_x;
     }
 
-  rowind_app.put( rowind );
+  static if (!keep_first)
+    rowind_app.put( rowind );
   
   return subset_row( m, rowind_app.data );
 }

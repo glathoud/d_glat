@@ -12,6 +12,7 @@ module d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_static;
 import std.algorithm : max, sort;
+import std.array : appender;
 import std.conv : to;
 import std.format : format;
 import std.math;
@@ -112,7 +113,7 @@ struct MatrixT( T )
       }
     else
       {
-        assert( sub_total == data.length, "Fails to verify: sub_total == data.length" );
+        assert( sub_total == data.length, "Fails to verify: sub_total == data.length (sub_total: "~to!string(sub_total)~", data.length: "~to!string(data.length)~")" );
       }
   }
 
@@ -161,6 +162,14 @@ struct MatrixT( T )
       &&  this.data == other.data;
   }
 
+  string toString() const
+  {
+    auto app = appender!(char[]);
+    this.toString( (carr) { foreach (c; carr) app.put( c ); } );
+    return app.data.idup;
+  }
+
+  
   void toString(scope void delegate(const(char)[]) sink) const
   {
     sink( format( "Matrix(%s):[\n", dim ) );
@@ -453,6 +462,41 @@ void dot_inplace_YT( T )( in ref MatrixT!T X, in ref MatrixT!T YT
 
 
 
+T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
+{
+  pragma( inline, true );
+  T[] ret = new T[ X.nrow ];
+  extract_ind_inplace!T( X, ind, ret );
+  return ret;
+}
+
+void extract_ind_inplace( T )
+  ( in MatrixT!T X, in size_t ind
+    , ref T[] ret ) pure nothrow @safe @nogc
+{
+  pragma( inline, true );
+  immutable rd = X.restdim;
+  debug
+    {
+      assert( 0 <= ind );
+      assert( ind < rd );
+      assert( ret.length == X.nrow );
+    }
+
+  auto data = X.data;
+  immutable i_end = data.length;
+  
+  for (size_t i = ind, j = 0;
+       i < i_end;
+       i+=rd, ++j)
+    {
+      ret[ j ] = data[ i ];
+    }
+}
+
+
+
+
 void interleave_inplace( T )( in MatrixT!T[] m_arr
                               , ref MatrixT!T m_out )
 @safe
@@ -698,7 +742,7 @@ void _spit_d( T )( scope void delegate(const(char)[]) sink
     {
       sink( tab );
       auto new_i_data = i_data + dim[ $-1 ];
-      sink( format( "%(%+16.12g,%),\n", data[ i_data..new_i_data ] ) );
+      sink( format( "%(%+17.14g,%),\n", data[ i_data..new_i_data ] ) );
       i_data = new_i_data;
       return;
     }

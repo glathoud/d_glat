@@ -16,6 +16,15 @@ import std.file;
 import std.path : baseName;
 import std.range : enumerate;
 
+string[] file_copy_fetch
+(string prefix = ".save-")
+  ( in string filename )
+{
+  immutable fipr = filename~prefix;
+
+  return dirSA( fipr~'*' ).sort.array;
+}
+
 bool file_copy_rotate
 ( string   units = "weeks"
   , size_t[] max_interval_arr = [1,2,4,8,16,32]
