@@ -11,11 +11,12 @@ module d_glat.flatmatrix.core_matrix;
 */
 
 import d_glat.core_static;
-import std.algorithm : max, sort;
+import std.algorithm : map, max, sort;
 import std.array : appender;
 import std.conv : to;
 import std.format : format;
 import std.math;
+import std.range : enumerate;
 
 immutable double numeric_epsilon = 2.220446049250313e-16;
 
@@ -162,21 +163,22 @@ struct MatrixT( T )
       &&  this.data == other.data;
   }
 
-  string toString() const
+  string toString(alias transform_fun = false)() const
   {
     auto app = appender!(char[]);
-    this.toString( (carr) { foreach (c; carr) app.put( c ); } );
+    this.toString!transform_fun( (carr) { foreach (c; carr) app.put( c ); } );
     return app.data.idup;
   }
 
   
-  void toString(scope void delegate(const(char)[]) sink) const
+  void toString(alias transform_fun = false)
+    (scope void delegate(const(char)[]) sink) const
   {
     sink( format( "Matrix(%s):[\n", dim ) );
 
     immutable tab = "  ";
     
-    _spit_d!T( sink, tab, dim, data );
+    _spit_d!(transform_fun,T)( sink, tab, dim, data );
     
     sink( "]\n" );
   }
@@ -631,6 +633,30 @@ MatrixT!T rep( T )( in size_t[] dim, in T v ) pure nothrow @safe
 }
 
 
+MatrixT!T subset_row_filter( alias filter_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      if (filter_fun( row_ind, row ))
+        app.put( row );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
 
 MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
 {
@@ -713,17 +739,19 @@ void transpose_inplace( T )( in ref MatrixT!T A
 
 private: // ------------------------------
 
-void _spit_d( T )( scope void delegate(const(char)[]) sink
+void _spit_d( alias transform_fun, T )
+  ( scope void delegate(const(char)[]) sink
                    , in string tab
                    , in ref size_t[] dim
                    , in ref T[] data
                    )
 {
   size_t i_data;
-  _spit_d!T( sink, tab, dim, data, 0, i_data );
+  _spit_d!(transform_fun, T)( sink, tab, dim, data, 0, i_data );
 }
   
-void _spit_d( T )( scope void delegate(const(char)[]) sink
+void _spit_d( alias transform_fun, T )
+  ( scope void delegate(const(char)[]) sink
                    , in string tab
                    , in ref size_t[] dim
                    , in ref T[] data
@@ -742,7 +770,20 @@ void _spit_d( T )( scope void delegate(const(char)[]) sink
     {
       sink( tab );
       auto new_i_data = i_data + dim[ $-1 ];
-      sink( format( "%(%+17.14g,%),\n", data[ i_data..new_i_data ] ) );
+
+      static if (is(typeof(transform_fun) == bool))
+        {
+          sink( format( "%(%+17.14g,%),\n", data[ i_data..new_i_data ] ) );
+        }
+      else
+        {
+          sink( format( "%(%17s,%),\n"
+                        , data[ i_data..new_i_data ]
+                        .enumerate
+                        .map!( x => transform_fun
+                               ( i_dim, i_data, x.index, x.value ) ) ) );  
+        }
+      
       i_data = new_i_data;
       return;
     }
@@ -752,7 +793,7 @@ void _spit_d( T )( scope void delegate(const(char)[]) sink
 
   immutable d = dim[ i_dim ];
   foreach (_; 0..d)
-    _spit_d!T( sink, tab, dim, data, i_dim + 1, i_data );
+    _spit_d!(transform_fun,T)( sink, tab, dim, data, i_dim + 1, i_data );
 }
 
 
