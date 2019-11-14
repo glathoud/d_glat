@@ -633,6 +633,50 @@ MatrixT!T rep( T )( in size_t[] dim, in T v ) pure nothrow @safe
 }
 
 
+MatrixT!T row_map(alias map_fun, T)( in MatrixT!T A )
+{
+  auto ret = A.clone;
+
+  void map_fun_inplace
+    ( in size_t row_ind, in T[] in_arr, ref T[] out_arr )
+  {
+    out_arr[] = map_fun( row_ind, in_arr );
+  }
+  
+  row_map_inplace!(map_fun_inplace,T)( A, ret );
+  return ret;
+}
+
+MatrixT!T row_map_inplace( alias map_fun_inplace, T )
+( in MatrixT!T A, ref MatrixT!T ret )
+{
+  debug
+    {
+      assert( A.dim == ret.dim );
+      assert( A.data.length == ret.data.length );
+    }
+  
+  immutable rd = A.restdim;
+
+  auto   A_data = A.data;
+  auto ret_data = ret.data;
+  immutable data_length = A_data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      map_fun_inplace( row_ind, A_data[ i..i_next ]
+                       , ret_data[ i..i_next ] );
+      
+      i = i_next;
+    }
+
+  return ret;
+}
+
+
+
 MatrixT!T subset_row_filter( alias filter_fun, T )(in MatrixT!T A )
 {
   auto app = appender!(T[]);
@@ -656,6 +700,86 @@ MatrixT!T subset_row_filter( alias filter_fun, T )(in MatrixT!T A )
   
   return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
 }
+
+MatrixT!T subset_row_filter_map
+( alias filter_fun, alias map_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      if (filter_fun( row_ind, row ))
+        app.put( map_fun( row_ind, row ) );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+
+MatrixT!T subset_row_mapfilter
+( alias mapfilter_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      auto tmp = mapfilter_fun( row_ind, row );
+      if (0 < tmp.length)
+        app.put( tmp );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+MatrixT!T subset_row_map_filter
+( alias map_fun, alias filter_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      auto tmp = map_fun( row_ind, row );
+      if (filter_fun( row_ind, tmp ))
+        app.put( tmp );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+
 
 
 MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
@@ -1142,6 +1266,7 @@ unittest  // ------------------------------
                            ) );
     }
 
+    xxx.add_tests_for_row_map_filter_etc;
     
   writeln( "unittest passed: "~__FILE__ );
 }
