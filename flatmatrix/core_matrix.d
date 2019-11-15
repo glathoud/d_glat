@@ -1274,7 +1274,7 @@ unittest  // ------------------------------
       tmp = tmp[ 3..$ ];
     
     assert( subset_row_mapfilter!mapfilter_inplace_fun_1( A )
-            == Matrix( [ 0, 3 ], tmp ) 
+            == Matrix( [ 0, 3 ], tmp )
             );
   }
 
