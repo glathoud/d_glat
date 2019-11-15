@@ -1,8 +1,5 @@
 module d_glat.flatmatrix.lib_gmm;
 
-// xxx
-import d_oa_common.core_unittest;
-
 /*
   Gaussian Mixture Model (GMM).  
 
@@ -21,7 +18,7 @@ public import d_glat.flatmatrix.lib_matrix;
 import d_glat.core_math;
 import d_glat.core_static;
 import d_glat.flatmatrix.lib_stat;
-import std.algorithm : any,max;
+import std.algorithm : max;
 import std.array : array;
 import std.conv : to;
 import std.format : format;
@@ -138,7 +135,7 @@ struct GmmT( T )
   }
 
   void setSingle( in ref Matrix m_feature )
-  // xxx    nothrow @safe
+    nothrow @safe
   {
     // Single group
     auto group_arr = [ iota( 0, m_feature.nrow ).array ];
@@ -149,7 +146,7 @@ struct GmmT( T )
   void setOfGroupArr( in ref Matrix m_feature
                       , in ref size_t[][] group_arr
                       )
-  // xxx    nothrow @safe
+    nothrow @safe
   {
     n   = group_arr.length;
     dim = m_feature.restdim;
@@ -166,13 +163,11 @@ struct GmmT( T )
           ( /*Inputs:*/  m_feature, /*subset:*/group
             /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
 
-        bool success = true;
-        
         if (fallback_zero_var)
-          success = _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ] );
-
-        if (success)
-          success = inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ] );
+          _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ] );
+        
+        bool success =
+          inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ] );
 
         if (!success)
           {
@@ -253,8 +248,8 @@ struct GmmT( T )
 }
 
 
-bool _do_fallback_zero_var_if_necessary( T )( MatrixT!T m )
-// xxx  nothrow @safe
+void _do_fallback_zero_var_if_necessary( T )( MatrixT!T m )
+  nothrow @safe
 {
   pragma( inline, true );
 
@@ -290,33 +285,11 @@ bool _do_fallback_zero_var_if_necessary( T )( MatrixT!T m )
       T fallback_var = fallback_factor
         * median_inplace( nonzero_var_arr[ 0..i_nonzero ] );
 
-      if (isNaN( fallback_var ))
-        return false;
-      
-      debug
-        {
-          if (!isNaN( fallback_var )
-              &&  !(nonzero_var_arr[ 0..i_nonzero ].any!isNaN))
-            {              
-              if (!(fallback_var > 0))
-                {
-                  // xxx
-                  mixin(_wr!`fallback_var`);
-                  mixin(_wr!`fallback_factor`);
-                  mixin(_wr!`median_inplace( nonzero_var_arr[ 0..i_nonzero ] )`);
-                  mixin(_wr!`nonzero_var_arr[ 0..i_nonzero ]`);
-                  mixin(_wr!`i_nonzero`);
-                }
-              
-              assert( fallback_var > 0 );
-            }
-        }
+      debug assert( fallback_var > 0 );
 
       foreach (j; zero_j_arr)
         data[ j ] = fallback_var;
     }
-
-  return true;
 }
 
 

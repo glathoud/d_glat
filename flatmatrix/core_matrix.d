@@ -255,19 +255,19 @@ MatrixT!T clone( T )( in MatrixT!T X ) pure nothrow @safe
 }
 
 /*
-  Implementation note about *_inplace functions: I opted for a `void`
-  return type to lean towards best performance while retaining the
-  simplicity of a `struct` (no `new` keyword and above all simplistic
-  memory management).
+Implementation note about *_inplace functions: I opted for a `void`
+return type to lean towards best performance while retaining the
+simplicity of a `struct` (no `new` keyword and above all simplistic
+memory management).
 
-  The alternative would be `return ret;` but then for best performance
-  we'd need a class `class Matrix` (instead of a struct), which might
-  increase the use of the Garbage Collector.
+The alternative would be `return ret;` but then for best performance
+we'd need a class `class Matrix` (instead of a struct), which might
+increase the use of the Garbage Collector.
 
-  (Feel free to correct me if this analysis is wrong).
+(Feel free to correct me if I am wrong).
 */
 
-void clone_inplace( T )
+  void clone_inplace( T )
   ( in ref MatrixT!T X
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
@@ -501,7 +501,7 @@ void extract_ind_inplace( T )
 
 void interleave_inplace( T )( in MatrixT!T[] m_arr
                               , ref MatrixT!T m_out )
-  @safe
+@safe
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
   auto first_dim = m_arr[ 0 ].dim;
@@ -592,7 +592,7 @@ void sort_inplace( T )( ref MatrixT!T m )
 
 private void _check_dim_match( in size_t i
                                , in size_t[] da, in size_t[] db )
-  @safe
+@safe
 {
   
   // Special case: [4, 1] matches [4]
@@ -633,6 +633,155 @@ MatrixT!T rep( T )( in size_t[] dim, in T v ) pure nothrow @safe
 }
 
 
+MatrixT!T row_map(alias map_fun, T)( in MatrixT!T A )
+{
+  auto ret = A.clone;
+
+  void map_fun_inplace
+    ( in size_t row_ind, in T[] in_arr, ref T[] out_arr )
+  {
+    out_arr[] = map_fun( row_ind, in_arr );
+  }
+  
+  row_map_inplace!(map_fun_inplace,T)( A, ret );
+  return ret;
+}
+
+MatrixT!T row_map_inplace( alias map_fun_inplace, T )
+( in MatrixT!T A, ref MatrixT!T ret )
+{
+  debug
+    {
+      assert( A.dim == ret.dim );
+      assert( A.data.length == ret.data.length );
+    }
+  
+  immutable rd = A.restdim;
+
+  auto   A_data = A.data;
+  auto ret_data = ret.data;
+  immutable data_length = A_data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      map_fun_inplace( row_ind, A_data[ i..i_next ]
+                       , ret_data[ i..i_next ] );
+      
+      i = i_next;
+    }
+
+  return ret;
+}
+
+
+
+MatrixT!T subset_row_filter( alias filter_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      if (filter_fun( row_ind, row ))
+        app.put( row );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+MatrixT!T subset_row_filter_map
+( alias filter_fun, alias map_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      if (filter_fun( row_ind, row ))
+        app.put( map_fun( row_ind, row ) );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+
+MatrixT!T subset_row_mapfilter
+( alias mapfilter_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      auto tmp = mapfilter_fun( row_ind, row );
+      if (0 < tmp.length)
+        app.put( tmp );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+MatrixT!T subset_row_map_filter
+( alias map_fun, alias filter_fun, T )(in MatrixT!T A )
+{
+  auto app = appender!(T[]);
+
+  immutable rd = A.restdim;
+
+  auto data = A.data;
+  immutable data_length = data.length;
+  
+  for (size_t i = 0, row_ind = 0; i < data_length; ++row_ind)
+    {
+      immutable i_next = i + rd;
+
+      auto row = data[ i..i_next ];
+
+      auto tmp = map_fun( row_ind, row );
+      if (filter_fun( row_ind, tmp ))
+        app.put( tmp );
+      
+      i = i_next;
+    }
+  
+  return Matrix( [ 0UL ] ~ A.dim[ 1..$ ], app.data );
+}
+
+
+
+
 MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
 {
   immutable new_nrow = row_arr.length;
@@ -645,7 +794,7 @@ MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @s
 }
 
 void subset_row_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
-                              , ref MatrixT!T B ) pure nothrow @safe @nogc 
+                          , ref MatrixT!T B ) pure nothrow @safe @nogc 
 {
   debug
     {
@@ -670,87 +819,6 @@ void subset_row_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
       iB = next_iB;
     }
 }
-
-
-MatrixT!T subset_row_filter
-( alias filter_fun, T )( in MatrixT!T A )
-{
-  bool mapfilter_inplace_fun( in size_t row_ind
-                              , in T[] in_row
-                              , ref T[] out_row
-                              )
-  {
-    immutable ret = filter_fun( row_ind, in_row );
-
-    if (ret)
-      out_row[] = in_row[];
-
-    return ret;
-  }
-  
-  return subset_row_mapfilter!mapfilter_inplace_fun( A );
-}
-
-
-MatrixT!T subset_row_mapfilter
-( alias mapfilter_inplace_fun, T )(in MatrixT!T A )
-/*
-  bool mapfilter_inplace_fun( row_ind, A_row, ret_row ))
-
-  - false: filter out the row `row_ind` (i.e. do nothing).
-
-  - true: keep and map `A_row`, new value written in `ret_row`.
-*/
-{
-  auto ret = A.clone;
-  
-  immutable rd = A.restdim;
-
-  auto   A_data = A.data;
-  auto ret_data = ret.data;
-  
-  immutable A_data_length = A_data.length;
-
-  size_t i_ret = 0;
-
-  {
-    size_t i_ret_next = i_ret + rd;
-    T[] ret_row = ret_data[ i_ret..i_ret_next ];
-    
-    for (size_t i_A = 0 , row_ind = 0;
-         i_A < A_data_length;
-         ++row_ind)
-      {
-        immutable i_A_next = i_A + rd;
-        
-        auto A_row = A_data[ i_A..i_A_next ];
-        
-        if (mapfilter_inplace_fun( row_ind, A_row, ret_row ))
-          {
-            // Prepare next iteration: next output row
-            i_ret       = i_ret_next;
-            i_ret_next += rd;
-            ret_row     = ret_data[ i_ret..i_ret_next ];
-          }
-        
-        i_A = i_A_next;
-      }
-  }
-
-  /* Truncate in a single step. This way we spare ourselves an
-     appender, and `mapfilter_inplace_fun` can be @nogc
-  */
-  ret = Matrix( [ 0UL ]~ret.dim[ 1..$ ]
-                , ret_data[ 0..i_ret ]
-                );
-
-  return ret;
-}
-
-
-
-
-
 
 
 
@@ -797,10 +865,10 @@ private: // ------------------------------
 
 void _spit_d( alias transform_fun, T )
   ( scope void delegate(const(char)[]) sink
-    , in string tab
-    , in ref size_t[] dim
-    , in ref T[] data
-    )
+                   , in string tab
+                   , in ref size_t[] dim
+                   , in ref T[] data
+                   )
 {
   size_t i_data;
   _spit_d!(transform_fun, T)( sink, tab, dim, data, 0, i_data );
@@ -808,13 +876,13 @@ void _spit_d( alias transform_fun, T )
   
 void _spit_d( alias transform_fun, T )
   ( scope void delegate(const(char)[]) sink
-    , in string tab
-    , in ref size_t[] dim
-    , in ref T[] data
-    , in size_t i_dim
+                   , in string tab
+                   , in ref size_t[] dim
+                   , in ref T[] data
+                   , in size_t i_dim
 
-    , ref size_t i_data
-    )
+                   , ref size_t i_data
+                   )
 {
   immutable  dim_length = dim.length;
   immutable data_length = data.length;
@@ -845,7 +913,7 @@ void _spit_d( alias transform_fun, T )
     }
 
   if (i_dim + 2 == dim_length)
-    sink( "\n" );
+      sink( "\n" );
 
   immutable d = dim[ i_dim ];
   foreach (_; 0..d)
@@ -868,16 +936,16 @@ string _direct_code( in string fname, in string op ) pure
                           , ref Matrix RET
                           ) pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+      pragma( inline, true );
       
-    debug
-      {
-        assert( A.dim == B.dim );
-        assert( A.dim == RET.dim );
-      }
+      debug
+        {
+          assert( A.dim == B.dim );
+          assert( A.dim == RET.dim );
+        }
       
-    RET.data[] = A.data[] `~op~` B.data[];
-  }
+      RET.data[] = A.data[] `~op~` B.data[];
+    }
   `;
 }
 
@@ -1145,145 +1213,12 @@ unittest  // ------------------------------
                        ));
   }
 
-
-  {
-    auto A = Matrix( [0, 3]
-                     , [ 1.0, 2.0, 3.0,
-                         4.0, 5.0, 6.0,
-                         7.0, 8.0, 9.0,
-                         10.0, 11.0, 12.0,
-                         13.0, 14.0, 15.0 ] );
-
-    bool filter_fun_0( in size_t ind, in double[] row )
-      pure nothrow @safe @nogc
-    {
-      pragma( inline, true );
-      return row[ 0 ] % 2 == 0;
-    }
-
-    assert( subset_row_filter!filter_fun_0( A )
-            == Matrix( [ 0, 3 ]
-                       , [ // 1.0, 2.0, 3.0,
-                          4.0, 5.0, 6.0,
-                          // 7.0, 8.0, 9.0,
-                          10.0, 11.0, 12.0,
-                          // 13.0, 14.0, 15.0
-                           ] )
-            );
-  }
-
-
-  {
-    auto A = Matrix( [0, 3]
-                     , [ 1.0, 2.0, 3.0,
-                         4.0, 5.0, 6.0,
-                         7.0, 8.0, 9.0,
-                         10.0, 11.0, 12.0,
-                         13.0, 14.0, 15.0 ] );
-    
-    bool filter_fun_1( in size_t ind, in double[] row )
-      pure nothrow @safe @nogc
-    {
-      pragma( inline, true );
-      return row[ 0 ] % 2 != 0;
-    }
-
-    assert( subset_row_filter!filter_fun_1( A )
-            == Matrix( [ 0, 3 ]
-                       , [ 1.0, 2.0, 3.0,
-                          // 4.0, 5.0, 6.0,
-                          7.0, 8.0, 9.0,
-                          // 10.0, 11.0, 12.0,
-                          13.0, 14.0, 15.0
-                           ] )
-            );
-  }
-
   
-  {
-    // filter, then map, in one step
-    
-    auto A = Matrix( [0, 3]
-                     , [ 1.0, 2.0, 3.0,
-                         4.0, 5.0, 6.0,
-                         7.0, 8.0, 9.0,
-                         10.0, 11.0, 12.0,
-                         13.0, 14.0, 15.0 ] );
 
-    bool mapfilter_inplace_fun_0
-      ( in size_t ind, in double[] in_row, ref double[] out_row )
-      pure nothrow @safe @nogc
     {
-      pragma( inline, true );
-      if (in_row[ 0 ] % 2 == 0)
-        {
-          out_row[] = 7.0 * in_row[] + 0.1234;
-          return true;
-        }
-
-      return false;
-    }
-
-    double[] tmp = [ 4.0, 5.0, 6.0,
-                     // 7.0, 8.0, 9.0,
-                     10.0, 11.0, 12.0,
-                     // 13.0, 14.0, 15.0
-                     ];
-    tmp[] = 7.0 * tmp[] + 0.1234;
-    
-    assert( subset_row_mapfilter!mapfilter_inplace_fun_0( A )
-            == Matrix( [ 0, 3 ], tmp )
-            );
-  }
-
-
-  {
-    // map, then filter, in one step
-    
-    auto A = Matrix( [0, 3]
-                     , [ 1.0, 2.0, 3.0,
-                         4.0, 5.0, 6.0,
-                         7.0, 8.0, 9.0,
-                         10.0, 11.0, 12.0,
-                         13.0, 14.0, 15.0 ] );
-
-    bool mapfilter_inplace_fun_1
-      ( in size_t ind, in double[] in_row, ref double[] out_row )
-      pure nothrow @safe @nogc
-    {
-      pragma( inline, true );
-
-      out_row[] = 7.0 * in_row[] + 0.1234;
-
-      if (out_row[ 0 ] > 50.0)
-        {
-          return true;
-        }
-
-      return false;
-    }
-
-    double[] tmp = [ 4.0, 5.0, 6.0,
-                     7.0, 8.0, 9.0,
-                     10.0, 11.0, 12.0,
-                     13.0, 14.0, 15.0
-                     ];
-    tmp[] = 7.0 * tmp[] + 0.1234;
-
-    while (tmp[ 0 ] <= 50.0)
-      tmp = tmp[ 3..$ ];
-    
-    assert( subset_row_mapfilter!mapfilter_inplace_fun_1( A )
-            == Matrix( [ 0, 3 ], tmp )
-            );
-  }
-
-
-
-  {
-    auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
-                               4.0, 5.0, 6.0 ]
-                     );
+      auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                                 4.0, 5.0, 6.0 ]
+                       );
 
     assert( transpose( A )
             == Matrix( [3, 2], [ 1.0, 4.0,
@@ -1292,44 +1227,46 @@ unittest  // ------------------------------
             );
   } 
 
-  {
-    auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
-                               4.0, 5.0, 6.0 ]
-                     );
-
-    Matrix f( ref Matrix a )
     {
-      Matrix q = a;
-      return q;
+      auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                                 4.0, 5.0, 6.0 ]
+                       );
+
+      Matrix f( ref Matrix a )
+      {
+        Matrix q = a;
+        return q;
+      }
+
+      auto B = f(A);
+      A.data[] = 0.0;
+
+      assert( A == B );
+      assert( A.data == B.data );
     }
 
-    auto B = f(A);
-    A.data[] = 0.0;
+    {
+      auto A = Matrix( [0, 4],
+                       [
+                        1.0, 2.0, 4.0, 10.0,
+                        1.0, 8.0, 19.0, 11.0,
+                        1.0, 3.0, 7.0, 2.0,
+                        1.0, 3.0, 4.0, 8.0
+                        ]
+                       );
+      sort_inplace( A );
 
-    assert( A == B );
-    assert( A.data == B.data );
-  }
+      assert( A == Matrix( [0, 4],
+                       [
+                        1.0, 2.0, 4.0, 10.0,
+                        1.0, 3.0, 4.0, 8.0,
+                        1.0, 3.0, 7.0, 2.0,
+                        1.0, 8.0, 19.0, 11.0
+                        ]
+                           ) );
+    }
 
-  {
-    auto A = Matrix( [0, 4],
-                     [
-                      1.0, 2.0, 4.0, 10.0,
-                      1.0, 8.0, 19.0, 11.0,
-                      1.0, 3.0, 7.0, 2.0,
-                      1.0, 3.0, 4.0, 8.0
-                      ]
-                     );
-    sort_inplace( A );
-
-    assert( A == Matrix( [0, 4],
-                         [
-                          1.0, 2.0, 4.0, 10.0,
-                          1.0, 3.0, 4.0, 8.0,
-                          1.0, 3.0, 7.0, 2.0,
-                          1.0, 8.0, 19.0, 11.0
-                          ]
-                         ) );
-  }
-
+    xxx.add_tests_for_row_map_filter_etc;
+    
   writeln( "unittest passed: "~__FILE__ );
 }
