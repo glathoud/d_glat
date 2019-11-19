@@ -730,7 +730,9 @@ MatrixT!T subset_row_mapfilter
             // Prepare next iteration: next output row
             i_ret       = i_ret_next;
             i_ret_next += rd;
-            ret_row     = ret_data[ i_ret..i_ret_next ];
+            
+            if (i_ret < A_data_length)
+              ret_row     = ret_data[ i_ret..i_ret_next ];
           }
         
         i_A = i_A_next;
@@ -1199,6 +1201,55 @@ unittest  // ------------------------------
             );
   }
 
+  
+  {
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+    
+    bool filter_fun_2( in size_t ind, in double[] row )
+      pure nothrow @safe @nogc
+    {
+      pragma( inline, true );
+      return true;
+    }
+
+    assert( subset_row_filter!filter_fun_2( A )
+            == Matrix( [ 0, 3 ]
+                       , [ 1.0, 2.0, 3.0,
+                           4.0, 5.0, 6.0,
+                           7.0, 8.0, 9.0,
+                           10.0, 11.0, 12.0,
+                           13.0, 14.0, 15.0
+                           ] )
+            );
+  }
+
+  
+  {
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+    
+    bool filter_fun_3( in size_t ind, in double[] row )
+      pure nothrow @safe @nogc
+    {
+      pragma( inline, true );
+      return false;
+    }
+
+    assert( subset_row_filter!filter_fun_3( A )
+            == Matrix( [ 0, 3 ]
+                       , [ ] )
+            );
+  }
+  
   
   {
     // filter, then map, in one step

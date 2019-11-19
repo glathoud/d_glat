@@ -79,6 +79,8 @@ unittest
 {
   import std.path;
 
+  immutable verbose = false;
+  
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
@@ -159,5 +161,38 @@ unittest
 
   }
 
+
+  {
+    string[] input = [ "AAAA", "BBBB", "CCCC", "DDDD" ];
+    auto output = aa_ind_of_array( input );
+
+    size_t[string] expected_output = ["AAAA": 0, "BBBB": 1, "CCCC": 2, "DDDD": 3];
+    
+    if (verbose)
+      {
+        writeln( "input ", input );
+        writeln( "output ", output );
+      }
+    
+    assert( output == expected_output );
+  }
+
+  {
+    string[] input = [ "AAAA", "BBBB", "CCCC", "DDDD" ];
+    auto output = aaimm_ind_of_array( input );
+
+    size_t[string] expected_output_0 = ["AAAA": 0, "BBBB": 1, "CCCC": 2, "DDDD": 3];
+    auto expected_output = cast( immutable( size_t[string] ) )( expected_output_0 );
+        
+    if (verbose)
+      {
+        writeln( "input ", input );
+        writeln( "output ", output );
+      }
+    
+    assert( output == expected_output );
+  }
+
+  
   writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
