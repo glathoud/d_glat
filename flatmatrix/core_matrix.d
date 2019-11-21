@@ -713,6 +713,7 @@ MatrixT!T subset_row_mapfilter
 
   size_t i_ret = 0;
 
+  if (0 < A_data_length)
   {
     size_t i_ret_next = i_ret + rd;
     T[] ret_row = ret_data[ i_ret..i_ret_next ];
@@ -1325,6 +1326,39 @@ unittest  // ------------------------------
       tmp = tmp[ 3..$ ];
     
     assert( subset_row_mapfilter!mapfilter_inplace_fun_1( A )
+            == Matrix( [ 0, 3 ], tmp )  
+            );
+  }
+
+
+
+  
+
+  {
+    // map, then filter, in one step
+    
+    auto A = Matrix( [0, 3]
+                     , [] );
+
+    bool mapfilter_inplace_fun_2
+      ( in size_t ind, in double[] in_row, ref double[] out_row )
+      pure nothrow @safe @nogc
+    {
+      pragma( inline, true );
+
+      out_row[] = 7.0 * in_row[] + 0.1234;
+
+      if (out_row[ 0 ] > 50.0)
+        {
+          return true;
+        }
+
+      return false;
+    }
+
+    double[] tmp = [];
+    
+    assert( subset_row_mapfilter!mapfilter_inplace_fun_2( A )
             == Matrix( [ 0, 3 ], tmp )  
             );
   }
