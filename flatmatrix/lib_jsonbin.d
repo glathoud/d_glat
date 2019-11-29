@@ -2,6 +2,16 @@ module d_glat.flatmatrix.lib_jsonbin;
 
 public import d_glat.flatmatrix.core_matrix;
 
+/*
+  Jsonbin wrapper around a flat matrix: one metadata JSON string +
+  the data itself as a flat matrix computations.
+  
+  By Guillaume Lathoud, 2019
+  glat@glat.info
+  
+  Boost Software License version 1.0, see ../LICENSE
+*/
+
 import d_glat.core_gzip;
 import d_glat.lib_file_copy_rotate;
 import std.algorithm;
@@ -17,11 +27,35 @@ import std.system;
 
 alias Jsonbin = JsonbinT!double;
 
-struct JsonbinT( T )
+/*
+  Implementation note: we preferred here a `class` over a `struct`
+  to better deal with the following use case: parallel processing
+  of big data chunks (e.g. 100MB or 300MB).
+
+  As of 2019-11, using a class in that use case led to unnecessarily
+  high usage of memory, including *after* the usage (sort of
+  "stable" memory leak), at least with LDC 1.10. This is probably
+  due to the compiler optimization keeping some local storage
+  for the `struct` created innerhalb from each function.
+
+  Guillaume Lathoud
+*/
+
+class JsonbinT( T )
 {
   string    j_str;
   MatrixT!T m;
 
+  // --- API: constructor
+
+  this() { } // empty init
+  
+  this( in string j_str, MatrixT!T m )
+    {
+      this.j_str = j_str;
+      this.m     = m;
+    }
+  
   // --- API: methods
   
   bool isEmpty() const @safe pure nothrow
@@ -30,15 +64,9 @@ struct JsonbinT( T )
   }
 
   
-  JSONValue j() @safe pure 
+  JSONValue j() const @safe pure 
   {
-    if (!_j_str_parsed)
-      {
-        _j_str_parsed = true;
-        _j = parseJSON( j_str );
-      }
-  
-    return _j;
+    return parseJSON( j_str );
   }
   
   ubyte[] toUbytes() const pure @trusted
@@ -71,7 +99,9 @@ struct JsonbinT( T )
           app.put( ubytes );
         }
   
-      return app.data;
+      auto ret = app.data;
+      app.clear;
+      return ret;
     }
 
   // --- API: Operators overloading
@@ -84,10 +114,6 @@ struct JsonbinT( T )
       &&  this.m == other.m;
   }
 
-  
- private:
-  bool      _j_str_parsed = false;
-  JSONValue _j;
 };
 
 enum JsonbinCompress { yes, no, automatic };
@@ -234,7 +260,7 @@ JsonbinT!T jsonbin_of_chars( T = double )( in char[] cdata
   if (0 != rest.length % T.sizeof)
     {
       error_msg = "corrupt or truncated data, cannot cast or peek, detail: endian == Endian.littleEndian: "~to!string( endian == Endian.littleEndian );
-      return JsonbinT!T();
+      return new JsonbinT!T();
     }
   
   if (endian == Endian.littleEndian)
@@ -255,12 +281,12 @@ JsonbinT!T jsonbin_of_chars( T = double )( in char[] cdata
       error_msg = "invalid data.length "~to!string(data.length)
         ~", does not match dim "~to!string(dim)
         ~", typically from a corrupt/truncated file";
-      return JsonbinT!T();
+      return new JsonbinT!T();
     }
   
   auto m = MatrixT!T( dim, data );
   
-  return JsonbinT!T( j_str, m );      
+  return new JsonbinT!T( j_str, m );      
 }
  
 void jsonbin_write_to_filename( JsonbinCompress cprs = JsonbinCompress.automatic )( in Jsonbin jb, in string filename )
@@ -318,7 +344,7 @@ unittest  // ------------------------------
                          -12.34, +2.65, -123.456
                          ]
                      );
-    const jb0 = Jsonbin( j_str, m );
+    const jb0 = new Jsonbin( j_str, m );
 
     const ubytes = jb0.toUbytes();
 
@@ -345,7 +371,7 @@ unittest  // ------------------------------
                          -12.34, +2.65, -123.456
                          ]
                      );
-    const jb0 = Jsonbin( j_str, m );
+    const jb0 = new Jsonbin( j_str, m );
 
     jsonbin_write_to_filename( jb0, tmp_filename );
     
@@ -371,7 +397,7 @@ unittest  // ------------------------------
                          -12.34, +2.65, -123.456
                          ]
                      );
-    const jb0 = Jsonbin( j_str, m );
+    const jb0 = new Jsonbin( j_str, m );
 
     jsonbin_write_to_filename( jb0, tmp_filename_gz );
     
@@ -399,6 +425,7 @@ unittest  // ------------------------------
 private:
 
 bool _get_is_cprs_of_filename( JsonbinCompress cprs )( in string filename )
+  pure nothrow @safe @nogc
 {
   pragma( inline, true );
 

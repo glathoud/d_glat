@@ -15,13 +15,19 @@ module d_glat.flatmatrix.lib_matrix;
 public import d_glat.flatmatrix.core_matrix;
 
 import core.exception : RangeError;
-import d_glat.core_static;
+import d_glat.core_array;
 import std.algorithm : all;
 import std.math : abs, isFinite;
 
 
-T det( T )( in ref MatrixT!T m )
-  nothrow @safe
+alias Buffer_det = Buffer_detT!double;
+class Buffer_detT(T) { T[] A, temp; }
+
+
+T det( T )( in ref MatrixT!T m
+            , ref Buffer_detT!T buffer
+            )
+  pure nothrow @safe
 {
   pragma( inline, true );
 
@@ -33,11 +39,14 @@ T det( T )( in ref MatrixT!T m )
       assert( n == m.ncol );
     }
 
-  mixin(static_array_code(`A`,`T`,`n*n`));
+  auto A = buffer.A;
+  auto temp = buffer.temp;
+
+  ensure_length( n*n, A );
+  ensure_length( n, temp );
+
   A[] = m.data[];
-  
-  mixin(static_array_code(`temp`,`T`,`n`));
-  
+    
   // Implementation adapted from numeric.js
 
   T ret = cast( T )( 1.0 ), alpha;
@@ -101,30 +110,41 @@ T det( T )( in ref MatrixT!T m )
 
 MatrixT!T inv( T )( in MatrixT!T m )
 // Functional wrapper around `inv_inplace_dim`
-nothrow @safe
+pure nothrow @safe
 {
   pragma( inline, true );
 
   Matrix m_inv;
-  inv_inplace_dim!T( m, m_inv );
+  auto buffer = new Buffer_inv_inplaceT!T;
+  
+  inv_inplace_dim!T( m, m_inv, buffer );
   return m_inv;
 }
 
 bool inv_inplace_dim( T )( in ref MatrixT!T m
-                              , ref MatrixT!T m_inv )
+                           , ref MatrixT!T m_inv
+                           , ref Buffer_inv_inplaceT!T buffer
+                           ) pure nothrow @safe
 /*
   Returns `true` if the inversion was successful (result in `m_inv`),
   `false` otherwise.
 */
-  nothrow @safe
 {
   pragma( inline, true );
   m_inv.setDim( [m.nrow, m.nrow] );
-  return inv_inplace!T( m, m_inv );
+  return inv_inplace!T( m, m_inv, buffer );
 }
 
-bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
-  nothrow @trusted
+alias Buffer_inv_inplace = Buffer_inv_inplaceT!double;
+class Buffer_inv_inplaceT(T)
+{
+  T[]    A_flat, B_flat, B_flat_init;
+  T[][]  A, B, A_init, B_init;
+}
+
+bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
+                       , ref Buffer_inv_inplaceT!T buffer
+                       ) pure nothrow @trusted
 {
   pragma( inline, true );
 
@@ -145,9 +165,15 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv )
       // Implementation note: for matrix inversion it is faster to work in
       // 2-D the whole time, probably because of faster row swaps.
   
-      static size_t sI, sJ;
-      static T[]    A_flat, B_flat, B_flat_init;
-      static T[][]  A, B, A_init, B_init;
+      size_t sI, sJ;
+
+      auto A_flat = buffer.A_flat;
+      auto B_flat = buffer.B_flat;
+      auto B_flat_init = buffer.B_flat_init;
+      auto A = buffer.A;
+      auto B = buffer.B;
+      auto A_init = buffer.A_init;
+      auto B_init = buffer.B_init;
 
       if (sI != I  ||  sJ != J)
         {
@@ -352,6 +378,10 @@ unittest  // ------------------------------
     ( [ 6, 6 ]
       , [ -0.268769457224, 0.54990342013, -1.2461483692, 0.177661640135, 0.613666691691, 0.803511914233, -1.39627802534, 0.600368561678, 0.0189455364223, -1.30596472448, 1.03924546357, 1.7886984715, 4.76124504743, 0.43115330184, 1.0113608562, 1.27429115596, -4.13492692713, -4.42441039661, 0.688652451123, -0.756875780723, 0.383001646342, 0.146456550437, 0.44977007184, -0.949183213116, -5.02184309165, -0.990874570291, -1.22691500269, -1.05309921408, 4.33628511425, 5.78701714979, 1.13155848719, 0.0529748345784, 1.27169927481, 1.02969457212, -1.39399452088, -2.31765641514, ] );
   immutable m3_det_truth = 0.117622046234;
+
+  auto buffer_det = new Buffer_det;
+  auto buffer_inv_inplace = new Buffer_inv_inplace;
+
   
   {
     if (verbose)
@@ -367,13 +397,13 @@ unittest  // ------------------------------
        // 9053872
        */
 
-    auto d = det( m );
+    auto d = det( m, buffer_det );
     assert( approxEqual( 9053872.0, d, 1e-10, 1e-10 ) );
 
-    auto d2 = det( m2 );
+    auto d2 = det( m2, buffer_det );
     assert( approxEqual( 0.062664340664, d2, 1e-10, 1e-10 ) );
 
-    auto d3 = det( m3 );
+    auto d3 = det( m3, buffer_det );
     assert( approxEqual( 0.117622046234, d3, 1e-10, 1e-10 ) );
 
     if (verbose)
@@ -388,7 +418,7 @@ unittest  // ------------------------------
     auto a = Matrix( [4, 4], 123.0 );
     Matrix b;
 
-    bool success = inv_inplace_dim( a, b );
+    bool success = inv_inplace_dim( a, b, buffer_inv_inplace );
 
     assert( !success );
     assert( b.dim == [4, 4] );
@@ -401,7 +431,7 @@ unittest  // ------------------------------
 
     Matrix m_inv;
     
-    bool success = inv_inplace_dim( m, m_inv );
+    bool success = inv_inplace_dim( m, m_inv, buffer_inv_inplace );
 
     assert( success );
     assert( m_inv.dim == [4, 4] );
@@ -410,8 +440,9 @@ unittest  // ------------------------------
   }
 
 
-  // Redo matrix inversion stuff with the same dimension, to make sure
-  // the static caches are not messed up
+  // Redo matrix inversion stuff with the same dimension, to make
+  // sure that having already used buffers does not mess up the
+  // computation.
 
   
   {
@@ -421,7 +452,7 @@ unittest  // ------------------------------
     auto a = Matrix( [4, 4], 123.0 );
     Matrix b;
 
-    bool success = inv_inplace_dim( a, b );
+    bool success = inv_inplace_dim( a, b, buffer_inv_inplace );
 
     assert( !success );
     assert( b.dim == [4, 4] );
@@ -433,8 +464,8 @@ unittest  // ------------------------------
       writeln( " // ---------- Make sure inversion works" );
 
     Matrix m_inv;
-    
-    bool success = inv_inplace_dim( m, m_inv );
+
+    bool success = inv_inplace_dim( m, m_inv, buffer_inv_inplace );
 
     assert( success );
     assert( m_inv.dim == [4, 4] );

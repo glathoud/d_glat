@@ -11,26 +11,27 @@ module d_glat.flatmatrix.lib_nmvpca;
 
 public import d_glat.flatmatrix.core_matrix;
 
-import d_glat.core_static;
+import d_glat.core_array;
 import d_glat.flatmatrix.lib_nmv;
 import d_glat.flatmatrix.lib_stat;
 import d_glat.flatmatrix.lib_svd;
 import std.algorithm : any;
 import std.math : isNaN, sqrt;
 
-Matrix nmvpca( in Matrix a ) @safe
+Matrix nmvpca( in Matrix a ) pure nothrow @safe
 // Functional wrapper around `nmvpca_inplace`.
 // Returns a new matrix.
 {
   pragma( inline, true );
 
   auto b = Matrix( a.dim );
-  nmvpca_inplace( a, b );
+  auto buffer = new Buffer_nmvpca_inplace;
+  nmvpca_inplace( a, b, buffer );
   return b;
 }
 
 bool nmvpca_inplace_dim( in ref Matrix a, ref Matrix b )
-  nothrow @safe
+pure nothrow @safe
 // Wrapper around `nmvpca_inplace`, calls `b.setDim(a.dim)`
 // Returns `true` if PCA successful, `false` otherwise.
 // In the latter case `b` will be filled with NaNs.
@@ -38,13 +39,27 @@ bool nmvpca_inplace_dim( in ref Matrix a, ref Matrix b )
   pragma( inline, true );
 
   b.setDim( a.dim );
-  return nmvpca_inplace( a, b );
+  auto buffer = new Buffer_nmvpca_inplace;
+  return nmvpca_inplace( a, b, buffer );
 }
 
 
+class Buffer_nmvpca_inplace
+{
+  Matrix a_nmv, sigma;
+  SvdResult svd_res;
+  Buffer_nmv_inplace b_nmv;
+
+  this() pure nothrow @safe
+    {
+      b_nmv = new Buffer_nmv_inplace;
+    }
+}
+
 bool nmvpca_inplace( in ref Matrix a
                      , ref Matrix b
-                     ) nothrow @safe
+                     , ref Buffer_nmvpca_inplace buffer
+                     ) pure nothrow @safe
 /*
   Compute the PCA-projected data `b` out of `normalized(a)`
   (mean and variance normalization).
@@ -67,10 +82,13 @@ bool nmvpca_inplace( in ref Matrix a
       assert( b.data.length == mtn );
     }
 
+  auto a_nmv   = buffer.a_nmv;
+  auto sigma   = buffer.sigma;
+  auto svd_res = buffer.svd_res;
+  
   // Normalize mean and variance
 
-  static Matrix a_nmv;
-  nmv_inplace_dim( a, a_nmv );
+  nmv_inplace_dim( a, a_nmv, buffer.b_nmv );
   
   auto a_nmv_data = a_nmv.data;
   
@@ -78,7 +96,6 @@ bool nmvpca_inplace( in ref Matrix a
   // 
   // Pseudocode: sigma := dot( transpose( a_nmv ), a_nmv )
   
-  static Matrix sigma;
   sigma.setDim( [n, n] );
 
   auto sigma_data = sigma.data;
@@ -127,7 +144,6 @@ bool nmvpca_inplace( in ref Matrix a
 
   // Apply the SVD to get the new space
 
-  static SvdResult svd_res;
   svd_res.setDim( n, n );
 
   auto converged = svd_inplace( sigma, svd_res );
@@ -157,6 +173,8 @@ unittest  // --------------------------------------------------
   writeln( "unittest starts: "~__FILE__ );
 
   immutable verbose = false;
+
+  auto buffer = new Buffer_nmvpca_inplace;
   
   {
     auto a = Matrix( [ 100, 2 ] );
@@ -175,7 +193,7 @@ unittest  // --------------------------------------------------
     auto b = nmvpca( a );
 
     auto c = Matrix( a.dim );
-    auto success = nmvpca_inplace( a, c );
+    auto success = nmvpca_inplace( a, c, buffer );
 
     if (verbose)
       {
@@ -220,7 +238,7 @@ unittest  // --------------------------------------------------
     auto b = nmvpca( a );
 
     auto c = Matrix( a.dim );
-    auto success = nmvpca_inplace( a, c );
+    auto success = nmvpca_inplace( a, c, buffer );
 
     assert(all!isNaN( b.data ));
     assert(all!isNaN( c.data ));

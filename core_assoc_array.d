@@ -47,7 +47,9 @@ string aa_pretty( T )( in T aa )
 {
   auto app = appender!(string[]);
   aa_pretty_inplace( aa, "", app );
-  return app.data.join( "\n" );
+  auto ret = app.data.join( "\n" );
+  app.clear;
+  return ret;
 }
 
 void aa_pretty_inplace( T )

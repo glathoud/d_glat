@@ -152,6 +152,9 @@ body
         ind_arr       =       ind_app.data;
         deltatime_arr = deltatime_app.data;
     }
+
+  ind_app.clear;
+  deltatime_app.clear;
 }
 
 unittest

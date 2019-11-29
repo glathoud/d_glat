@@ -13,8 +13,6 @@ module d_glat.flatmatrix.lib_stat;
 
 public import d_glat.flatmatrix.core_matrix;
 
-import d_glat.core_static;
-
 void mean_inplace( T )( in ref MatrixT!T m
                         , ref MatrixT!T m_mean )
 pure nothrow @safe @nogc
@@ -342,17 +340,6 @@ void mean_var_inplace
   else
     var[] /= cast( double )( m.dim[ 0 ] );
 }
-
-
-void var_inplace( T )( in ref MatrixT!T m,  ref MatrixT!T m_var )
-  /*!pure*/ nothrow @safe /*!@nogc*/
-{
-  static MatrixT!T m_mean;
-  m_mean.setDim( m_var.dim );
-
-  mean_var_inplace!T( m, m_mean, m_var );
-}
-
 
 
 

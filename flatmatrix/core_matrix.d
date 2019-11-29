@@ -10,7 +10,7 @@ module d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
-import d_glat.core_static;
+import d_glat.core_array;
 import std.algorithm : map, max, sort;
 import std.array : appender;
 import std.conv : to;
@@ -23,7 +23,7 @@ immutable double numeric_epsilon = 2.220446049250313e-16;
 struct MatrixT( T )
 {
   size_t[] dim;
-
+  
   /*
     `data`: length should be == the product of dim values
     
@@ -155,19 +155,21 @@ struct MatrixT( T )
   
   // --- API: Operators overloading
 
-  bool opEquals( in Matrix other ) const pure nothrow @safe @nogc
+  bool opEquals( in MatrixT!T other ) const pure nothrow @safe @nogc
   {
     pragma( inline, true );
-
+    
     return this.dim == other.dim
       &&  this.data == other.data;
   }
-
+  
   string toString(alias transform_fun = false)() const
   {
     auto app = appender!(char[]);
     this.toString!transform_fun( (carr) { foreach (c; carr) app.put( c ); } );
-    return app.data.idup;
+    auto ret = app.data.idup;
+    app.clear;
+    return ret;
   }
 
   
@@ -279,7 +281,7 @@ void clone_inplace( T )
 
 MatrixT!T diag( T )( in T[] x ) pure nothrow @safe
 {
-  MatrixT!T ret = MatrixT!T( [ x.length, x.length ], 0 );
+  auto ret = MatrixT!T( [ x.length, x.length ], 0 );
   diag_inplace!T( x, ret );
   return ret;
 }
@@ -500,8 +502,9 @@ void extract_ind_inplace( T )
 
 
 void interleave_inplace( T )( in MatrixT!T[] m_arr
-                              , ref MatrixT!T m_out )
-  @safe
+                              , ref MatrixT!T m_out
+                              , ref size_t[] buffer )
+pure @safe
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
   auto first_dim = m_arr[ 0 ].dim;
@@ -535,8 +538,9 @@ void interleave_inplace( T )( in MatrixT!T[] m_arr
   size_t i_out = 0;
   size_t i_end = m_out_data.length;
 
-  mixin(static_array_code(`i_in_arr`, `size_t`, `m_arr.length`));
-  i_in_arr[] = 0;
+  ensure_length( m_arr.length, buffer );
+  
+  buffer[] = 0;
   
   while (i_out < i_end)
     {
@@ -546,13 +550,13 @@ void interleave_inplace( T )( in MatrixT!T[] m_arr
 
           auto next_i_out = i_out + rd;
 
-          auto i_in = i_in_arr[ i_m ];
+          auto i_in = buffer[ i_m ];
           auto next_i_in = i_in + rd;
                       
           m_out_data[ i_out..next_i_out ][] =
             m.data[ i_in..next_i_in ][];
 
-          i_in_arr[ i_m ] = next_i_in;
+          buffer[ i_m ] = next_i_in;
           i_out = next_i_out;
         }
     }
@@ -565,7 +569,7 @@ void sort_inplace( T )( ref MatrixT!T m )
   auto data  = m.data;
   immutable n = data.length / restdim;
 
-  auto c_arr = new double[][]( n, restdim );
+  auto c_arr = new double[][](n);
   {
     for (size_t i = 0, j = 0; i < n; ++i)
       {
@@ -672,6 +676,50 @@ void subset_row_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
 }
 
 
+void subset_row_filter_inplace
+(alias filter_fun, T)( ref MatrixT!T A )
+/* in-place variant of `subset_row_filter`
+   Might be interesting to spare memory.
+ */
+{
+  immutable rd = A.restdim;
+
+  auto      A_data        = A.data;
+  immutable A_data_length = A_data.length;
+
+  size_t j = 0;
+  {
+    double[] row;
+    for (size_t i = 0, row_ind = 0; i < A_data_length; ++row_ind )
+    {
+      immutable i_next = i + rd;
+
+      row = A_data[ i..i_next ];
+
+      if (filter_fun( row_ind, row ))
+        {
+          immutable j_next = j + rd;
+          if (j < i)
+            {
+              // in-place copy
+              A_data[ j..j_next ][] = row[];
+            }
+          j = j_next;
+        }
+
+      i = i_next;
+    }
+  }
+  
+  /* Truncate in a single step. This way we spare ourselves an
+     appender, and `mapfilter_inplace_fun` can be @nogc
+  */
+  A = Matrix( [ 0UL ]~A.dim[ 1..$ ]
+                , A_data[ 0..j ]
+              );
+}
+
+
 MatrixT!T subset_row_filter
 ( alias filter_fun, T )( in MatrixT!T A )
 {
@@ -744,9 +792,9 @@ MatrixT!T subset_row_mapfilter
      appender, and `mapfilter_inplace_fun` can be @nogc
   */
   ret = Matrix( [ 0UL ]~ret.dim[ 1..$ ]
-                , ret_data[ 0..i_ret ]
-                );
-
+                    , ret_data[ 0..i_ret ]
+                    );
+  
   return ret;
 }
 
@@ -894,20 +942,34 @@ unittest  // ------------------------------
 
   writeln;
   writeln( "unittest starts: "~__FILE__ );
-
+  stdout.flush;
+  
+  immutable verbose = false;
+  
+  size_t[] buffer;
+  
   {
     // Automatic dimension (at most one `0` value).
-    assert( Matrix( [ 2, 0 ]
-                    , [ 1.0, 2.0, 3.0, 4.0,
-                        5.0, 6.0, 7.0, 8.0 ]
-                    )
-            == Matrix( [ 2, 4 ]
-                       , [ 1.0, 2.0, 3.0, 4.0,
-                           5.0, 6.0, 7.0, 8.0 ]
-                       )
-            );
-  }
+    auto A = Matrix( [ 2, 0 ]
+                        , [ 1.0, 2.0, 3.0, 4.0,
+                            5.0, 6.0, 7.0, 8.0 ]
+                         );
 
+    auto B = Matrix( [ 2, 4 ]
+                           , [ 1.0, 2.0, 3.0, 4.0,
+                               5.0, 6.0, 7.0, 8.0 ]
+                         );
+
+    if (verbose)
+      {
+        writeln( "A: ", A );
+        writeln( "B: ", B );
+        stdout.flush;
+      }
+
+    assert( A == B );
+  }
+  
   {
     // Automatic dimension (at most one `0` value).
     assert( Matrix( [ 0, 4 ]
@@ -915,9 +977,9 @@ unittest  // ------------------------------
                         5.0, 6.0, 7.0, 8.0 ]
                     )
             == Matrix( [ 2, 4 ]
-                       , [ 1.0, 2.0, 3.0, 4.0,
-                           5.0, 6.0, 7.0, 8.0 ]
-                       )
+                           , [ 1.0, 2.0, 3.0, 4.0,
+                               5.0, 6.0, 7.0, 8.0 ]
+                           )
             );
   }
 
@@ -1058,6 +1120,12 @@ unittest  // ------------------------------
             );
   }
 
+  if (verbose)
+    {
+      stdout.writeln("core_matrix unittest #30");
+      stdout.flush;
+    }
+
 
   {
     auto A = Matrix( [ 4, 1 ], [ 0.1,
@@ -1071,7 +1139,7 @@ unittest  // ------------------------------
                                  10, 11, 12 ] );
     Matrix C;
 
-    interleave_inplace( [ A, B, A ], C );
+    interleave_inplace( [ A, B, A ], C, buffer );
 
     assert( C == Matrix
             ([4, 5]
@@ -1095,7 +1163,7 @@ unittest  // ------------------------------
                                  10, 11, 12 ] );
     Matrix C;
 
-    interleave_inplace( [ A, B, A ], C );
+    interleave_inplace( [ A, B, A ], C, buffer );
 
     assert( C == Matrix
             ([4, 5]
@@ -1118,8 +1186,8 @@ unittest  // ------------------------------
                                  7, 8, 9,
                                  10, 11, 12 ] );
     Matrix C;
-
-    interleave_inplace( [ A, B, A ], C );
+    
+    interleave_inplace( [ A, B, A ], C, buffer );
 
     assert( C == Matrix
             ([4, 7]
@@ -1148,6 +1216,11 @@ unittest  // ------------------------------
                        ));
   }
 
+  if (verbose)
+    {
+      stdout.writeln("core_matrix unittest #60");
+      stdout.flush;
+    }
 
   {
     auto A = Matrix( [0, 3]
@@ -1251,7 +1324,12 @@ unittest  // ------------------------------
             );
   }
   
-  
+  if (verbose)
+    {
+      stdout.writeln("core_matrix unittest #100");
+      stdout.flush;
+    }
+
   {
     // filter, then map, in one step
     
@@ -1377,11 +1455,17 @@ unittest  // ------------------------------
             );
   } 
 
+  if (verbose)
+    {
+      stdout.writeln("core_matrix unittest #123");
+      stdout.flush;
+    }
+  
   {
     auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
-                               4.0, 5.0, 6.0 ]
+                                   4.0, 5.0, 6.0 ]
                      );
-
+    
     Matrix f( ref Matrix a )
     {
       Matrix q = a;
@@ -1392,7 +1476,27 @@ unittest  // ------------------------------
     A.data[] = 0.0;
 
     assert( A == B );
+    assert( A.dim == B.dim );
     assert( A.data == B.data );
+  }
+
+  {
+    auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                               4.0, 5.0, 6.0 ]
+                     );
+    
+    Matrix fclone( ref Matrix a )
+    {
+      Matrix q = a.clone;
+      return q;
+    }
+
+    auto B = fclone(A);
+    A.data[] = 0.0;
+
+    assert( A != B );
+    assert( A.dim == B.dim );
+    assert( A.data != B.data );
   }
 
   {

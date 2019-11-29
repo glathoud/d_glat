@@ -67,9 +67,9 @@ abstract class SExpr
     { id = _sexpr_id++; }
   
   // For convenience, esp. for `maybe_check_fun`
-  bool isEmpty() pure const @property @safe @nogc { return false; }
-  bool isAtom()  pure const @property @safe @nogc { return false; }
-  bool isList()  pure const @property @safe @nogc { return false; }
+  bool isEmpty() pure const nothrow @property @safe @nogc { return false; }
+  bool isAtom()  pure const nothrow @property @safe @nogc { return false; }
+  bool isList()  pure const nothrow @property @safe @nogc { return false; }
                                      
   abstract bool firstEquals( in string a ) pure const @safe @nogc;
   override abstract string toString()  pure const @safe @nogc;
@@ -84,7 +84,7 @@ abstract class SExpr
 
 class SEmpty : SExpr
 {
-  override bool isEmpty() pure const @property @safe @nogc
+  override bool isEmpty() pure const nothrow @property @safe @nogc
   { return true; }
   
   override bool firstEquals( in string a ) const pure @safe @nogc
@@ -100,7 +100,7 @@ class SEmpty : SExpr
 
 class SAtom : SExpr
 {
-  override bool isAtom() pure const @property @safe @nogc
+  override bool isAtom() pure const nothrow @property @safe @nogc
   { return true; }
     
   immutable string v;
@@ -128,7 +128,7 @@ class SAtom : SExpr
 
 class SList : SExpr
 {
-  override bool isList() @property pure const @safe @nogc
+  override bool isList() @property pure const nothrow @safe @nogc
   { return true; }
     
   const SExpr   first;

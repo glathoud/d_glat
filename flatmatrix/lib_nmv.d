@@ -11,28 +11,38 @@ module d_glat.flatmatrix.lib_nmv;
 
 public import d_glat.flatmatrix.core_matrix;
 
-import d_glat.core_static;
+import d_glat.core_array;
 import d_glat.flatmatrix.lib_stat;
 import std.math;
 
+alias Buffer_nmv_inplace = Buffer_nmv_inplaceT!double;
+class Buffer_nmv_inplaceT(T)
+{
+  MatrixT!T m_mean, m_var;
+  T[] std_arr;
+}
+
 void nmv_inplace_dim( T )( in ref MatrixT!T a
                            , ref MatrixT!T b
+                           , ref Buffer_nmv_inplaceT!T buffer
                            )
-  nothrow @safe
+  pure nothrow @safe
 {
   pragma( inline, true );
 
   b.setDim( a.dim );
-  
-  static MatrixT!T m_mean, m_var;
 
+  auto  std_arr = buffer.std_arr;
+  auto  m_mean  = buffer.m_mean;
+  auto  m_var   = buffer.m_var;
+  
   mean_var_inplace_dim( a, m_mean, m_var );
 
   auto mean_arr = m_mean.data;
   immutable restdim = mean_arr.length;
 
-  mixin(static_array_code(`std_arr`, `T`, `restdim`));
-
+  ensure_length( restdim, std_arr );
+  
   foreach (i,x; m_var.data)
     std_arr[ i ] = sqrt( x );
 
@@ -65,51 +75,53 @@ unittest  // ------------------------------
   writeln( "unittest starts: "~__FILE__ );
 
   immutable verbose = false;
+
+  auto buffer_nmv_inplace = new Buffer_nmv_inplace;
   
   {
-  auto A = Matrix( [ 5, 2 ], [ 1.0, 10.0,
-    2.0, 15.0,
-    3.0, 20.0,
-    4.0, 25.0,
-    5.0, 30.0,
-    ]);
+    auto A = Matrix( [ 5, 2 ], [ 1.0, 10.0,
+                                 2.0, 15.0,
+                                 3.0, 20.0,
+                                 4.0, 25.0,
+                                 5.0, 30.0,
+                                 ]);
 
-  auto B = Matrix();
+    auto B = Matrix();
 
-  nmv_inplace_dim( A, B );
+    nmv_inplace_dim( A, B, buffer_nmv_inplace );
 
-  if (verbose)
-    {
-  writeln( "A: ", A );
-  writeln( "B: ", B );
-}
+    if (verbose)
+      {
+        writeln( "A: ", A );
+        writeln( "B: ", B );
+      }
 
-  Matrix m_mean, m_var;
+    Matrix m_mean, m_var;
 
-  mean_var_inplace_dim( A, m_mean, m_var );
+    mean_var_inplace_dim( A, m_mean, m_var );
 
-  if (verbose)
-    {
-  writeln( "m_mean: ", m_mean );
-  writeln( "m_var: ", m_var);
-}
+    if (verbose)
+      {
+        writeln( "m_mean: ", m_mean );
+        writeln( "m_var: ", m_var);
+      }
 
-  assert( m_mean.data.all!"!approxEqual( a, 0.0, 1e-10, 1e-10 )" );
-  assert( m_var .data.all!"!approxEqual( a, 1.0, 1e-10, 1e-10 )" );
+    assert( m_mean.data.all!"!approxEqual( a, 0.0, 1e-10, 1e-10 )" );
+    assert( m_var .data.all!"!approxEqual( a, 1.0, 1e-10, 1e-10 )" );
 
 
-  mean_var_inplace_dim( B, m_mean, m_var );
+    mean_var_inplace_dim( B, m_mean, m_var );
 
-  if (verbose)
-    {
-  writeln( "m_mean: ", m_mean );
-  writeln( "m_var: ", m_var);
-}
+    if (verbose)
+      {
+        writeln( "m_mean: ", m_mean );
+        writeln( "m_var: ", m_var);
+      }
 
-  assert( m_mean.data.all!"approxEqual( a, 0.0, 1e-10, 1e-10 )" );
-  assert( m_var .data.all!"approxEqual( a, 1.0, 1e-10, 1e-10 )" );
+    assert( m_mean.data.all!"approxEqual( a, 0.0, 1e-10, 1e-10 )" );
+    assert( m_var .data.all!"approxEqual( a, 1.0, 1e-10, 1e-10 )" );
   
-}
+  }
   
   writeln( "unittest passed: "~__FILE__ );
 }

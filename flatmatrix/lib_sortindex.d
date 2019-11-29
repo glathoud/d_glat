@@ -13,7 +13,7 @@ module d_glat.flatmatrix.lib_sortindex;
 public import d_glat.flatmatrix.core_matrix;
 
 import core.exception : AssertError;
-import d_glat.core_static : static_array_code;
+import d_glat.core_array : ensure_length;
 import std.algorithm : any, sort;
 import std.array : array;
 import std.conv : to;
@@ -21,47 +21,67 @@ import std.math : isNaN;
 import std.range : iota;
 import std.stdio;
 
-void sortindex_inplace_dim( T )( in ref MatrixT!T a
-                                 , ref MatrixT!T b )
-nothrow @safe
+alias Buffer_sortindex_inplace = Buffer_sortindex_inplaceT!double;
+class Buffer_sortindex_inplaceT(T)
 {
-  pragma( inline, true );
-
-  b.setDim( a.dim );
-  sortindex_inplace( a, b );
-}
-
-void sortindex_inplace( T )( in ref MatrixT!T a, ref MatrixT!T b )
-nothrow @safe
-{
-  pragma( inline, true );
-
-  b.data[] = a.data[];
-  sortindex_inplace( b );
+  int[] indices_init;
+  int[] index_arr;
+  T[] value_arr;
 }
 
 
-void sortindex_inplace( T )( ref MatrixT!T m )
-nothrow @safe
+void sortindex_inplace_dim( T )
+  ( in ref MatrixT!T a
+  , ref MatrixT!T b
+      , ref Buffer_sortindex_inplaceT!T buffer
+      )
+  pure nothrow @safe
 {
-  pragma( inline, true );
+pragma( inline, true );
 
-  immutable n       = m.dim[ 0 ];
-  immutable restdim = m.restdim;
+b.setDim( a.dim );
+sortindex_inplace( a, b, buffer );
+}
 
-  static int[] indices_init;
-  if (indices_init.length != n)
-    indices_init = iota( 0, cast( int )( n ) ).array;
+void sortindex_inplace( T )
+  ( in ref MatrixT!T a
+  , ref MatrixT!T b
+      , ref Buffer_sortindex_inplaceT!T buffer
+      )
+  pure nothrow @safe
+{
+pragma( inline, true );
 
-  mixin(static_array_code(`index_arr`,`int`,`n`));
-  mixin(static_array_code(`value_arr`,`T`,`n`));
+b.data[] = a.data[];
+sortindex_inplace( b, buffer);
+}
 
-  sortindex_inplace
-    (
-     indices_init, n, restdim, n*restdim
-     , index_arr, value_arr
-     , m
-     );
+
+void sortindex_inplace( T )( ref MatrixT!T m
+, ref Buffer_sortindex_inplaceT!T buffer)
+  pure nothrow @safe
+{
+pragma( inline, true );
+
+immutable n       = m.dim[ 0 ];
+immutable restdim = m.restdim;
+
+auto indices_init = buffer.indices_init;
+auto index_arr    = buffer.index_arr;
+auto value_arr    = buffer.value_arr;
+
+if (indices_init.length != n)
+  indices_init = iota( 0, cast( int )( n ) ).array;
+
+ensure_length( n, index_arr );
+ensure_length( n, value_arr );
+
+sortindex_inplace
+(
+indices_init, n, restdim, n*restdim
+  , index_arr, value_arr
+  , m
+  );
 }
 
 
@@ -69,91 +89,128 @@ nothrow @safe
 
 void sortindex_inplace( T )
   ( // inputs
-   in int[]    indices_init
-   , in size_t n
-   , in size_t restdim
-   , in size_t n_t_restdim
-   // intermediary buffers
-   , ref int[]    index_arr
-   , ref T[] value_arr
-   // input & output
-   , ref MatrixT!T m
+  in int[]    indices_init
+  , in size_t n
+    , in size_t restdim
+    , in size_t n_t_restdim
+    // intermediary buffers
+    , ref int[]    index_arr
+    , ref T[] value_arr
+    // input & output
+    , ref MatrixT!T m
     )
-pure nothrow @safe
+  pure nothrow @safe
 {
-  pragma( inline, true );
+pragma( inline, true );
 
-  debug
-    {
-      assert( 0 < n);
-      assert( 0 < restdim);
-      assert( n == indices_init.length);
-      assert( n == value_arr.length);
-      assert( n == m.dim[ 0 ]);
-      assert( restdim == m.restdim);
-      assert( n_t_restdim == n * restdim);
-    }
+debug
+{
+assert( 0 < n);
+assert( 0 < restdim);
+assert( n == indices_init.length);
+assert( n == value_arr.length);
+assert( n == m.dim[ 0 ]);
+assert( restdim == m.restdim);
+assert( n_t_restdim == n * restdim);
+}
 
-  auto data = m.data;
+auto data = m.data;
   
-  foreach (d; 0..restdim)
-    {
-      // Read
+foreach (d; 0..restdim)
+{
+// Read
       
-      index_arr[] = indices_init[];
+index_arr[] = indices_init[];
       
-      {
-        size_t i_data = d;
-        foreach (i_buff; 0..n)
-          {
-            T v = data[ i_data ];
-            static if (is( T == double )
-                       ||  is( T == float )
-                       ||  is( T == real ))
-              {
-                if (isNaN( v ))
-                  v = -T.infinity;
-              }
+{
+size_t i_data = d;
+foreach (i_buff; 0..n)
+{
+T v = data[ i_data ];
+static if (is( T == double )
+||  is( T == float )
+||  is( T == real ))
+  {
+if (isNaN( v ))
+  v = -T.infinity;
+}
             
-            value_arr[ i_buff ] = v;
-            i_data += restdim;
-          }
-      }
+value_arr[ i_buff ] = v;
+i_data += restdim;
+}
+}
       
-      // Modify
+// Modify
 
-      index_arr
-        .sort!((a,b) => value_arr[ a ] < value_arr[ b ]);
+index_arr
+.sort!((a,b) => value_arr[ a ] < value_arr[ b ]);
       
-      // Write
+// Write
       
-      {
-        foreach (i_buff; 0..n)
-          {
-            data[ d + index_arr[ i_buff ] * restdim ] =
-              cast( T )( i_buff );  // sortindex
-          }
-      }
+{
+foreach (i_buff; 0..n)
+{
+data[ d + index_arr[ i_buff ] * restdim ] =
+  cast( T )( i_buff );  // sortindex
+}
+}
       
-      debug
-        {
-          // check
-          foreach (i; 0..n)
-            {
-              immutable v_i = value_arr[ i ];
-              immutable sortindex_i
-                = data[ d + i * restdim ];
+debug
+{
+// check
+foreach (i; 0..n)
+{
+immutable v_i = value_arr[ i ];
+immutable sortindex_i
+= data[ d + i * restdim ];
               
-              foreach (j; (i+1)..n)
-                {
-                  immutable v_j = value_arr[ j ];
-                  immutable sortindex_j
-                    = data[ d + j * restdim ];
+foreach (j; (i+1)..n)
+{
+immutable v_j = value_arr[ j ];
+immutable sortindex_j
+= data[ d + j * restdim ];
                   
-                  if (v_i < v_j)
-                      assert( sortindex_i < sortindex_j );
-                }
-            }
-        }
-    }
+if (v_i < v_j)
+  assert( sortindex_i < sortindex_j );
+}
+}
+}
+}
+}
+
+
+unittest  // ------------------------------
+{
+import std.stdio;
+
+import std.algorithm;
+
+writeln;
+writeln( "unittest starts: "~__FILE__ );
+
+immutable verbose = true;
+
+auto buffer = new Buffer_sortindex_inplace;
+
+{
+auto a = Matrix( [ 0, 5 ]
+, [ 1.0,   2.0, 4.0,  8.0, 16.0,
+      7.0, 8.0, 9.0, 10.0, 11.0,
+      10.0, 9.0, 8.0, 7.0, 6.0 ] );
+
+Matrix b;
+
+sortindex_inplace_dim( a, b, buffer );
+
+assert( b == Matrix( [ 0, 5 ]
+, [ 0.0,   0.0, 0.0, 1.0, 2.0,
+      1.0, 1.0, 2.0, 2.0, 1.0,
+      2.0, 2.0, 1.0, 0.0, 0.0 ] ));
+
+
+  
+      
+}
+  
+writeln( "unittest passed: "~__FILE__ );
 }

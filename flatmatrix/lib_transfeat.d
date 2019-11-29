@@ -47,7 +47,7 @@ import d_glat.flatmatrix.lib_nmvpca;
 import d_glat.flatmatrix.lib_pairs;
 import d_glat.flatmatrix.lib_sortindex;
 import std.algorithm : map;
-import std.array : appender, array;
+import std.array : array;
 import std.conv : to;
 import std.exception : enforce;
 import std.stdio;
@@ -72,22 +72,24 @@ alias OneTransOfString = OneTransOfStringT!double;
 // You can add your own through `one_trans_of_string`.
 // Do not forget to call `b.setDim`
 void set_default_transformations( T )
-  ( ref OneTransOfStringT!T tmp )
+  ( ref OneTransOfStringT!T tmp ) pure nothrow @safe
 {
-  tmp[ "nmv" ] = ( ref a, ref b ) {
-    nmv_inplace_dim!T( a, b );
+  auto b_nmv = new Buffer_nmv_inplaceT!T;  
+  tmp[ "nmv" ] = ( ref a, ref b ) pure nothrow @safe {
+    nmv_inplace_dim!T( a, b, b_nmv );
   };
 
-  tmp[ "nmvpca" ] = ( ref a, ref b ) {
+  tmp[ "nmvpca" ] = ( ref a, ref b ) pure nothrow @safe {
       nmvpca_inplace_dim( a, b );
   };
 
-  tmp[ "pairs:a-b" ] = ( ref a, ref b ) {
+  tmp[ "pairs:a-b" ] = ( ref a, ref b ) pure nothrow @safe {
     pairs_inplace_dim!"a-b"( a, b );
   };
 
-  tmp[ "sortindex" ] = ( ref a, ref b ) {
-    sortindex_inplace_dim( a, b );
+  auto b_sortindex = new Buffer_sortindex_inplaceT!T;
+  tmp[ "sortindex" ] = ( ref a, ref b ) pure nothrow @safe {
+    sortindex_inplace_dim( a, b, b_sortindex );
   };
 
 }
@@ -110,13 +112,13 @@ struct TransfeatT( T )
       this( modif, one_trans_of_string );
     }
 
-  this( in string modif, in OneTransOfStringT!T one_trans_of_string )
+  this( in string modif, in OneTransOfStringT!T one_trans_of_string ) 
     {
       this( parse_sexpr( modif ), one_trans_of_string );
     }
 
 
-  this( in SExpr modif, in OneTransOfStringT!T one_trans_of_string )
+  this( in SExpr modif, in OneTransOfStringT!T one_trans_of_string ) 
     {
       this.modif = modif.idup;
 
@@ -159,7 +161,7 @@ struct TransfeatT( T )
   MaybeMatrix check_and_setup_modif( in SExpr one_modif
                                      , MaybeMatrix maybe_m_in
                                      , MaybeMatrix maybe_m_out
-                                     )
+                                     ) pure @trusted  
   {
     immutable id = one_modif.id;
 
@@ -256,6 +258,8 @@ struct TransfeatT( T )
     return maybe_m_out;
   }
 
+  private size_t[] b_sdad_interleave;
+  
   MaybeMatrix set_dim_and_do( in SExpr one_modif
                               , MaybeMatrix top_m_in
                               , MaybeMatrix top_m_out
@@ -348,7 +352,7 @@ struct TransfeatT( T )
               // Check the output dims and setDim on m_out
               // and concatenate row-by-row.
               
-              interleave_inplace( m_arr, *m_out );
+              interleave_inplace( m_arr, *m_out, b_sdad_interleave );
             }
           else if (fs == META_PIPE)
             {

@@ -20,16 +20,25 @@ MatrixT!T corr_one( T )( in MatrixT!T m_one, in MatrixT!T m_many )
 {
   pragma( inline, true );
 
-  auto m_corr = Matrix!T( [ 1, m_many.dim[ 1 ] ] );
+  auto m_corr = new Matrix!T( [ 1, m_many.dim[ 1 ] ] );
   corr_one_inplace!T( m_one, m_many, m_corr );
   return m_corr;
+}
+
+alias Buffer_corr_one_inplace = Buffer_corr_one_inplaceT!double;
+
+class Buffer_corr_one_inplaceT(T)
+{
+  MatrixT!T m_many_mean, m_many_var;
 }
 
 
 void corr_one_inplace( T )
   ( in   ref MatrixT!T m_one
     , in ref MatrixT!T m_many
-    ,    ref MatrixT!T m_corr) nothrow @safe
+    ,    ref MatrixT!T m_corr
+    ,    ref Buffer_corr_one_inplaceT!T buffer
+    ) pure nothrow @safe
 /*
   Corration of `m_one` (vector) with each dimension of `m_many`.
   In-place computations for speed.
@@ -53,8 +62,8 @@ void corr_one_inplace( T )
 
   immutable d = m_many.dim[ 1 ];
 
-  static MatrixT!T m_many_mean;
-  static MatrixT!T m_many_var;
+  auto m_many_mean = buffer.m_many_mean;
+  auto m_many_var  = buffer.m_many_var;
 
   m_many_mean.setDim( [ 1, d ] );
   m_many_var .setDim( [ 1, d ] );
@@ -237,6 +246,8 @@ unittest
   writeln;
   writeln( "unittest starts: "~__FILE__ );
 
+  auto buffer = new Buffer_corr_one_inplace;
+
   {
     // Noiseless data
     
@@ -257,7 +268,7 @@ unittest
     if (verbose) writeln("many: ", m_many);
 
     auto m_corr = Matrix( [ 1, 3 ] );
-    corr_one_inplace( m_one, m_many, m_corr );
+    corr_one_inplace( m_one, m_many, m_corr, buffer );
 
     if (verbose) writeln("corr: ", m_corr );
 
@@ -314,7 +325,7 @@ unittest
     if (verbose) writeln("many: ", m_many);
 
     auto m_corr = Matrix( [ 1, 3 ] );
-    corr_one_inplace( m_one, m_many, m_corr );
+    corr_one_inplace( m_one, m_many, m_corr, buffer );
 
     if (verbose) writeln("corr: ", m_corr );
 
@@ -376,7 +387,7 @@ unittest
     if (verbose) writeln("many: ", m_many);
 
     auto m_corr = Matrix( [ 1, 3 ] );
-    corr_one_inplace( m_one, m_many, m_corr );
+    corr_one_inplace( m_one, m_many, m_corr, buffer );
 
     if (verbose) writeln("corr: ", m_corr );
 

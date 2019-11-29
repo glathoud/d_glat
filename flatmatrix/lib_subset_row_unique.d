@@ -20,7 +20,7 @@ immutable IgnoreIndex ignore_index_dflt;// empty:compare all values
 MatrixT!T subset_row_unique
 ( bool keep_first = true, T )
 ( in MatrixT!T m
-  , in IgnoreIndex ignore_index = ignore_index_dflt )
+  , in IgnoreIndex ignore_index = ignore_index_dflt ) @safe
 /*
   Returns a new matrix where duplicate rows have been eliminated.
   
@@ -91,7 +91,10 @@ MatrixT!T subset_row_unique
   static if (!keep_first)
     rowind_app.put( last_rowind );
   
-  return subset_row( m, rowind_app.data );
+  auto ret = subset_row( m, rowind_app.data );
+  rowind_app.clear;
+  
+  return ret;
 }
  
 
@@ -102,7 +105,7 @@ unittest  // ------------------------------
   writeln;
   writeln( "unittest starts: "~__FILE__ );
 
-  immutable verbose = true;
+  immutable verbose = false;
 
   import std.algorithm;
   import std.conv;

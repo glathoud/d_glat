@@ -12,6 +12,14 @@ import std.math : isNaN;
   glat@glat.info
  */
 
+void ensure_length(T)( size_t desired_length, ref T[] arr )
+{
+  pragma( inline, true );
+  if (arr.length != desired_length)
+    arr = new T[desired_length];
+}
+
+
 bool equal_nan( T = double )( in T[] a, in T[] b )
 pure @safe @nogc
 // Extended equal that also permits matching NaNs.
@@ -79,7 +87,9 @@ pure @safe
       app.put( i_all );
     }
   
-  return app.data;
+  auto ret = app.data;
+  app.clear;
+  return ret;
 }
 
 unittest

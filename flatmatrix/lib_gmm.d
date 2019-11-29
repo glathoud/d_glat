@@ -15,8 +15,8 @@ module d_glat.flatmatrix.lib_gmm;
 
 public import d_glat.flatmatrix.lib_matrix;
 
+import d_glat.core_array;
 import d_glat.core_math;
-import d_glat.core_static;
 import d_glat.flatmatrix.lib_stat;
 import std.algorithm : max;
 import std.array : array;
@@ -142,6 +142,11 @@ struct GmmT( T )
     setOfGroupArr( m_feature, group_arr );
   }
 
+
+  private double[] _nonzero_var_arr;
+  private size_t[] _zero_j_arr;
+  private auto _b_inv_inplace = new Buffer_inv_inplaceT!T;
+  private auto _b_det = new Buffer_detT!T;
   
   void setOfGroupArr( in ref Matrix m_feature
                       , in ref size_t[][] group_arr
@@ -164,10 +169,15 @@ struct GmmT( T )
             /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
 
         if (fallback_zero_var)
-          _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ] );
+          _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ]
+                                              , _nonzero_var_arr
+                                              , _zero_j_arr
+                                              );
         
         bool success =
-          inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ] );
+          inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ]
+                       , _b_inv_inplace
+                       );
 
         if (!success)
           {
@@ -175,7 +185,7 @@ struct GmmT( T )
             is_finite_arr[ i_g ] = false;
           }
         
-        double tmp_det = det( m_cov_arr[ i_g ] );
+        double tmp_det = det( m_cov_arr[ i_g ], _b_det );
         if (-1e-10 < tmp_det  &&  tmp_det < 0.0)
           tmp_det = 0.0; // so that log gives `-inf`, not `nan`
 
@@ -248,8 +258,12 @@ struct GmmT( T )
 }
 
 
-void _do_fallback_zero_var_if_necessary( T )( MatrixT!T m )
-  nothrow @safe
+void _do_fallback_zero_var_if_necessary( T )
+  ( MatrixT!T m
+    , /*buffer:*/ref T[]      nonzero_var_arr
+    , /*buffer:*/ref size_t[] zero_j_arr
+    )
+  pure nothrow @safe
 {
   pragma( inline, true );
 
@@ -257,10 +271,10 @@ void _do_fallback_zero_var_if_necessary( T )( MatrixT!T m )
   immutable np1 = n+1;
 
   debug assert( m.dim == [ n, n ] );
-  
-  mixin(static_array_code(`nonzero_var_arr`,`T`,     `n`));
-  mixin(static_array_code(`zero_j_arr`,     `size_t`,`n`));
 
+  ensure_length( n, nonzero_var_arr );
+  ensure_length( n, zero_j_arr );
+  
   immutable T fallback_factor = cast( T )( max( 10, n * n ) );
   
   auto data = m.data;
