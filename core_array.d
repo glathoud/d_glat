@@ -12,11 +12,25 @@ import std.math : isNaN;
   glat@glat.info
  */
 
-void ensure_length(T)( size_t desired_length, ref T[] arr )
+T[] ensure_length(T)( size_t desired_length, ref T[] arr )
+/*
+  Typical usages:
+  
+
+  ensure_length( n, arr );
+
+
+  class Buffer { double[] arr; }
+  auto buffer = new Buffer;
+  // ...
+  auto arr = ensure_length( n, buffer.arr );
+ */
 {
   pragma( inline, true );
   if (arr.length != desired_length)
     arr = new T[desired_length];
+
+  return arr;
 }
 
 

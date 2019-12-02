@@ -32,7 +32,6 @@ void nmv_inplace_dim( T )( in ref MatrixT!T a
 
   b.setDim( a.dim );
 
-  auto  std_arr = buffer.std_arr;
   auto  m_mean  = buffer.m_mean;
   auto  m_var   = buffer.m_var;
   
@@ -41,7 +40,7 @@ void nmv_inplace_dim( T )( in ref MatrixT!T a
   auto mean_arr = m_mean.data;
   immutable restdim = mean_arr.length;
 
-  ensure_length( restdim, std_arr );
+  auto std_arr = ensure_length( restdim, buffer.std_arr );
   
   foreach (i,x; m_var.data)
     std_arr[ i ] = sqrt( x );

@@ -79,10 +79,14 @@ void set_default_transformations( T )
     nmv_inplace_dim!T( a, b, b_nmv );
   };
 
-  tmp[ "nmvpca" ] = ( ref a, ref b ) pure nothrow @safe {
-      nmvpca_inplace_dim( a, b );
-  };
-
+  static if (is(T == double))
+    {
+      auto b_nmvpca = new Buffer_nmvpca_inplace;
+      tmp[ "nmvpca" ] = ( ref a, ref b ) pure nothrow @safe {
+        nmvpca_inplace_dim( a, b, b_nmvpca );
+      };
+    }
+  
   tmp[ "pairs:a-b" ] = ( ref a, ref b ) pure nothrow @safe {
     pairs_inplace_dim!"a-b"( a, b );
   };

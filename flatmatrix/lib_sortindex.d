@@ -66,22 +66,23 @@ pragma( inline, true );
 immutable n       = m.dim[ 0 ];
 immutable restdim = m.restdim;
 
-auto indices_init = buffer.indices_init;
-auto index_arr    = buffer.index_arr;
-auto value_arr    = buffer.value_arr;
+ auto indices_init = (ref int[] arr )
+   {
+     if (arr.length != n)
+       arr = iota( 0, cast( int )( n ) ).array;
 
-if (indices_init.length != n)
-  indices_init = iota( 0, cast( int )( n ) ).array;
-
-ensure_length( n, index_arr );
-ensure_length( n, value_arr );
-
-sortindex_inplace
-(
-indices_init, n, restdim, n*restdim
-  , index_arr, value_arr
-  , m
-  );
+     return arr;
+   }( buffer.indices_init );
+ 
+ auto index_arr    = ensure_length( n, buffer.index_arr );
+ auto value_arr    = ensure_length( n, buffer.value_arr );
+ 
+ sortindex_inplace
+   (
+    indices_init, n, restdim, n*restdim
+    , index_arr, value_arr
+    , m
+    );
 }
 
 

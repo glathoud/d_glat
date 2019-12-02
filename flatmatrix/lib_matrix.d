@@ -39,12 +39,9 @@ T det( T )( in ref MatrixT!T m
       assert( n == m.ncol );
     }
 
-  auto A = buffer.A;
-  auto temp = buffer.temp;
-
-  ensure_length( n*n, A );
-  ensure_length( n, temp );
-
+  auto A    = ensure_length( n*n, buffer.A );
+  auto temp = ensure_length( n,   buffer.temp );
+  
   A[] = m.data[];
     
   // Implementation adapted from numeric.js

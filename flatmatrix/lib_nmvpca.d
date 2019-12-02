@@ -20,7 +20,8 @@ import std.math : isNaN, sqrt;
 
 Matrix nmvpca( in Matrix a ) pure nothrow @safe
 // Functional wrapper around `nmvpca_inplace`.
-// Returns a new matrix.
+// Returns a new matrix. If the PCA failed,
+// `b` will be filled with `NaN`s.
 {
   pragma( inline, true );
 
@@ -29,20 +30,6 @@ Matrix nmvpca( in Matrix a ) pure nothrow @safe
   nmvpca_inplace( a, b, buffer );
   return b;
 }
-
-bool nmvpca_inplace_dim( in ref Matrix a, ref Matrix b )
-pure nothrow @safe
-// Wrapper around `nmvpca_inplace`, calls `b.setDim(a.dim)`
-// Returns `true` if PCA successful, `false` otherwise.
-// In the latter case `b` will be filled with NaNs.
-{
-  pragma( inline, true );
-
-  b.setDim( a.dim );
-  auto buffer = new Buffer_nmvpca_inplace;
-  return nmvpca_inplace( a, b, buffer );
-}
-
 
 class Buffer_nmvpca_inplace
 {
@@ -55,6 +42,23 @@ class Buffer_nmvpca_inplace
       b_nmv = new Buffer_nmv_inplace;
     }
 }
+
+bool nmvpca_inplace_dim( in ref Matrix a
+                         , ref Matrix b
+                         , ref Buffer_nmvpca_inplace buffer
+                         )
+pure nothrow @safe
+// Wrapper around `nmvpca_inplace`, calls `b.setDim(a.dim)`
+// Returns `true` if PCA successful, `false` otherwise.
+// In the latter case `b` will be filled with NaNs.
+{
+  pragma( inline, true );
+
+  b.setDim( a.dim );
+  return nmvpca_inplace( a, b, buffer );
+}
+
+
 
 bool nmvpca_inplace( in ref Matrix a
                      , ref Matrix b
