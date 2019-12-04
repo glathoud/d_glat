@@ -7,6 +7,7 @@
 
 module d_glat.core_json;
 
+import d_glat.core_assert;
 import d_glat.core_string : string_is_num09;
 import std.conv : to;
 import std.exception : enforce;
@@ -226,6 +227,12 @@ bool json_is_true( in ref Nullable!JSONValue j )
 }
 
 
+inout(JSONValue[string]) json_safeObject( inout(JSONValue) j )
+pure @trusted
+{
+  enforce( j.type == JSON_TYPE.OBJECT );
+  return j.object;
+}
 
 void json_set_place
 ( /*ref xxx commented out because of issue with -O */ JSONValue j, in string place_str, in JSONValue v )

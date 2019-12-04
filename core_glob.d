@@ -15,7 +15,7 @@ import std.path : baseName, dirName;
 
 shared static GLOB_JPG = "*.[jJ][pP][gG]";
 
-string[] dirSA( string path, string glob, SpanMode spanMode = SpanMode.breadth, bool followSymlink = false ) 
+string[] dirSA( string path, string glob, SpanMode spanMode = SpanMode.breadth, bool followSymlink = false )
 // Extract a dirEntries result, and convert it to an array of strings
 // http://www.digitalmars.com/d/archives/digitalmars/D/bugs/Issue_7138_New_Can_t_call_array_on_dirEntries_34691.html
 // 
@@ -26,7 +26,7 @@ string[] dirSA( string path, string glob, SpanMode spanMode = SpanMode.breadth, 
   return ( map!`cast( string )a`( dE ) ).array;
 }
 
-string[] dirSA( in string fullpathglob, SpanMode spanMode = SpanMode.breadth, bool followSymlink = false )
+string[] dirSA( in string fullpathglob, SpanMode spanMode = SpanMode.breadth, bool followSymlink = false ) 
 {
   return dirSA( dirName( fullpathglob ), baseName( fullpathglob ), spanMode, followSymlink );
 }

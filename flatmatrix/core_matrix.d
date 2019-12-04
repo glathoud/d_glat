@@ -11,6 +11,7 @@ module d_glat.flatmatrix.core_matrix;
 */
 
 import d_glat.core_array;
+import d_glat.core_assert;
 import std.algorithm : map, max, sort;
 import std.array : appender;
 import std.conv : to;
@@ -504,7 +505,7 @@ void extract_ind_inplace( T )
 void interleave_inplace( T )( in MatrixT!T[] m_arr
                               , ref MatrixT!T m_out
                               , ref size_t[] buffer )
-pure @safe
+pure @safe nothrow
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
   auto first_dim = m_arr[ 0 ].dim;
@@ -596,7 +597,7 @@ void sort_inplace( T )( ref MatrixT!T m )
 
 private void _check_dim_match( in size_t i
                                , in size_t[] da, in size_t[] db )
-  @safe
+pure nothrow @safe 
 {
   
   // Special case: [4, 1] matches [4]
@@ -606,23 +607,23 @@ private void _check_dim_match( in size_t i
   if (da2.length < 2)  da2 ~= 1;
   if (db2.length < 2)  db2 ~= 1;
 
-  assert
+  assertWrap
     ( da2.length == db2.length
-      , "dim length mismatch: "
+      , () => "dim length mismatch: "
       ~"i: "~to!string(i)
       ~", first_dim:"~to!string( da2 )
       ~", dim:"~to!string( db2 )
       );
-        
-  assert
+  
+  assertWrap
     ( da2[ 0..$-1 ] == db2[ 0..$-1 ]
-      , "dimension 0..$-1 mismatch: "
+      , () => "dimension 0..$-1 mismatch: "
       ~"i: "~to!string(i)
       ~", first_dim:"~to!string( da2 )
       ~", dim:"~to!string( db2 )
       );
-}
 
+}
 
 
 MatrixT!T rep( T )

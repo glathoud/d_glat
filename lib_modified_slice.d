@@ -1,7 +1,9 @@
 module d_glat.lib_modified_slice;
 
 import core.exception;
+import d_glat.core_assert;
 import std.conv;
+import std.format;
 import std.stdio;
 
 class ModifiedSlice(T)
@@ -16,6 +18,7 @@ class ModifiedSlice(T)
   
   this( in ModifiedSlice!T in_modsli
         , in double propmodif_max = PROPMODIF_MAX_DFLT )
+    pure
     {
       /*
         No need for `.dup` here => performance gain.  Safety
@@ -32,6 +35,7 @@ class ModifiedSlice(T)
   
   this( in T[] in_sli
         , in double propmodif_max = PROPMODIF_MAX_DFLT )
+    pure nothrow @safe
     {
       // In this particular case the `.dup` is needed for safety.
       this.sli = in_sli.dup;
@@ -41,6 +45,7 @@ class ModifiedSlice(T)
 
   this( in size_t in_length, in T v_init
         , in double propmodif_max = PROPMODIF_MAX_DFLT )
+    pure nothrow @safe
     {
       this.sli   = new T[ in_length ];
       this.sli[] = v_init;
@@ -49,13 +54,13 @@ class ModifiedSlice(T)
     }
   
   
-  @property size_t length() pure const
+  @property size_t length() const pure @safe @nogc
   {
     return sli.length;
   }
 
   override
-  string toString() const 
+  string toString() const @safe
   {
     double[] tmp = new double[length];
     foreach (k; 0..length)
@@ -65,7 +70,7 @@ class ModifiedSlice(T)
   }
   
   
-  bool opEquals( in ModifiedSlice!T other ) const
+  bool opEquals( in ModifiedSlice!T other ) const pure @safe
   {
     if (this.length != other.length)
       return false;
@@ -77,7 +82,7 @@ class ModifiedSlice(T)
     return true;
   }
 
-  bool opEquals( in T[] other ) const
+  bool opEquals( in T[] other ) const pure @safe
   {
     if (this.length != other.length)
       return false;
@@ -90,7 +95,7 @@ class ModifiedSlice(T)
   }
 
   
-  T opIndex( size_t i ) const
+  T opIndex( size_t i ) const pure @safe
   {
     if (auto p = i in modif)
       return *p;
@@ -99,16 +104,19 @@ class ModifiedSlice(T)
       {
         return sli[ i ];
       }
-    catch (core.exception.RangeError e)
+    catch (Exception e)
       {
-        stderr.writefln( "RangeError ; length: %d, i: %d"
-                         , length, i );
-        throw e;
+        assertWrap( false, () =>
+                    "lms:opIndex caught error e, "
+                    ~"length: "~to!string(length)
+                    ~", i: "~to!string(i)
+                    ~", e.msg: "~e.msg
+                    );
       }
   }
 
   
-  T opIndexAssign( T value, size_t i )
+  T opIndexAssign( T value, size_t i ) pure
   {
     modif[ i ] = value;
 
@@ -117,14 +125,14 @@ class ModifiedSlice(T)
     return value;
   }
 
-  auto opUnary(string s)() if (s == "~")
+  auto opUnary(string s)() if (s == "~") 
     {
       assert( false
               , "~= is not supported: a fixed length is assumed."
               );
     }
   
- private void _flatten_modif_if_needed()
+ private void _flatten_modif_if_needed() pure
   {
     if (modif.length > sli.length / propmodif_max)
       {

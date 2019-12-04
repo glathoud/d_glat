@@ -3,6 +3,7 @@ module d_glat.core_gzip;
 import std.zlib;
 
 ubyte[] gunzip( in ubyte[] data )
+@trusted
 {
   auto U = new UnCompress( HeaderFormat.gzip );
   auto d1 = cast( ubyte[] )( U.uncompress( data ) );
@@ -21,6 +22,7 @@ ubyte[] gunzip( in ubyte[] data )
 }
 
 ubyte[] gunzip( in void[] data )
+@trusted
 {
   return gunzip( cast( ubyte[] )( data ) );
 }
@@ -29,6 +31,7 @@ ubyte[] gunzip( in void[] data )
 // Consider using `std.string.representation` in some use cases.
 
 ubyte[] gzip( in ubyte[] data )
+@trusted
 {
   auto       C = new Compress( 9, HeaderFormat.gzip );
   auto  gzip_1 = cast( ubyte[] )( C.compress( data ) );
@@ -37,6 +40,7 @@ ubyte[] gzip( in ubyte[] data )
 }
 
 ubyte[] gzip( void[] data )
+@trusted
 {
   return gzip( cast( ubyte[] )( data ) );
 }
