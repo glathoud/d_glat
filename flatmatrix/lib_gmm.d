@@ -63,12 +63,12 @@ struct GmmT( T )
     immutable npoints = m_feature.nrow;
     m_ll.setDim( [npoints, n] );
 
-    ll_inplace( m_feature, m_ll );
+    ll_inplace_nogc( m_feature, m_ll );
   }
 
   
-  void ll_inplace( in ref Matrix m_feature
-                       , /*output:*/ref Matrix m_ll )
+  void ll_inplace_nogc( in ref Matrix m_feature
+                        , /*output:*/ref Matrix m_ll )
   pure @trusted @nogc
     /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
 
@@ -117,9 +117,9 @@ struct GmmT( T )
             
             auto invcov_j = m_invcov_arr[ j ];
 
-            dot_inplace( invcov_j, m_xmmT, m_invcov_t_xmm );
-            dot_inplace( m_xmm, m_invcov_t_xmm
-                         , m_xmm_t_invcov_xmm );
+            dot_inplace_nogc( invcov_j, m_xmmT, m_invcov_t_xmm );
+            dot_inplace_nogc( m_xmm, m_invcov_t_xmm
+                              , m_xmm_t_invcov_xmm );
             
             debug assert( m_xmm_t_invcov_xmm.data.length == 1 );
             
@@ -164,7 +164,7 @@ struct GmmT( T )
     
     foreach (i_g, group; group_arr)
       {
-        mean_cov_inplace
+        mean_cov_inplace_dim
           ( /*Inputs:*/  m_feature, /*subset:*/group
             /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
 

@@ -24,6 +24,18 @@ alias Buffer_det = Buffer_detT!double;
 class Buffer_detT(T) { T[] A, temp; }
 
 
+T det(T)( in MatrixT!T m ) pure nothrow @safe
+// Variant that allocates an internal buffer.
+{
+  pragma( inline, true );
+
+  auto buffer = new Buffer_detT!T;
+
+  return det!T( m, buffer );
+}
+
+
+
 T det( T )( in ref MatrixT!T m
             , ref Buffer_detT!T buffer
             )
@@ -179,7 +191,7 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
           B_flat      = new T[ I2 ];
           B_flat_init = new T[ I2 ];
 
-          Matrix id; id.setDim( [I, I]); diag_inplace( 1.0, id );
+          Matrix id; id.setDim( [I, I]); diag_inplace_nogc( 1.0, id );
           B_flat_init[] = id.data[];
 
           A = new T[][ I ];
@@ -379,8 +391,40 @@ unittest  // ------------------------------
   auto buffer_det = new Buffer_det;
   auto buffer_inv_inplace = new Buffer_inv_inplace;
 
+
+  {
+    // Variant with internal buffer allocation
+
+    if (verbose)
+      writeln( "// ---------- Test determinant" );
+
+    /* octave
+
+       sprintf("%.12g",det([ 1, 4, 2, 17;
+       54, 23, 12, 56;
+       7, 324, 23, 56;
+       542, 3, 23, 43 ]))
+
+       // 9053872
+       */
+
+    auto d = det( m );
+    assert( approxEqual( 9053872.0, d, 1e-10, 1e-10 ) );
+
+    auto d2 = det( m2 );
+    assert( approxEqual( 0.062664340664, d2, 1e-10, 1e-10 ) );
+
+    auto d3 = det( m3 );
+    assert( approxEqual( 0.117622046234, d3, 1e-10, 1e-10 ) );
+
+    if (verbose)
+      writefln( "d:%.12g d2:%.12g d3:%.12g", d, d2, d3 );
+  }
+
   
   {
+    // Variant with external buffer
+
     if (verbose)
       writeln( "// ---------- Test determinant" );
 

@@ -270,7 +270,7 @@ MatrixT!T clone( T )( in MatrixT!T X ) pure nothrow @safe
   (Feel free to correct me if this analysis is wrong).
 */
 
-void clone_inplace( T )
+void clone_inplace_nogc( T )
   ( in ref MatrixT!T X
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
@@ -283,12 +283,13 @@ void clone_inplace( T )
 MatrixT!T diag( T )( in T[] x ) pure nothrow @safe
 {
   auto ret = MatrixT!T( [ x.length, x.length ], 0 );
-  diag_inplace!T( x, ret );
+  diag_inplace_nogc!T( x, ret );
   return ret;
 }
 
-void diag_inplace( T )( in T[] x
-                        , ref MatrixT!T ret ) pure nothrow @safe @nogc
+void diag_inplace_nogc( T )
+  ( in T[] x
+    , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
   pragma( inline, true );
 
@@ -308,8 +309,9 @@ void diag_inplace( T )( in T[] x
   }
 }
 
-void diag_inplace( T )( in T v
-                        , ref MatrixT!T ret ) pure nothrow @safe @nogc
+void diag_inplace_nogc( T )
+  ( in T v
+    , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
   pragma( inline, true );
 
@@ -332,13 +334,13 @@ T[] dot( T )( in MatrixT!T X, in T[] y ) pure nothrow @safe
 // matrix * vector
 {
   T[] ret = new T[]( X.nrow );
-  dot_inplace( X, y, ret );
+  dot_inplace_nogc( X, y, ret );
   return ret;
 }
 
-void dot_inplace( T )( in ref MatrixT!T X, in T[] y
-                       , ref T[] ret
-                       ) pure nothrow @safe @nogc
+void dot_inplace_nogc( T )( in ref MatrixT!T X, in T[] y
+                            , ref T[] ret
+                            ) pure nothrow @safe @nogc
 {
   pragma( inline, true );
   debug
@@ -368,13 +370,13 @@ MatrixT!T dot( T )( in MatrixT!T X, in MatrixT!T Y ) pure nothrow @safe
 // matrix * matrix
 {
   auto ret = MatrixT!T( [ X.nrow, Y.ncol ] );
-  dot_inplace( X, Y, ret );
+  dot_inplace_nogc( X, Y, ret );
   return ret;
 }
 
-void dot_inplace( T )( in ref MatrixT!T X, in ref MatrixT!T Y
-                       , ref MatrixT!T ret
-                       ) pure nothrow @safe @nogc
+void dot_inplace_nogc( T )( in ref MatrixT!T X, in ref MatrixT!T Y
+                            , ref MatrixT!T ret
+                            ) pure nothrow @safe @nogc
 {
   pragma( inline, true );
 
@@ -419,9 +421,10 @@ void dot_inplace( T )( in ref MatrixT!T X, in ref MatrixT!T Y
 
 
 
-void dot_inplace_YT( T )( in ref MatrixT!T X, in ref MatrixT!T YT
-                          , ref MatrixT!T ret
-                          ) pure nothrow @safe @nogc
+void dot_inplace_YT_nogc( T )
+  ( in ref MatrixT!T X, in ref MatrixT!T YT
+    , ref MatrixT!T ret
+    ) pure nothrow @safe @nogc
 // YT means "Y transposed"
 {
   pragma( inline, true );
@@ -475,7 +478,7 @@ T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
   return ret;
 }
 
-void extract_ind_inplace( T )
+void extract_ind_inplace_nogc( T )
   ( in MatrixT!T X, in size_t ind
     , ref T[] ret ) pure nothrow @safe @nogc
 {
@@ -500,12 +503,24 @@ void extract_ind_inplace( T )
 }
 
 
+MatrixT!T interleave( T )( in MatrixT!T[] m_arr )
+pure nothrow @safe
+// Functional wrapper around `interleave_inplace`
+{
+  pragma( inline, true );
+  MatrixT!T m_out;
+  size_t[]  buffer;
+
+  interleave_inplace!T( m_arr, m_out, buffer );
+
+  return m_out;
+}
 
 
 void interleave_inplace( T )( in MatrixT!T[] m_arr
                               , ref MatrixT!T m_out
                               , ref size_t[] buffer )
-pure @safe nothrow
+pure nothrow @safe
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
   auto first_dim = m_arr[ 0 ].dim;
@@ -644,13 +659,14 @@ MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @s
   
   auto B = MatrixT!T( [ new_nrow ] ~ A.dim[ 1..$ ] );
   
-  subset_row_inplace!T( A, row_arr, B );
+  subset_row_inplace_nogc!T( A, row_arr, B );
 
   return B;
 }
 
-void subset_row_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
-                              , ref MatrixT!T B ) pure nothrow @safe @nogc 
+void subset_row_inplace_nogc
+( T )( in ref MatrixT!T A, in size_t[] row_arr
+       , ref MatrixT!T B ) pure nothrow @safe @nogc 
 {
   debug
     {
@@ -676,6 +692,26 @@ void subset_row_inplace( T )( in ref MatrixT!T A, in size_t[] row_arr
     }
 }
 
+
+MatrixT!T subset_row_filter
+( alias filter_fun, T )( in MatrixT!T A )
+// Functional variant of `subset_row_filter_inplace
+{
+  bool mapfilter_inplace_fun( in size_t row_ind
+                              , in T[] in_row
+                              , ref T[] out_row
+                              )
+  {
+    immutable ret = filter_fun( row_ind, in_row );
+
+    if (ret)
+      out_row[] = in_row[];
+
+    return ret;
+  }
+  
+  return subset_row_mapfilter!mapfilter_inplace_fun( A );
+}
 
 void subset_row_filter_inplace
 (alias filter_fun, T)( ref MatrixT!T A )
@@ -721,24 +757,6 @@ void subset_row_filter_inplace
 }
 
 
-MatrixT!T subset_row_filter
-( alias filter_fun, T )( in MatrixT!T A )
-{
-  bool mapfilter_inplace_fun( in size_t row_ind
-                              , in T[] in_row
-                              , ref T[] out_row
-                              )
-  {
-    immutable ret = filter_fun( row_ind, in_row );
-
-    if (ret)
-      out_row[] = in_row[];
-
-    return ret;
-  }
-  
-  return subset_row_mapfilter!mapfilter_inplace_fun( A );
-}
 
 
 MatrixT!T subset_row_mapfilter
@@ -810,12 +828,13 @@ MatrixT!T transpose( T )
 ( in MatrixT!T A ) pure nothrow @safe
 {
   auto ret = MatrixT!T( [A.ncol, A.nrow] );
-  transpose_inplace( A, ret );
+  transpose_inplace_nogc( A, ret );
   return ret;
 }
 
-void transpose_inplace( T )( in ref MatrixT!T A
-                             , ref MatrixT!T ret ) pure nothrow @safe @nogc
+void transpose_inplace_nogc( T )
+  ( in ref MatrixT!T A
+    , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
   pragma( inline, true );
   debug
@@ -1013,7 +1032,7 @@ unittest  // ------------------------------
   
   {
     auto A = Matrix( [4, 4], 0.0 );
-    diag_inplace( [1.0, 2.0, 3.0, 4.0], A );
+    diag_inplace_nogc( [1.0, 2.0, 3.0, 4.0], A );
 
     assert( A == Matrix( [4, 4]
                          , [
@@ -1030,7 +1049,7 @@ unittest  // ------------------------------
 
   {
     auto A = Matrix( [4, 4], 0.0 );
-    diag_inplace( 1.5, A );
+    diag_inplace_nogc( 1.5, A );
 
     assert( A == Matrix( [4, 4]
                          , [
@@ -1087,7 +1106,7 @@ unittest  // ------------------------------
 
     auto mc = Matrix( [2, 4] );
 
-    dot_inplace_YT( ma, mbT, mc );
+    dot_inplace_YT_nogc( ma, mbT, mc );
     
     assert( mc
             == Matrix
@@ -1121,11 +1140,7 @@ unittest  // ------------------------------
             );
   }
 
-  if (verbose)
-    {
-      stdout.writeln("core_matrix unittest #30");
-      stdout.flush;
-    }
+
 
 
   {
@@ -1202,6 +1217,82 @@ unittest  // ------------------------------
 
 
   {
+    // Functional variant
+    
+    auto A = Matrix( [ 4, 1 ], [ 0.1,
+                                 0.3,
+                                 0.5,
+                                 0.7 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+
+    auto C = interleave( [ A, B, A ] );
+
+    assert( C == Matrix
+            ([4, 5]
+             ,[ +0.1, +1, +2, +3, +0.1,
+                +0.3, +4, +5, +6, +0.3,
+                +0.5, +7, +8, +9, +0.5,
+                +0.7, +10, +11, +12, +0.7,
+                ]));
+
+  }
+
+  {
+    // Functional variant
+    
+    auto A = Matrix( [ 4 ], [ 0.1,
+                              0.3,
+                              0.5,
+                              0.7 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+
+    auto C = interleave( [ A, B, A ] );
+
+    assert( C == Matrix
+            ([4, 5]
+             ,[ +0.1, +1, +2, +3, +0.1,
+                +0.3, +4, +5, +6, +0.3,
+                +0.5, +7, +8, +9, +0.5,
+                +0.7, +10, +11, +12, +0.7,
+                ]));
+
+  }
+
+  {
+    // Functional variant
+    
+    auto A = Matrix( [ 4, 2 ], [ 0.1, 0.2,
+                                 0.3, 0.4,
+                                 0.5, 0.6,
+                                 0.7, 0.8 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+
+    auto C = interleave( [ A, B, A ] );
+
+    assert( C == Matrix
+            ([4, 7]
+             ,[ +0.1, +0.2, +1, +2, +3, +0.1, +0.2,
+                +0.3, +0.4, +4, +5, +6, +0.3, +0.4,
+                +0.5, +0.6, +7, +8, +9, +0.5, +0.6,
+                +0.7, +0.8, +10, +11, +12, +0.7, +0.8,
+                ]));
+
+  }
+
+
+  {
     auto A = Matrix( [0, 3]
                      , [ 1.0, 2.0, 3.0,
                          4.0, 5.0, 6.0,
@@ -1217,13 +1308,11 @@ unittest  // ------------------------------
                        ));
   }
 
-  if (verbose)
-    {
-      stdout.writeln("core_matrix unittest #60");
-      stdout.flush;
-    }
+
 
   {
+    // Functional variant
+    
     auto A = Matrix( [0, 3]
                      , [ 1.0, 2.0, 3.0,
                          4.0, 5.0, 6.0,
@@ -1251,6 +1340,8 @@ unittest  // ------------------------------
 
 
   {
+    // Functional variant
+
     auto A = Matrix( [0, 3]
                      , [ 1.0, 2.0, 3.0,
                          4.0, 5.0, 6.0,
@@ -1278,6 +1369,8 @@ unittest  // ------------------------------
 
   
   {
+    // Functional variant
+
     auto A = Matrix( [0, 3]
                      , [ 1.0, 2.0, 3.0,
                          4.0, 5.0, 6.0,
@@ -1305,6 +1398,8 @@ unittest  // ------------------------------
 
   
   {
+    // Functional variant
+
     auto A = Matrix( [0, 3]
                      , [ 1.0, 2.0, 3.0,
                          4.0, 5.0, 6.0,
@@ -1324,13 +1419,129 @@ unittest  // ------------------------------
                        , [ ] )
             );
   }
+
+
+
+
   
-  if (verbose)
+  {
+    // In-place variant
+
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+
+    bool filter_fun_0i( in size_t ind, in double[] row )
+      pure nothrow @safe @nogc
     {
-      stdout.writeln("core_matrix unittest #100");
-      stdout.flush;
+      pragma( inline, true );
+      return row[ 0 ] % 2 == 0;
     }
 
+    subset_row_filter_inplace!filter_fun_0i( A );
+      
+      assert( A == Matrix( [ 0, 3 ]
+                           , [ // 1.0, 2.0, 3.0,
+                              4.0, 5.0, 6.0,
+                              // 7.0, 8.0, 9.0,
+                              10.0, 11.0, 12.0,
+                              // 13.0, 14.0, 15.0
+                           ] )
+              );
+  }
+
+
+  {
+    // In-place variant
+    
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+    
+    bool filter_fun_1i( in size_t ind, in double[] row )
+      pure nothrow @safe @nogc
+    {
+      pragma( inline, true );
+      return row[ 0 ] % 2 != 0;
+    }
+
+    subset_row_filter_inplace!filter_fun_1i( A );
+    
+    assert( A == Matrix( [ 0, 3 ]
+                         , [ 1.0, 2.0, 3.0,
+                             // 4.0, 5.0, 6.0,
+                             7.0, 8.0, 9.0,
+                             // 10.0, 11.0, 12.0,
+                             13.0, 14.0, 15.0
+                             ] )
+            );
+  }
+
+  
+  {
+    // In-place variant
+    
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+    
+    bool filter_fun_2i( in size_t ind, in double[] row )
+      pure nothrow @safe @nogc
+    {
+      pragma( inline, true );
+      return true;
+    }
+
+    subset_row_filter_inplace!filter_fun_2i( A );
+    
+      assert( A == Matrix( [ 0, 3 ]
+                           , [ 1.0, 2.0, 3.0,
+                               4.0, 5.0, 6.0,
+                               7.0, 8.0, 9.0,
+                               10.0, 11.0, 12.0,
+                               13.0, 14.0, 15.0
+                               ] )
+              );
+  }
+  
+  
+  {
+    // In-place variant
+    
+    auto A = Matrix( [0, 3]
+                     , [ 1.0, 2.0, 3.0,
+                         4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0,
+                         10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0 ] );
+    
+    bool filter_fun_3i( in size_t ind, in double[] row )
+      pure nothrow @safe @nogc
+    {
+      pragma( inline, true );
+      return false;
+    }
+
+    subset_row_filter_inplace!filter_fun_3i( A );
+    
+    assert( A == Matrix( [ 0, 3 ]
+                         , [ ] )
+            );
+  }
+  
+
+
+
+  
   {
     // filter, then map, in one step
     
@@ -1456,11 +1667,9 @@ unittest  // ------------------------------
             );
   } 
 
-  if (verbose)
-    {
-      stdout.writeln("core_matrix unittest #123");
-      stdout.flush;
-    }
+
+
+  
   
   {
     auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,

@@ -14,22 +14,26 @@ public import d_glat.flatmatrix.core_matrix;
 
 import std.math;
 
-MatrixT!T corr_one( T )( in MatrixT!T m_one, in MatrixT!T m_many )
-  nothrow @safe
-// Functional wrapper around `corr_one_inplace`.
-{
-  pragma( inline, true );
-
-  auto m_corr = new Matrix!T( [ 1, m_many.dim[ 1 ] ] );
-  corr_one_inplace!T( m_one, m_many, m_corr );
-  return m_corr;
-}
 
 alias Buffer_corr_one_inplace = Buffer_corr_one_inplaceT!double;
 
 class Buffer_corr_one_inplaceT(T)
 {
   MatrixT!T m_many_mean, m_many_var;
+}
+
+
+MatrixT!T corr_one(T)( in MatrixT!T m_one
+                       , in MatrixT!T m_many ) pure nothrow @safe
+// Functional wrapper around `corr_one_inplace`
+{
+  pragma( inline, true );
+  MatrixT!T m_corr;
+  auto buffer = new Buffer_corr_one_inplaceT!T;
+
+  corr_one_inplace!T( m_one, m_many, m_corr, buffer );
+
+  return m_corr;
 }
 
 
@@ -62,14 +66,13 @@ void corr_one_inplace( T )
 
   immutable d = m_many.dim[ 1 ];
 
-  auto m_many_mean = buffer.m_many_mean;
-  auto m_many_var  = buffer.m_many_var;
+  buffer.m_many_mean.setDim( [ 1, d ] );
+  buffer.m_many_var .setDim( [ 1, d ] );
 
-  m_many_mean.setDim( [ 1, d ] );
-  m_many_var .setDim( [ 1, d ] );
+  m_corr.setDim( [1, d] );
   
   corr_one_inplace!T( m_one, m_many, m_corr
-                      , m_many_mean, m_many_var 
+                      , buffer.m_many_mean, buffer.m_many_var 
                       );
 }
 
@@ -248,6 +251,162 @@ unittest
 
   auto buffer = new Buffer_corr_one_inplace;
 
+
+  // Functional variant
+
+  {
+    // Noiseless data
+    
+    auto m_one = Matrix( [ 4, 1 ], [ 1.0, 2.0, 3.0, 4.0 ] );
+    auto m_many = Matrix
+      ( [ 4, 0 ]
+        , zip(
+              m_one.data.map!"-1.0+3.0*a"
+              , m_one.data.map!"+12.0-5.0*a"
+              , m_one.data.map!"0.0"
+              )
+        .map!"a.array"
+        .reduce!"a~b"
+        .array
+        );
+
+    if (verbose) writeln("one: ", m_one);
+    if (verbose) writeln("many: ", m_many);
+
+    auto m_corr = corr_one( m_one, m_many );
+
+    if (verbose) writeln("corr: ", m_corr );
+
+    assert( approxEqual( +1.0, m_corr.data[ 0 ] ) );
+    assert( approxEqual( -1.0, m_corr.data[ 1 ] ) );
+    assert( isNaN( m_corr.data[ 2 ] ) );
+  }
+
+
+  {
+    // Some noise
+
+    /*
+      Octave used to generate this slightly noisy data, and its
+      correlation values:
+
+      orig = [1.0;2.0;3.0;4.0];
+
+      m_one=round(1e5*(orig + 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+      a =round(1e5*(-1.0+3.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+      b =round(1e5*(+12.0-5.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5; 
+
+      c=0.0*orig;
+      m_many=[a b c];
+      m_corr = cov(m_one,m_many,1) ./ (std(m_one,1)*std(m_many,1));
+
+      disp(m_one)
+
+      disp(m_many)
+      
+      disp(sprintf( "%.10g, ", m_corr))
+    */
+    
+    auto m_one = Matrix( [ 4, 1 ]
+                         , [ 0.87717,
+                             2.08774,
+                             2.86322,
+                             4.02435
+                             ]);
+    
+    auto m_many = Matrix
+      ( [ 4, 0 ]
+        , [
+           2.12938, 7.11666, 0.00000
+           , 5.01599, 1.81814, 0.00000
+           , 7.89512, -2.84041, 0.00000
+           , 11.08435, -8.14922, 0.00000
+           ]
+        );
+
+    if (verbose) writeln("one: ", m_one);
+    if (verbose) writeln("many: ", m_many);
+
+    auto m_corr = corr_one( m_one, m_many );
+
+    if (verbose) writeln("corr: ", m_corr );
+
+    assert( approxEqual
+            ( 0.9970257946, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
+    
+    assert( approxEqual
+            ( -0.9984470896, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
+    
+    assert( isNaN( m_corr.data[ 2 ] ) );
+  }
+
+  
+  {
+    // More noise
+
+    /*
+      Octave used to generate this more noisy data, and its
+      correlation values:
+
+      orig = [1.0;2.0;3.0;4.0];
+
+      m_one=round(1e5*(orig + 1.0 * stdnormal_rnd([4,1])))/1e5;
+
+      a =round(1e5*(-1.0+3.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+      b =round(1e5*(+12.0-5.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5; 
+
+      c=0.0*orig;
+      m_many=[a b c];
+      m_corr = cov(m_one,m_many,1) ./ (std(m_one,1)*std(m_many,1));
+
+      disp(m_one)
+
+      disp(m_many)
+      
+      disp(sprintf( "%.10g, ", m_corr))
+    */
+    
+    auto m_one = Matrix( [ 4, 1 ]
+                         , [ 0.84571,
+                             2.33270, 
+                             3.12509, 
+                             3.36448 ]);
+    
+    auto m_many = Matrix
+      ( [ 4, 0 ]
+        , [
+           2.01754, 6.88942, 0.00000
+           , 4.95877, 1.88913, 0.00000
+           , 7.94578, -3.07764, 0.00000
+           , 11.03451, -8.04965, 0.00000
+           ]
+        );
+
+    if (verbose) writeln("one: ", m_one);
+    if (verbose) writeln("many: ", m_many);
+
+    auto m_corr = corr_one( m_one, m_many );
+
+    if (verbose) writeln("corr: ", m_corr );
+
+    assert( approxEqual
+            ( 0.9448199076, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
+    
+    assert( approxEqual
+            ( -0.9487419465, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
+    
+    assert( isNaN( m_corr.data[ 2 ] ) );
+  }
+    
+
+
+
+  // In-place variant
+
+  
   {
     // Noiseless data
     

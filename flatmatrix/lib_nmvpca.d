@@ -150,14 +150,14 @@ bool nmvpca_inplace( in ref Matrix a
 
   svd_res.setDim( n, n );
 
-  auto converged = svd_inplace( sigma, svd_res );
+  auto converged = svd_inplace_nogc( sigma, svd_res );
 
   auto success = converged  &&  !(any!isNaN( svd_res.U.data ));
   
   // Project the data onto the new space
 
   if (success)
-      dot_inplace( a_nmv, svd_res.U, b );
+      dot_inplace_nogc( a_nmv, svd_res.U, b );
 
   else
       b.data[] = double.nan;

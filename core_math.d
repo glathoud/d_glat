@@ -4,6 +4,7 @@ public import std.math;
 
 import d_glat.core_array;
 import std.algorithm : sort;
+import std.exception : enforce;
 
 /*
   A few mathematical tool functions.
@@ -14,6 +15,7 @@ import std.algorithm : sort;
   The Boost license applies to this file, as described in ./LICENSE
  */
 
+
 alias Buffer_e_w_logsum = Buffer_e_w_logsumT!double;
 
 class Buffer_e_w_logsumT(T)
@@ -23,9 +25,20 @@ class Buffer_e_w_logsumT(T)
 }
 
 
-T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr
-                   , ref Buffer_e_w_logsumT!T buffer
-                   )
+T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
+  pure nothrow @safe
+// Wrapper that creates a temporary buffer
+{
+  pragma( inline, true );
+  auto buffer = new Buffer_e_w_logsumT!T;
+  return e_w_logsum_dim( a_arr, logw_arr, buffer );
+}
+
+
+
+T e_w_logsum_dim( T )( in T[] a_arr, in T[] logw_arr
+                       , ref Buffer_e_w_logsumT!T buffer
+                       ) pure nothrow @safe
 /* Input: 2 arrays containing `a_i` resp. `log(w_i)`.
 
    Output: `sum_i( a_i * w_i )` calculated as precisely as `logsum`
@@ -34,7 +47,6 @@ T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr
    Implementation: two `logsum` calls, one for positive values
    (`a_i>0.0`), one for negative values (`a_i<0.0`);
 */
-  pure nothrow @safe
 {
   pragma( inline, true );
 
@@ -44,9 +56,37 @@ T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr
 
   // Limit GC costs
 
-  auto logsum_buffer = ensure_length( n, buffer.logsum_buffer );
-  auto work          = ensure_length( n, buffer.work );
+  ensure_length( n, buffer.logsum_buffer );
+  ensure_length( n, buffer.work );
+
+  return e_w_logsum_nogc!T( a_arr, logw_arr, buffer );
+}
+
+
+T e_w_logsum_nogc( T )( in T[] a_arr, in T[] logw_arr
+                        , ref Buffer_e_w_logsumT!T buffer
+                        )   pure nothrow @safe @nogc
+/* Input: 2 arrays containing `a_i` resp. `log(w_i)`.
+
+   Output: `sum_i( a_i * w_i )` calculated as precisely as `logsum`
+   permits.
+
+   Implementation: two `logsum` calls, one for positive values
+   (`a_i>0.0`), one for negative values (`a_i<0.0`);
+*/
+{
+  pragma( inline, true );
+
+  immutable n = a_arr.length;
   
+  debug assert( n == logw_arr.length );
+
+  auto logsum_buffer = buffer.logsum_buffer;
+  auto work          = buffer.work;
+
+  assert( n == logsum_buffer.length );
+  assert( n == work.length );
+
   size_t j_pos = 0; // positive values => work[0..j_pos]
   size_t j_neg = n; // negative values => work[j_neg..$]
 
@@ -218,7 +258,7 @@ unittest
   }
 
 
-    {
+  {
     
     auto rnd = MinstdRand0(42);
     
@@ -231,7 +271,39 @@ unittest
         double[] wdata    = iota(0,n).map!(_ => uniform( cast( double )( 1.0 ), cast( double )( 100.0 ), rnd )).array;
         double[] logwdata = wdata.map!"cast( double )( log(a) )".array;
         
-        immutable double weighted_sum          = e_w_logsum( data, logwdata, buffer_e_w_logsum );
+        immutable double weighted_sum          = e_w_logsum_dim( data, logwdata, buffer_e_w_logsum );
+        immutable double weighted_sum_expected = zip( data, wdata ).map!"a[0]*a[1]".reduce!"a+b";
+        
+        if (verbose)
+          {
+            writeln;
+            writeln("n: ", n);
+            writeln("data: ", data);
+            writeln("weighted_sum, expected: ", [weighted_sum, weighted_sum_expected], " delta:", weighted_sum - weighted_sum_expected);
+          }
+
+        assert( approxEqual( weighted_sum, weighted_sum_expected, 1e-8, 1e-8 ) );
+      }
+
+  }
+
+
+  
+  {
+    // Same without external buffer
+    
+    auto rnd = MinstdRand0(42);
+    
+    foreach (n; 1..301)
+      {
+        double[] data     = iota(0,n).map!(_ => uniform( cast( double )( -100.0 ), cast( double )( 100.0 ), rnd )).array;
+        if (n > 36) data[ 36 ] = 0.0;
+        if (n > 77) data[ 77 ] = 0.0;
+        
+        double[] wdata    = iota(0,n).map!(_ => uniform( cast( double )( 1.0 ), cast( double )( 100.0 ), rnd )).array;
+        double[] logwdata = wdata.map!"cast( double )( log(a) )".array;
+        
+        immutable double weighted_sum          = e_w_logsum( data, logwdata );
         immutable double weighted_sum_expected = zip( data, wdata ).map!"a[0]*a[1]".reduce!"a+b";
         
         if (verbose)

@@ -22,6 +22,20 @@ class Buffer_nmv_inplaceT(T)
   T[] std_arr;
 }
 
+
+MatrixT!T nmv(T)( in MatrixT!T a ) pure nothrow @safe
+// Functional wrapper around `nmv_inplace_dim`
+{
+  pragma( inline, true );
+  MatrixT!T b;
+  auto buffer = new Buffer_nmv_inplaceT!T;
+
+  nmv_inplace_dim!T( a, b, buffer );
+
+  return b;
+}
+
+
 void nmv_inplace_dim( T )( in ref MatrixT!T a
                            , ref MatrixT!T b
                            , ref Buffer_nmv_inplaceT!T buffer
@@ -76,8 +90,59 @@ unittest  // ------------------------------
   immutable verbose = false;
 
   auto buffer_nmv_inplace = new Buffer_nmv_inplace;
+
+
+
+  {
+    // Functional variant (buffer internally allocated)
+    
+    auto A = Matrix( [ 5, 2 ], [ 1.0, 10.0,
+                                 2.0, 15.0,
+                                 3.0, 20.0,
+                                 4.0, 25.0,
+                                 5.0, 30.0,
+                                 ]);
+
+    auto B = nmv( A );
+
+    if (verbose)
+      {
+        writeln( "A: ", A );
+        writeln( "B: ", B );
+      }
+
+    Matrix m_mean, m_var;
+
+    mean_var_inplace_dim( A, m_mean, m_var );
+
+    if (verbose)
+      {
+        writeln( "m_mean: ", m_mean );
+        writeln( "m_var: ", m_var);
+      }
+
+    assert( m_mean.data.all!"!approxEqual( a, 0.0, 1e-10, 1e-10 )" );
+    assert( m_var .data.all!"!approxEqual( a, 1.0, 1e-10, 1e-10 )" );
+
+
+    mean_var_inplace_dim( B, m_mean, m_var );
+
+    if (verbose)
+      {
+        writeln( "m_mean: ", m_mean );
+        writeln( "m_var: ", m_var);
+      }
+
+    assert( m_mean.data.all!"approxEqual( a, 0.0, 1e-10, 1e-10 )" );
+    assert( m_var .data.all!"approxEqual( a, 1.0, 1e-10, 1e-10 )" );
+  }  
+
+
+
   
   {
+    // In-place variant
+    
     auto A = Matrix( [ 5, 2 ], [ 1.0, 10.0,
                                  2.0, 15.0,
                                  3.0, 20.0,

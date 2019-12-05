@@ -60,15 +60,15 @@ SvdResult svd( in Matrix A ) pure @safe
 
   auto ret = SvdResult( m, n );
   
-  bool converged = svd_inplace( A, ret );
+  bool converged = svd_inplace_nogc( A, ret );
   enforce( converged, "SVD error: did not converge." );
-
+  
   return ret;
 }
 
-bool svd_inplace( in ref Matrix A
-                  , ref SvdResult ret
-                  ) pure nothrow @safe @nogc
+bool svd_inplace_nogc( in ref Matrix A
+                       , ref SvdResult ret
+                       ) pure nothrow @safe @nogc
 /*
   Compute the thin SVD from G. H. Golub and C. Reinsch, Numer. Math. 14, 403-420 (1970)
 
@@ -96,7 +96,7 @@ bool svd_inplace( in ref Matrix A
 
   // Init: as fast as possible
 
-  clone_inplace( A, ret.U );
+  clone_inplace_nogc( A, ret.U );
 
   u = ret.U.data;
 
@@ -544,9 +544,9 @@ bool svd_inplace( in ref Matrix A
         }	
     }
 
-  diag_inplace( q, ret.S );
+  diag_inplace_nogc( q, ret.S );
 
-  transpose_inplace( ret.V, ret.VT );
+  transpose_inplace_nogc( ret.V, ret.VT );
 
   return true; // Converged
 }

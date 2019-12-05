@@ -13,9 +13,9 @@ module d_glat.flatmatrix.lib_stat;
 
 public import d_glat.flatmatrix.core_matrix;
 
-void mean_inplace( T )( in ref MatrixT!T m
-                        , ref MatrixT!T m_mean )
-pure nothrow @safe @nogc
+void mean_inplace_nogc( T )( in ref MatrixT!T m
+                             , ref MatrixT!T m_mean )
+  pure nothrow @safe @nogc
 {
   pragma( inline, true );
   
@@ -58,10 +58,10 @@ pure nothrow @safe
 
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
-  mean_cov_inplace!( unbiased, T )( m, m_mean, m_cov );
+  mean_cov_inplace_nogc!( unbiased, T )( m, m_mean, m_cov );
 }
 
-void mean_cov_inplace( bool unbiased = true, T )
+void mean_cov_inplace_nogc( bool unbiased = true, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov )
@@ -169,10 +169,10 @@ pure nothrow @safe
 
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
-  mean_cov_inplace!( unbiased, T )( m, subset, m_mean, m_cov );
+  mean_cov_inplace_nogc!( unbiased, T )( m, subset, m_mean, m_cov );
 }
 
-void mean_cov_inplace( bool unbiased = true, T )
+void mean_cov_inplace_nogc( bool unbiased = true, T )
   ( in ref MatrixT!T m
     , in size_t[] subset
     , ref MatrixT!T m_mean
@@ -290,10 +290,10 @@ void mean_var_inplace_dim
   auto mv_dim = [ 1UL ] ~ m.dim[ 1..$ ];
   m_mean.setDim( mv_dim );
   m_var .setDim( mv_dim );
-  mean_var_inplace!( unbiased, T )( m, m_mean, m_var );
+  mean_var_inplace_nogc!( unbiased, T )( m, m_mean, m_var );
 }
 
-void mean_var_inplace
+void mean_var_inplace_nogc
 ( bool unbiased = true, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
@@ -311,7 +311,7 @@ void mean_var_inplace
       assert( m_var.dim[ 1..$ ] == m.dim[ 1..$ ] );
     }
 
-  mean_inplace( m, m_mean );
+  mean_inplace_nogc( m, m_mean );
   
   auto data = m.data;
   auto mean = m_mean.data;
@@ -363,7 +363,7 @@ unittest // ------------------------------
                          3.0, 60.0,  800.0, 10000.0,
                          ]);
     auto m_mean = Matrix( [1, 2, 2] );
-    mean_inplace( m, m_mean );
+    mean_inplace_nogc( m, m_mean );
 
     if (verbose)  writeln( "m: ", m );
     if (verbose)  writeln( "m_mean: ", m_mean );
@@ -513,7 +513,7 @@ sprintf("%.12g ",cov(m))
                          ]);
     auto m_mean = Matrix( [1, 2, 2] );
     auto m_var  = Matrix( [1, 2, 2] );
-    mean_var_inplace( m, m_mean, m_var );
+    mean_var_inplace_nogc( m, m_mean, m_var );
 
     if (verbose)  writeln( "m: ", m );
     if (verbose)  writeln( "m_mean: ", m_mean );
@@ -556,7 +556,7 @@ sprintf("%.12g ",cov(m))
 
 
 
-    mean_var_inplace!( /*unbiased:*/false )( m, m_mean, m_var );
+    mean_var_inplace_nogc!( /*unbiased:*/false )( m, m_mean, m_var );
     
     double var_2( in double[] arr, in double mean )
     {
