@@ -79,7 +79,11 @@ struct GmmT( T )
        (that is the price of @nogc)
     */
   {
-    debug assert( dim == m_feature.restdim );
+    debug
+      {
+        assert( dim == m_feature.restdim );
+        assert( n == m_ll.restdim );
+      }
 
     immutable npoints = m_feature.nrow;
 
