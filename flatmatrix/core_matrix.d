@@ -474,7 +474,7 @@ T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
 {
   pragma( inline, true );
   T[] ret = new T[ X.nrow ];
-  extract_ind_inplace!T( X, ind, ret );
+  extract_ind_inplace_nogc!T( X, ind, ret );
   return ret;
 }
 
