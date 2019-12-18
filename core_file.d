@@ -9,8 +9,8 @@ module d_glat.core_file;
 import core.stdc.stdlib : exit;
 import std.conv : octal;
 import std.datetime.systime : SysTime;
-import std.file : exists, getAttributes, getTimes, isDir, isFile, mkdirRecurse;
-import std.path : baseName, dirName;
+import std.file : exists, getAttributes, getTimes, isDir, isFile, mkdirRecurse, isSymlink, readLink;
+import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
 import std.stdio : stderr, writefln, writeln;
 
 void ensure_dir_exists( in string dir_name )
@@ -70,6 +70,24 @@ SysTime get_modification_time( in string filename )
 
   return modificationTime;
 }
+
+
+string resolve_symlink( in string maybe_symlink )
+{
+  pragma( inline, true );
+
+  if (!maybe_symlink.isSymlink)
+    return maybe_symlink; // not a symlink
+
+  auto target = maybe_symlink.readLink;
+  if (isAbsolute( target ))
+    return target; // absolute symlink
+
+  // relative symlink
+
+  return buildPath( maybe_symlink.dirName, target ).buildNormalizedPath;
+}
+
 
 
 ubyte[] ubytedata_of_little_endian_ushortdata( in ushort[] ushortdata )
