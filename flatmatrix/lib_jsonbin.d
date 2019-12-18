@@ -19,6 +19,7 @@ import std.bitmanip;
 import std.conv;
 import std.exception : enforce;
 import std.file;
+import std.format;
 import std.json;
 import std.range;
 import std.stdio;
@@ -114,6 +115,31 @@ class JsonbinT( T )
       &&  this.m == other.m;
   }
 
+  string toString(alias transform_fun = false)() const
+  {
+    auto app = appender!(char[]);
+    this.toString!transform_fun( (carr) { foreach (c; carr) app.put( c ); } );
+    auto ret = app.data.idup;
+    app.clear;
+    return ret;
+  }
+
+  void toString(alias transform_fun = false)
+    (scope void delegate(const(char)[]) sink) const
+  {
+    sink( format( "JsonbinT!%s:{\n", T.stringof ) );
+
+    immutable tab = "  ";
+
+    sink( tab~`j_str: "`~j_str~`"`~'\n' );
+
+    sink( tab~`, m: ` );
+
+    m.toString!transform_fun( sink, tab );
+    
+    sink( "}\n" );
+  }
+
 };
 
 enum JsonbinCompress { yes, no, automatic };
@@ -175,7 +201,7 @@ JsonbinT!T jsonbin_of_filename_or_copy
 }
 
 
-JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )( in string filename )
+JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )( in string filename ) 
 {
   pragma( inline, true );
 
@@ -192,7 +218,7 @@ JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompre
 }
 
 JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )
-( in string filename, ref string error_msg )
+( in string filename, ref string error_msg ) 
 {
   bool is_cprs = _get_is_cprs_of_filename!cprs( filename );
   

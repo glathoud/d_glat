@@ -177,13 +177,22 @@ struct MatrixT( T )
   void toString(alias transform_fun = false)
     (scope void delegate(const(char)[]) sink) const
   {
+    pragma( inline, true );
+    toString!transform_fun( sink, "" );
+  }
+
+  void toString(alias transform_fun = false)
+    (scope void delegate(const(char)[]) sink
+     , in string tab
+     ) const
+  {  
     sink( format( "Matrix(%s):[\n", dim ) );
 
-    immutable tab = "  ";
+    immutable tab2 = tab~"  ";
     
-    _spit_d!(transform_fun,T)( sink, tab, dim, data );
+    _spit_d!(transform_fun,T)( sink, tab2, dim, data );
     
-    sink( "]\n" );
+    sink( tab~"]\n" );
   }
   
   // --- Convenience shortcuts
