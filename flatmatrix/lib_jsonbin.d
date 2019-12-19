@@ -12,6 +12,7 @@ public import d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
+import d_glat.core_file;
 import d_glat.core_gzip;
 import d_glat.lib_file_copy_rotate;
 import std.algorithm;
@@ -317,6 +318,8 @@ JsonbinT!T jsonbin_of_chars( T = double )( in char[] cdata
  
 void jsonbin_write_to_filename( JsonbinCompress cprs = JsonbinCompress.automatic )( in Jsonbin jb, in string filename )
 {
+  ensure_file_writable_or_exit( filename, /*ensure_dir:*/true );
+  
   bool is_cprs = _get_is_cprs_of_filename!cprs( filename );
 
   auto ubytes  = is_cprs
