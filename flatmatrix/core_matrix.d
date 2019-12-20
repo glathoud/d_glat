@@ -18,8 +18,14 @@ import std.conv : to;
 import std.format : format;
 import std.math;
 import std.range : enumerate;
+import std.typecons : Nullable;
 
 immutable double numeric_epsilon = 2.220446049250313e-16;
+
+alias MatrixStringTransformfunT( T ) =
+  T delegate( in size_t, in size_t , in size_t, in T );
+
+alias MaybeMSTT( T ) = Nullable!(MatrixStringTransformfunT!T);
 
 struct MatrixT( T )
 {
@@ -164,33 +170,50 @@ struct MatrixT( T )
       &&  this.data == other.data;
   }
   
-  string toString(alias transform_fun = false)() const
+  string toString() const
+  {
+    MaybeMSTT!T mstt_null;
+    return toString( mstt_null );
+  }
+
+  string toString( MaybeMSTT!T maybe_mstt ) const
   {
     auto app = appender!(char[]);
-    this.toString!transform_fun( (carr) { foreach (c; carr) app.put( c ); } );
+    this.toString( (carr) { foreach (c; carr) app.put( c ); }
+                  , maybe_mstt
+                  );
     auto ret = app.data.idup;
     app.clear;
     return ret;
   }
 
   
-  void toString(alias transform_fun = false)
+  void toString
     (scope void delegate(const(char)[]) sink) const
   {
-    
-    toString!transform_fun( sink, "" );
+    MaybeMSTT!T mstt_null;
+    toString( sink, mstt_null );
   }
 
-  void toString(alias transform_fun = false)
+  void toString
+    (scope void delegate(const(char)[]) sink
+     , MaybeMSTT!T maybe_mstt
+     ) const
+  {
+    toString( sink, "", maybe_mstt );
+  }
+
+  void toString
     (scope void delegate(const(char)[]) sink
      , in string tab
+     , MaybeMSTT!T maybe_mstt
      ) const
   {  
     sink( format( "Matrix(%s):[\n", dim ) );
 
     immutable tab2 = tab~"  ";
     
-    _spit_d!(transform_fun,T)( sink, tab2, dim, data );
+    _spit_d!T( maybe_mstt, sink, tab2, dim, data );
     
     sink( tab~"]\n" );
   }
@@ -875,19 +898,21 @@ void transpose_inplace_nogc( T )
 
 private: // ------------------------------
 
-void _spit_d( alias transform_fun, T )
-  ( scope void delegate(const(char)[]) sink
+void _spit_d( T )
+  ( MaybeMSTT!T maybe_mstt
+    , scope void delegate(const(char)[]) sink
     , in string tab
     , in ref size_t[] dim
     , in ref T[] data
     )
 {
   size_t i_data;
-  _spit_d!(transform_fun, T)( sink, tab, dim, data, 0, i_data );
+  _spit_d!T( maybe_mstt, sink, tab, dim, data, 0, i_data );
 }
   
-void _spit_d( alias transform_fun, T )
-  ( scope void delegate(const(char)[]) sink
+void _spit_d( T )
+  ( MaybeMSTT!T maybe_mstt
+    , scope void delegate(const(char)[]) sink
     , in string tab
     , in ref size_t[] dim
     , in ref T[] data
@@ -907,7 +932,7 @@ void _spit_d( alias transform_fun, T )
       sink( tab );
       auto new_i_data = i_data + dim[ $-1 ];
 
-      static if (is(typeof(transform_fun) == bool))
+      if (maybe_mstt.isNull)
         {
           sink( format( "%(%+17.14g,%),\n", data[ i_data..new_i_data ] ) );
         }
@@ -916,7 +941,7 @@ void _spit_d( alias transform_fun, T )
           sink( format( "%(%17s,%),\n"
                         , data[ i_data..new_i_data ]
                         .enumerate
-                        .map!( x => transform_fun
+                        .map!( x => maybe_mstt
                                ( i_dim, i_data, x.index, x.value ) ) ) );  
         }
       
@@ -929,7 +954,8 @@ void _spit_d( alias transform_fun, T )
 
   immutable d = dim[ i_dim ];
   foreach (_; 0..d)
-    _spit_d!(transform_fun,T)( sink, tab, dim, data, i_dim + 1, i_data );
+    _spit_d!T( maybe_mstt
+               , sink, tab, dim, data, i_dim + 1, i_data );
 }
 
 
