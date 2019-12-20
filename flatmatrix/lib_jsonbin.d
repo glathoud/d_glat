@@ -116,17 +116,33 @@ class JsonbinT( T )
       &&  this.m == other.m;
   }
 
-  string toString(alias transform_fun = false)() const
+  override string toString() const
+  {
+    MaybeMSTT!T maybe_mstt;
+    return _toString( maybe_mstt );
+  }
+
+  string toString( MatrixStringTransformfunT!T transform_fun ) const
+  {
+    MaybeMSTT!T maybe_mstt = transform_fun;
+    return _toString( maybe_mstt );
+  }
+
+  private string _toString( MaybeMSTT!T maybe_mstt ) const
   {
     auto app = appender!(char[]);
-    this.toString!transform_fun( (carr) { foreach (c; carr) app.put( c ); } );
+    this.toString( (carr) { foreach (c; carr) app.put( c ); }
+                  , maybe_mstt
+                  );
     auto ret = app.data.idup;
     app.clear;
     return ret;
   }
 
-  void toString(alias transform_fun = false)
-    (scope void delegate(const(char)[]) sink) const
+  void toString
+    (scope void delegate(const(char)[]) sink
+     , MaybeMSTT!T maybe_mstt
+     ) const
   {
     sink( format( "JsonbinT!%s:{\n", T.stringof ) );
 
@@ -136,7 +152,7 @@ class JsonbinT( T )
 
     sink( tab~`, m: ` );
 
-    m.toString!transform_fun( sink, tab );
+    m.toString( sink, tab, maybe_mstt );
     
     sink( "}\n" );
   }

@@ -23,7 +23,7 @@ import std.typecons : Nullable;
 immutable double numeric_epsilon = 2.220446049250313e-16;
 
 alias MatrixStringTransformfunT( T ) =
-  T delegate( in size_t, in size_t , in size_t, in T );
+  string delegate( in size_t, in size_t , in size_t, in T );
 
 alias MaybeMSTT( T ) = Nullable!(MatrixStringTransformfunT!T);
 
