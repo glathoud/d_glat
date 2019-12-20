@@ -1,8 +1,65 @@
 module d_glat.core_string;
 
-// regex-free functions for fast compilation
+public import std.conv : to;
 
-import std.array : split;
+// Note: regex-free functions for fast compilation
+
+import std.algorithm.searching : countUntil;
+import std.array : appender, join, replace, split;
+
+string _tli( string s_0 )() pure @safe
+/*
+  Minimal template literal implementation, inspired from ECMAScript
+
+  Example:
+
+    int i = 34;
+    double d = 56.78;
+    auto s = mixin(_tli!"this \"thing\" is i: ${i} and that other \"thing\" is d: ${d}. Done!");
+    assert( s == "this \"thing\" is i: 34 and that other \"thing\" is d: 56.78. Done!" );
+ */
+{
+  string rest = s_0;
+  auto app = appender!(string[]);
+
+  void put_string( in string a )
+  {
+    app.put( '"'~(a.replace( "\"", "\\\"" ))~'"' );
+  }
+
+  
+  while (true)
+    {
+      bool found_one = false;
+
+      auto index = rest.countUntil( "${" );
+      if (-1 < index)
+        {
+          put_string( rest[ 0..index ] );
+          rest = rest[ index..$ ];
+          
+          auto index2 = rest.countUntil( "}" );
+          if (2 < index2)
+            {
+              found_one = true;
+              app.put( "~to!string("~rest[ 2..index2 ]~")~");
+              rest = rest[ index2+1..$ ];
+            }
+          else
+            {
+              put_string( rest[ 0..2 ] );
+              rest = rest[ 2..$ ];
+            }
+        }
+      
+      if (!found_one)
+        break;
+    }
+  put_string( rest );
+
+  return app.data.join( "" );
+}
+
 
 bool string_is_float( in string s ) pure @safe
 {
@@ -67,6 +124,14 @@ unittest // --------------------
   writeln;
   writeln( "unittest starts: "~__FILE__ );
 
+  {
+    int i = 34;
+    double d = 56.78;
+    auto s = mixin(_tli!"this \"thing\" is i: ${i} and that other \"thing\" is d: ${d}. Done!");
+    assert( s == "this \"thing\" is i: 34 and that other \"thing\" is d: 56.78. Done!" );
+  }
+
+  
   {
     assert( !string_is_float( "" ));
     assert( string_is_float( "1" ));
