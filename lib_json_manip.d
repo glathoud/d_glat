@@ -54,7 +54,7 @@ private void json_ascii_inplace_iter( in Jsonplace place, ref JSONValue jv2 )
 
 JSONValue json_deep_copy( in ref JSONValue j )
 {
-  pragma( inline, true );
+  
   return j.toString.parseJSON;
 }
 
@@ -145,7 +145,7 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 
 bool json_equals( in JSONValue j0, in JSONValue j1 )
 {
-  pragma( inline, true );
+  
   return json_get_sorted_hash_material( j0 ) == json_get_sorted_hash_material( j1 );
 }
 

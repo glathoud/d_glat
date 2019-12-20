@@ -110,7 +110,7 @@ class JsonbinT( T )
 
   bool opEquals( in JsonbinT!T other ) const pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
 
     return this.j_str == other.j_str
       &&  this.m == other.m;
@@ -204,7 +204,7 @@ JsonbinT!T jsonbin_of_filename_or_copy
 
 JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompress.automatic )( in string filename ) 
 {
-  pragma( inline, true );
+  
 
   string error_msg;
   auto ret = jsonbin_of_filename!(T,cprs)( filename, error_msg );
@@ -236,14 +236,14 @@ JsonbinT!T jsonbin_of_filename( T = double, JsonbinCompress cprs = JsonbinCompre
 
 JsonbinT!T jsonbin_of_ubytes( T = double )( in ubyte[] cdata ) pure
 {
-  pragma( inline, true );
+  
   return jsonbin_of_chars!T( cast( char[] )( cdata ) );
 }
 
 JsonbinT!T jsonbin_of_ubytes( T = double )
 ( in ubyte[] cdata, ref string error_msg ) pure
 {
-  pragma( inline, true );
+  
   return jsonbin_of_chars!T( cast( char[] )( cdata ), error_msg );
 }
 
@@ -456,7 +456,7 @@ private:
 bool _get_is_cprs_of_filename( JsonbinCompress cprs )( in string filename )
   pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   static if (cprs == JsonbinCompress.automatic)
     return filename.endsWith( ".gz" );

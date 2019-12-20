@@ -29,7 +29,7 @@ T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
   pure nothrow @safe
 // Wrapper that creates a temporary buffer
 {
-  pragma( inline, true );
+  
   auto buffer = new Buffer_e_w_logsumT!T;
   return e_w_logsum_dim( a_arr, logw_arr, buffer );
 }
@@ -48,7 +48,7 @@ T e_w_logsum_dim( T )( in T[] a_arr, in T[] logw_arr
    (`a_i>0.0`), one for negative values (`a_i<0.0`);
 */
 {
-  pragma( inline, true );
+  
 
   immutable n = a_arr.length;
   
@@ -75,7 +75,7 @@ T e_w_logsum_nogc( T )( in T[] a_arr, in T[] logw_arr
    (`a_i>0.0`), one for negative values (`a_i<0.0`);
 */
 {
-  pragma( inline, true );
+  
 
   immutable n = a_arr.length;
   
@@ -127,7 +127,7 @@ pure nothrow @safe
  want to post-process (e.g. rescale) to compensate for the overflow.
 */
 {
-  pragma( inline, true );
+  
   
   immutable n = arr.length;
   auto buffer = new T[n];
@@ -153,7 +153,7 @@ http://www.glat.info/ma/2006-CHN-USS-TIME-DOMAIN/my_logsum_fast.pdf
  want to post-process (e.g. rescale) to compensate for the overflow.
 */
 {
-  pragma( inline, true );
+  
 
   immutable n = buffer.length;
 
@@ -197,7 +197,7 @@ http://www.glat.info/ma/2006-CHN-USS-TIME-DOMAIN/my_logsum_fast.pdf
 T median( T )( in T[] arr )
 pure nothrow @safe
 {
-  pragma( inline, true );
+  
   
   return median_inplace( arr.dup );
 }
@@ -205,7 +205,7 @@ pure nothrow @safe
 T median_inplace( T )( T[] arr )
   pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
   
   arr.sort;
   immutable n = arr.length;

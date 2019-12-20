@@ -244,7 +244,7 @@ SExpr _parse_slist( in char[] a, ref size_t i )
 
 bool _is_space( in char c ) pure @safe @nogc
 {
-  pragma( inline, true );
+  
   return c == ' ';
 }
 

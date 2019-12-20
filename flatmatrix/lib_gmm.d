@@ -269,7 +269,7 @@ void _do_fallback_zero_var_if_necessary( T )
     )
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   immutable n = m.nrow;
   immutable np1 = n+1;

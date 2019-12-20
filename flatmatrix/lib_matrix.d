@@ -27,7 +27,7 @@ class Buffer_detT(T) { T[] A, temp; }
 T det(T)( in MatrixT!T m ) pure nothrow @safe
 // Variant that allocates an internal buffer.
 {
-  pragma( inline, true );
+  
 
   auto buffer = new Buffer_detT!T;
 
@@ -41,7 +41,7 @@ T det( T )( in ref MatrixT!T m
             )
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   immutable n = m.nrow;
   
@@ -121,7 +121,7 @@ MatrixT!T inv( T )( in MatrixT!T m )
 // Functional wrapper around `inv_inplace_dim`
 pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   Matrix m_inv;
   auto buffer = new Buffer_inv_inplaceT!T;
@@ -139,7 +139,7 @@ bool inv_inplace_dim( T )( in ref MatrixT!T m
   `false` otherwise.
 */
 {
-  pragma( inline, true );
+  
   m_inv.setDim( [m.nrow, m.nrow] );
   return inv_inplace!T( m, m_inv, buffer );
 }
@@ -155,7 +155,7 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
                        , ref Buffer_inv_inplaceT!T buffer
                        ) pure nothrow @trusted
 {
-  pragma( inline, true );
+  
 
   immutable I  = m.nrow;
   immutable J  = m.ncol;

@@ -63,7 +63,7 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
 
 SysTime get_modification_time( in string filename )
 {
-  pragma( inline, true );
+  
 
   SysTime accessTime, modificationTime;
   getTimes(filename, accessTime, modificationTime);
@@ -74,7 +74,7 @@ SysTime get_modification_time( in string filename )
 
 string resolve_symlink( in string maybe_symlink )
 {
-  pragma( inline, true );
+  
 
   if (!maybe_symlink.isSymlink)
     return maybe_symlink; // not a symlink

@@ -189,7 +189,7 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
 
 bool json_is_integer( in ref Nullable!JSONValue j )
 {
-  pragma( inline, true );
+  
   return !j.isNull  &&  j.type == JSON_TYPE.INTEGER;
 }
 
@@ -199,13 +199,13 @@ bool json_is_integer( in ref Nullable!JSONValue j )
 bool json_is_string( in ref Nullable!JSONValue j )
 // Should work well together with `json_get_place`.
 {
-  pragma( inline, true );
+  
   return !j.isNull  &&  j.type == JSON_TYPE.STRING;
  }
 
 bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
 {
-  pragma( inline, true );
+  
   auto maybe_j = json_get_place( j, place );
   return json_is_string_equal( maybe_j , s );
 }
@@ -214,7 +214,7 @@ bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
 bool json_is_string_equal( T )( in ref T j, in string s )
 // Should work well together with `json_get_place`.
 {
-  pragma( inline, true );
+  
   return json_is_string( j )  &&  j.str == s;
 }
 
@@ -222,7 +222,7 @@ bool json_is_string_equal( T )( in ref T j, in string s )
 
 bool json_is_true( in ref Nullable!JSONValue j )
 {
-  pragma( inline, true );
+  
   return !j.isNull  &&  j.type == JSON_TYPE.TRUE;
 }
 

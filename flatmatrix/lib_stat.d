@@ -17,7 +17,7 @@ void mean_inplace_nogc( T )( in ref MatrixT!T m
                              , ref MatrixT!T m_mean )
   pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
   
   debug
     {
@@ -54,7 +54,7 @@ void mean_cov_inplace_dim( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
@@ -67,7 +67,7 @@ void mean_cov_inplace_nogc( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   debug
     {
@@ -165,7 +165,7 @@ void mean_cov_inplace_dim( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
@@ -179,7 +179,7 @@ void mean_cov_inplace_nogc( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   debug
     {
@@ -285,7 +285,7 @@ void mean_var_inplace_dim
     )
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   auto mv_dim = [ 1UL ] ~ m.dim[ 1..$ ];
   m_mean.setDim( mv_dim );
@@ -301,7 +301,7 @@ void mean_var_inplace_nogc
     )
   pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   debug
     {

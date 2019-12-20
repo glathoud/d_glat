@@ -34,7 +34,7 @@ MatrixT!T sortindex( T )( in MatrixT!T a )
 pure nothrow @safe
 // Functional wrapper around `sortindex_inplace_dim`
 {
-  pragma( inline, true );
+  
 
   MatrixT!T b;
   auto buffer = new Buffer_sortindex_inplaceT!T;
@@ -51,7 +51,7 @@ void sortindex_inplace_dim( T )
     )
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   b.setDim( a.dim );
   sortindex_inplace( a, b, buffer );
@@ -64,7 +64,7 @@ void sortindex_inplace( T )
     )
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   b.data[] = a.data[];
   sortindex_inplace( b, buffer);
@@ -75,7 +75,7 @@ void sortindex_inplace( T )( ref MatrixT!T m
                              , ref Buffer_sortindex_inplaceT!T buffer)
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   immutable n       = m.dim[ 0 ];
   immutable restdim = m.restdim;
@@ -116,7 +116,7 @@ void sortindex_inplace( T )
     )
   pure nothrow @safe
 {
-  pragma( inline, true );
+  
 
   debug
     {

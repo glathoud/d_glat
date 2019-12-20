@@ -27,7 +27,7 @@ MatrixT!T corr_one(T)( in MatrixT!T m_one
                        , in MatrixT!T m_many ) pure nothrow @safe
 // Functional wrapper around `corr_one_inplace`
 {
-  pragma( inline, true );
+  
   MatrixT!T m_corr;
   auto buffer = new Buffer_corr_one_inplaceT!T;
 
@@ -62,7 +62,7 @@ void corr_one_inplace( T )
   glat@glat.info
 */
 {
-  pragma( inline, true );
+  
 
   immutable d = m_many.dim[ 1 ];
 
@@ -110,7 +110,7 @@ void corr_one_inplace( T )
   glat@glat.info
 */
 {
-  pragma( inline, true );
+  
 
   immutable n = m_one.data.length;
   immutable d = m_many.dim[ 1 ];

@@ -29,7 +29,7 @@ pure nothrow @safe
   auto arr = ensure_length( n, buffer.arr );
 */
 {
-  pragma( inline, true );
+  
   if (arr.length != desired_length)
     arr = new T[desired_length];
 
@@ -41,7 +41,7 @@ bool equal_nan( T = double )( in T[] a, in T[] b )
   pure nothrow @safe @nogc
 // Extended equal that also permits matching NaNs.
 {
-  pragma( inline, true );
+  
 
   if (a.length != b.length)
     return false;
@@ -75,7 +75,7 @@ size_t[] subset_ind_arr_of_sorted( bool exact = true, T )
   For a "closest" match instead, set `exact` to `false`.
 */
 {
-  pragma( inline, true );
+  
 
   auto ret = new size_t[ subset_arr.length ];
 
@@ -103,7 +103,7 @@ void subset_ind_arr_of_sorted_inplace_nogc( bool exact = true, T )
   For a "closest" match instead, set `exact` to `false`.
 */
 {
-  pragma( inline, true );
+  
 
   debug
     {

@@ -21,7 +21,7 @@ MatrixT!T pairs( alias expstr_or_fun, T )
   ( in MatrixT!T m ) pure nothrow @safe
 // Functional wrapper around `pairs_inplace`.
 {
-  pragma( inline, true );
+  
   
   immutable n = m.dim[ 0 ];
   auto ret = MatrixT!T( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
@@ -59,7 +59,7 @@ void pairs_inplace( alias expstr_or_fun, T )
   Examples: see the unit tests further below.
 */
 {
-  pragma( inline, true );
+  
   
   immutable n = m.dim[ 0 ];
   debug

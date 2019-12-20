@@ -25,7 +25,7 @@ T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
 
 size_t[T] aa_ind_of_array(T)( in T[] arr ) pure nothrow @safe 
 {
-  pragma( inline, true );
+  
 
   size_t[T] ret;
   foreach (ind, v; arr)
@@ -37,7 +37,7 @@ size_t[T] aa_ind_of_array(T)( in T[] arr ) pure nothrow @safe
 immutable(size_t[T]) aaimm_ind_of_array(T)( in T[] arr )
 pure nothrow @trusted
 {
-  pragma( inline, true );
+  
   return cast(immutable(size_t[T]))( aa_ind_of_array!T( arr ) );
 }
 

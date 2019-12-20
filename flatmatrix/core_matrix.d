@@ -70,7 +70,7 @@ struct MatrixT( T )
   // Find at most one `0` value in the `dim` array, and compute that
   // dimension out of `data.length` and the other `dim[i]` values.
   {
-    pragma( inline, true );
+    
 
     size_t sub_total   = dim.length < 1  ?  0  :  1;
     bool   has_missing = false;
@@ -123,7 +123,7 @@ struct MatrixT( T )
 
   void setDim( in size_t[] dim ) pure nothrow @safe
   {
-    pragma( inline, true );
+    
 
     size_t total = dim[ 0 ];
     for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
@@ -148,7 +148,7 @@ struct MatrixT( T )
 
   bool approxEqual( in ref Matrix other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
     
     return this.dim == other.dim
       &&  std.math.approxEqual( this.data, other.data, maxRelDiff, maxAbsDiff );
@@ -158,7 +158,7 @@ struct MatrixT( T )
 
   bool opEquals( in MatrixT!T other ) const pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
     
     return this.dim == other.dim
       &&  this.data == other.data;
@@ -177,7 +177,7 @@ struct MatrixT( T )
   void toString(alias transform_fun = false)
     (scope void delegate(const(char)[]) sink) const
   {
-    pragma( inline, true );
+    
     toString!transform_fun( sink, "" );
   }
 
@@ -199,14 +199,14 @@ struct MatrixT( T )
   
   size_t ndim() const @property pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
     
     return dim.length;
   }
 
   size_t restdim() const @property pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
 
     if (dim.length < 2)
       return 1;
@@ -222,13 +222,13 @@ struct MatrixT( T )
 
   size_t nrow() const @property pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
     return dim[ 0 ];
   }
   
   size_t ncol() const @property pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
     return dim.length < 2  ?  1  :  dim[ 1 ];
   }
 
@@ -262,7 +262,7 @@ mixin(_direct_code(`direct_div`,`/`));
 
 MatrixT!T clone( T )( in MatrixT!T X ) pure nothrow @safe
 {
-  pragma( inline, true );
+  
   return MatrixT!T( X.dim.dup, X.data.dup );
 }
 
@@ -283,7 +283,7 @@ void clone_inplace_nogc( T )
   ( in ref MatrixT!T X
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
   ret.dim[]  = X.dim[];
   ret.data[] = X.data[];
 }
@@ -300,7 +300,7 @@ void diag_inplace_nogc( T )
   ( in T[] x
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   debug assert( ret.dim == [ x.length, x.length ] );
 
@@ -322,7 +322,7 @@ void diag_inplace_nogc( T )
   ( in T v
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   ret.data[] = cast( T )( 0.0 );
   
@@ -351,7 +351,7 @@ void dot_inplace_nogc( T )( in ref MatrixT!T X, in T[] y
                             , ref T[] ret
                             ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
   debug
     {
       assert( X.ndim == 2 );
@@ -387,7 +387,7 @@ void dot_inplace_nogc( T )( in ref MatrixT!T X, in ref MatrixT!T Y
                             , ref MatrixT!T ret
                             ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   immutable size_t p = X.nrow, q = X.ncol, r = Y.ncol;
   debug
@@ -436,7 +436,7 @@ void dot_inplace_YT_nogc( T )
     ) pure nothrow @safe @nogc
 // YT means "Y transposed"
 {
-  pragma( inline, true );
+  
 
   immutable size_t p = X.nrow, q = X.ncol, r = YT.nrow;
   debug
@@ -481,7 +481,7 @@ void dot_inplace_YT_nogc( T )
 
 T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
 {
-  pragma( inline, true );
+  
   T[] ret = new T[ X.nrow ];
   extract_ind_inplace_nogc!T( X, ind, ret );
   return ret;
@@ -491,7 +491,7 @@ void extract_ind_inplace_nogc( T )
   ( in MatrixT!T X, in size_t ind
     , ref T[] ret ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
   immutable rd = X.restdim;
   debug
     {
@@ -516,7 +516,7 @@ MatrixT!T interleave( T )( in MatrixT!T[] m_arr )
 pure nothrow @safe
 // Functional wrapper around `interleave_inplace`
 {
-  pragma( inline, true );
+  
   MatrixT!T m_out;
   size_t[]  buffer;
 
@@ -845,7 +845,7 @@ void transpose_inplace_nogc( T )
   ( in ref MatrixT!T A
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
   debug
     {
       assert( A.ndim == 2 );
@@ -948,7 +948,7 @@ string _direct_code( in string fname, in string op ) pure
                           , ref Matrix RET
                           ) pure nothrow @safe @nogc
   {
-    pragma( inline, true );
+    
       
     debug
       {
@@ -1332,7 +1332,7 @@ unittest  // ------------------------------
     bool filter_fun_0( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return row[ 0 ] % 2 == 0;
     }
 
@@ -1361,7 +1361,7 @@ unittest  // ------------------------------
     bool filter_fun_1( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return row[ 0 ] % 2 != 0;
     }
 
@@ -1390,7 +1390,7 @@ unittest  // ------------------------------
     bool filter_fun_2( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return true;
     }
 
@@ -1419,7 +1419,7 @@ unittest  // ------------------------------
     bool filter_fun_3( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return false;
     }
 
@@ -1446,7 +1446,7 @@ unittest  // ------------------------------
     bool filter_fun_0i( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return row[ 0 ] % 2 == 0;
     }
 
@@ -1476,7 +1476,7 @@ unittest  // ------------------------------
     bool filter_fun_1i( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return row[ 0 ] % 2 != 0;
     }
 
@@ -1506,7 +1506,7 @@ unittest  // ------------------------------
     bool filter_fun_2i( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return true;
     }
 
@@ -1536,7 +1536,7 @@ unittest  // ------------------------------
     bool filter_fun_3i( in size_t ind, in double[] row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       return false;
     }
 
@@ -1565,7 +1565,7 @@ unittest  // ------------------------------
       ( in size_t ind, in double[] in_row, ref double[] out_row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
       if (in_row[ 0 ] % 2 == 0)
         {
           out_row[] = 7.0 * in_row[] + 0.1234;
@@ -1602,7 +1602,7 @@ unittest  // ------------------------------
       ( in size_t ind, in double[] in_row, ref double[] out_row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
 
       out_row[] = 7.0 * in_row[] + 0.1234;
 
@@ -1643,7 +1643,7 @@ unittest  // ------------------------------
       ( in size_t ind, in double[] in_row, ref double[] out_row )
       pure nothrow @safe @nogc
     {
-      pragma( inline, true );
+      
 
       out_row[] = 7.0 * in_row[] + 0.1234;
 

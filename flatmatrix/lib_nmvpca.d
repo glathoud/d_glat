@@ -23,7 +23,7 @@ Matrix nmvpca( in Matrix a ) pure nothrow @safe
 // Returns a new matrix. If the PCA failed,
 // `b` will be filled with `NaN`s.
 {
-  pragma( inline, true );
+  
 
   auto b = Matrix( a.dim );
   auto buffer = new Buffer_nmvpca_inplace;
@@ -52,7 +52,7 @@ pure nothrow @safe
 // Returns `true` if PCA successful, `false` otherwise.
 // In the latter case `b` will be filled with NaNs.
 {
-  pragma( inline, true );
+  
 
   b.setDim( a.dim );
   return nmvpca_inplace( a, b, buffer );
@@ -72,7 +72,7 @@ bool nmvpca_inplace( in ref Matrix a
   otherwise. The the `false` case, `b.data` is filled with NaNs.
 */
 {
-  pragma( inline, true );
+  
 
   immutable m = a.nrow;
   immutable n = a.ncol;

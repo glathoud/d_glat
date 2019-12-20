@@ -32,7 +32,7 @@ struct SvdResult
 
   void setDim( in size_t m, in size_t n ) pure nothrow @safe
   {
-    pragma( inline, true );
+    
     if (this.m != m  ||  this.n != n)
       {
         this.m = m;
@@ -75,7 +75,7 @@ bool svd_inplace_nogc( in ref Matrix A
   Returns `true` if it converged, `false` otherwise.
 */
 {
-  pragma( inline, true );
+  
   
   debug assert( A.ndim == 2 );
 

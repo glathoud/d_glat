@@ -6,7 +6,7 @@ import std.array : split;
 
 bool string_is_float( in string s ) pure @safe
 {
-  pragma( inline, true );
+  
 
   if (s.length < 1)
     return false;
@@ -45,7 +45,7 @@ bool string_is_float( in string s ) pure @safe
 
 bool string_is_num09( in string s ) pure nothrow @safe @nogc
 {
-  pragma( inline, true );
+  
 
   if (s.length < 1)
     return false;
