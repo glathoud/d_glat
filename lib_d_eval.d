@@ -11,7 +11,7 @@ import std.compiler;
 import std.conv;
 import std.file;
 import std.path;
-import std.regex;
+import std.regex : ctRegex;
 import std.stdio;
 import std.string;
 

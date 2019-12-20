@@ -6,8 +6,8 @@
 */
 module d_glat.core_parse_number;
 
-import std.format;
-import std.regex;
+import std.format : formattedRead;
+import std.regex : ctRegex;
 import std.typecons;
 
 alias MaybeDouble = Nullable!double;

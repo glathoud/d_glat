@@ -21,7 +21,6 @@ import d_glat.flatmatrix.lib_stat;
 import std.algorithm : max;
 import std.array : array;
 import std.conv : to;
-import std.format : format;
 import std.math;
 import std.range : iota;
 
@@ -210,7 +209,7 @@ struct GmmT( T )
 
   void toString(scope void delegate(const(char)[]) sink) const
   {
-    sink( format( "Gmm(n:%d,dim:%d): {", n, dim ) );
+    sink( "Gmm(n:"~to!string(n)~",dim:"~to!string(n)~"): {" );
     sink( "\n  is_finite:      "~to!string( is_finite ) );
     sink( "\n  , is_finite_arr:"~to!string( is_finite_arr ) );
     sink( "\n  , m_mean_arr:   "~to!string( m_mean_arr ) );

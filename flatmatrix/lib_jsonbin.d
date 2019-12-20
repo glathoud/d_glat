@@ -20,7 +20,6 @@ import std.bitmanip;
 import std.conv;
 import std.exception : enforce;
 import std.file;
-import std.format;
 import std.json;
 import std.range;
 import std.stdio;
@@ -144,7 +143,7 @@ class JsonbinT( T )
      , MaybeMSTT!T maybe_mstt
      ) const
   {
-    sink( format( "JsonbinT!%s:{\n", T.stringof ) );
+    sink( "JsonbinT!"~T.stringof~":{\n" );
 
     immutable tab = "  ";
 

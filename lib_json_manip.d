@@ -16,7 +16,7 @@ import std.array;
 import std.conv;
 import std.digest.sha;
 import std.exception;
-import std.format;
+import std.format : format;
 import std.json;
 import std.stdio;
 import std.typecons;

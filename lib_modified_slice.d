@@ -3,7 +3,6 @@ module d_glat.lib_modified_slice;
 import core.exception;
 import d_glat.core_assert;
 import std.conv;
-import std.format;
 import std.stdio;
 
 class ModifiedSlice(T)
