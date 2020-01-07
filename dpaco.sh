@@ -4,7 +4,7 @@
 # By Guillaume Lathoud, 2019
 # The Boost License applies, as described in file ./LICENSE
 #
-# Usage: dpaco.sh [<...options...>] file_a.d dir_b file_c.d file_d.b dir_e
+# Usage: dpaco.sh [<...options...>] file_a.d dir_b file_c.d file_d.d dir_e
 
 set -e
 
