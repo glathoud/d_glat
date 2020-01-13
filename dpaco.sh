@@ -17,6 +17,7 @@ FORCE=""
 MODE="release" # debug release relbug relbug0
 OUTBIN="dpaco.bin"
 PARALLEL_OPT=""
+SYSID="$(cat /etc/machine-id)_$(uname -a | sed 's/[^0-9]//g' | echo "ibase=10; obase=16; $(cat)" | bc)"
 
 SRCLIST=()
 while [[ $# -gt 0 ]]
@@ -120,7 +121,8 @@ ME_EXT=$(basename $0)
 ME=${ME_EXT%.*}
 #echo "ME: $ME"
 
-OBJDIR="${BASEDIR}/.${ME}__$(basename ${OUTBIN})__${MODE}"
+COMPILID="$(echo $COMPILER_OPT | sed 's/[^-\+_a-zA-Z0-9]/_/g')"
+OBJDIR="${BASEDIR}/.${ME}__$(basename ${OUTBIN})__${COMPILID}__${SYSID}"
 
 TIMESUMMARY="${OBJDIR}/0_TIMESUMMARY.TXT"
 
