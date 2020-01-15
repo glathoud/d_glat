@@ -13,12 +13,16 @@ import std.file : exists, getAttributes, getTimes, isDir, isFile, mkdirRecurse, 
 import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
 import std.stdio : stderr, writefln, writeln;
 
-void ensure_dir_exists( in string dir_name )
+bool ensure_dir_exists( in string dir_name )
+// Return `true` if the dir already existed, otherwise, create it
+// and return `false`.
 {
-  if (!exists( dir_name ))
-    {
-      mkdirRecurse( dir_name );
-    }
+  immutable ret = exists( dir_name );
+  
+  if (!ret)
+    mkdirRecurse( dir_name );
+  
+  return ret;
 }
 
 
