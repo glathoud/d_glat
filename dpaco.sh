@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
 # Parallel compilation of D code
-# By Guillaume Lathoud, 2019
+# By Guillaume Lathoud, 2019, 2020 and later
 # The Boost License applies, as described in file ./LICENSE
 #
 # Usage: dpaco.sh [<...options...>] file0.d dir1 file2.d file3.d dir4
+
+ME_0=${0}
+MY_ARGS=$@
+echo $ME
 
 set -e
 
@@ -14,6 +18,7 @@ COMPILER="$(which -a ldmd2 dmd | head -1)"
 EXEC=""
 EXEC_OPT=""
 FORCE=""
+FRESH_CHUNK_SIZE=50
 MODE="release" # debug release relbug relbug0
 OUTBIN="dpaco.bin"
 PARALLEL_OPT=""
@@ -26,6 +31,11 @@ do
     case $key in
         -c|--compiler)
             COMPILER="$2"
+            shift
+            shift
+            ;;
+        -fcs|--fresh-chunk-size)
+            FRESH_CHUNK_SIZE="$2"
             shift
             shift
             ;;
@@ -140,9 +150,17 @@ then
     mkdir -p ${OBJDIR}
 fi
 
+FRESH="true"
+if (( 1==$FRESH_CHUNK_SIZE ))  ||  $(ls -1qA "${OBJDIR}" | grep -q . )
+then
+    FRESH="false"
+fi
+
+echo "FRESH: ${FRESH},  FRESH_CHUNK_SIZE:${FRESH_CHUNK_SIZE}"
+
 # --- Do them all!
 
-function src_list_all
+function src_list_all()
 {
     for src in "${SRCLIST[@]}"
     do
@@ -159,6 +177,21 @@ function src_list_all
     done   
 }
 
+function src_list_all_uniq()
+{
+    src_list_all | xargs -n 1 realpath | sort | uniq
+}
+
+function src_list_chunks()
+{
+    LIST_ALL="$(src_list_all_uniq)"
+    LIST_LIB="$(grep -L 'main(' ${LIST_ALL})"
+    LIST_MAIN="$(grep -l 'main(' ${LIST_ALL})"
+    xargs -n $FRESH_CHUNK_SIZE <<<"$LIST_LIB"
+    xargs -n 1 <<<"$LIST_MAIN"
+}
+
+
 function D_module_dotname()
 {
     FILENAME="$1"
@@ -171,7 +204,17 @@ function D_module_dotname()
         TMP="${FILENAME%.*}"
     fi
     
-    echo "$TMP"
+    echo "$(basename $TMP)"
+}
+
+function do_chunk()
+{
+    CHUNK=$1
+    OBJDIR=$2
+    COMPILER=$3
+    COMPILER_OPT=${@:4}
+    CMD_CHUNK="nice --adjustment 5 $COMPILER -c -oq -od=$OBJDIR ${COMPILER_OPT} $CHUNK"
+    ${CMD_CHUNK[@]}
 }
 
 function do_one()
@@ -212,18 +255,34 @@ function do_one()
 
 
 export -f D_module_dotname
+export -f do_chunk
 export -f do_one
 
-echo
-echo "Compiling each file separately..."
-set -v
-time {
-    src_list_all | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 6
+
+if [ "$FRESH" == "true" ]
+then
+    echo
+    echo "Compiling files grouped in chunks..."
+    set -v
+    time {
+        src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6
+    }
+    set +v
+    echo
+    echo 
+    echo "Done compiling files grouped in chunks."
+else
+    echo
+    echo "Compiling each file separately..."
+    set -v
+    time {
+        src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7
+    }
+    set +v
     echo
     echo
     echo "Done compiling each file separately."
-}
-set +v
+fi
 
 O_LIST="$(echo $(find ${OBJDIR} -name '*.o'))"
 
@@ -242,7 +301,43 @@ then
     echo "============================================="
     echo "    Linking everything into ${OUTBIN}..."
     echo "============================================="
-    time ${CMD[@]}
+    set +e
+    time { ERROR=$(${CMD[@]} 2>&1 > /dev/null); }
+    code=$?
+    if [ $code != 0 ]
+    then
+        # Deal with ERRORS due to the FRESH_CHUNK implementation
+        # We do all this for compilation speed...
+        echo "ERROR:"
+        echo "$ERROR"
+        echo 
+        TO_DELETE=$(grep -o -e '^.*\.o' <<<$ERROR)
+
+        echo
+        echo "TO_DELETE:"
+        echo "$TO_DELETE"
+        echo
+        
+        if [ "$TO_DELETE" != "" ]
+        then
+            echo "Workaround for FRESH_CHUNK-related issue: about to delete:"
+            echo $TO_DELETE
+            RM_CMD="rm $(echo $TO_DELETE)"
+            echo
+            echo "RM_CMD:"
+            echo $RM_CMD
+            echo
+            ${RM_CMD[@]}
+            echo "Workaround for FRESH_CHUNK-related issue: about to restart myself"
+            RESTART="$ME_0 ${MY_ARGS[@]}"
+            echo
+            echo $RESTART
+            ${RESTART[@]}
+            exit 0
+        fi
+        exit 8
+    fi
+    set -e
 fi
 
 ls -l "$OUTBIN"
@@ -252,7 +347,6 @@ cat "$TIMESUMMARY" | sort > "$TIMESUMMARY.sorted"
 # Done, display some info
 
 set -v
-cat /proc/$$/status  | grep VmHWM
 
 wc -l "$TIMESUMMARY.sorted"
 tail -10 "$TIMESUMMARY.sorted"
