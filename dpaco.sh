@@ -5,6 +5,11 @@
 # The Boost License applies, as described in file ./LICENSE
 #
 # Usage: dpaco.sh [<...options...>] file0.d dir1 file2.d file3.d dir4
+#
+# Note that the options are written WITHOUT equal sign '='
+#
+# Example: dpcao.sh --compiler ../my/compiler/ldmd2 --mode debug main.d lib_0 lib_1
+
 
 ME_0=${0}
 MY_ARGS=$@
@@ -168,7 +173,7 @@ function src_list_all()
             
             echo "$src" ;
         elif [ -d "$src" ]; then
-            find -L "$src" -name '*.d' ;
+            find -L "$src" -name '*.d'
 
         else
             echo "Could not find or don't what to do with src: '${src}'" 1&>2 ;
