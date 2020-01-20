@@ -75,9 +75,7 @@ struct MatrixT( T )
   void complete_dim() pure nothrow @safe
   // Find at most one `0` value in the `dim` array, and compute that
   // dimension out of `data.length` and the other `dim[i]` values.
-  {
-    
-
+  {  
     size_t sub_total   = dim.length < 1  ?  0  :  1;
     bool   has_missing = false;
     size_t i_missing;
@@ -129,8 +127,6 @@ struct MatrixT( T )
 
   void setDim( in size_t[] dim ) pure nothrow @safe
   {
-    
-
     size_t total = dim[ 0 ];
     for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
       total *= dim[ i ];
@@ -149,6 +145,39 @@ struct MatrixT( T )
         this.data = new T[ total ];
       }
   }
+
+  // --- API: append
+
+  void append_data( in T[] newdata ) pure nothrow @safe
+  {
+    immutable rd = restdim;
+
+    if (0 != newdata.length % rd)
+      assert( false, "Fails to verify: 0 == newdata.length % restdim   (resp. "~to!string(newdata.length)~" and "~to!string(restdim)~")");
+
+    data = data~newdata;
+    dim[ 0 ] = data.length / rd;
+  }
+
+  void append_data( in T[][] newdata ) pure nothrow @safe
+  {
+    immutable rd = restdim;
+    
+    auto apdr = appender!(double[]);
+
+    apdr.put( data );
+
+    foreach (v; newdata)
+      apdr.put( v );
+       
+    data = apdr.data;
+    
+    if (0 != data.length % rd)
+      assert( false, "Fails to verify: 0 == data.length % restdim   (resp. "~to!string(data.length)~" and "~to!string(restdim)~")");
+    
+    dim[ 0 ] = data.length / rd;
+  }
+
   
   // --- API: Comparison
 
@@ -503,6 +532,7 @@ void dot_inplace_YT_nogc( T )
 
 
 T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
+// Returns "flat column" `ind`.
 {
   
   T[] ret = new T[ X.nrow ];
@@ -513,6 +543,9 @@ T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
 void extract_ind_inplace_nogc( T )
   ( in MatrixT!T X, in size_t ind
     , ref T[] ret ) pure nothrow @safe @nogc
+/* Extract "flat column" `ind` and put it into `ret`, which is assumed
+   to be already allocated as `X.nrow`-long.
+*/
 {
   
   immutable rd = X.restdim;
@@ -534,6 +567,34 @@ void extract_ind_inplace_nogc( T )
     }
 }
 
+T[] fold_rows(alias /*T[] */fun/*( T[], in T[] row )*/, T)
+  ( in MatrixT!T m )
+// Fold rows, using the first row as implicit seed (duplicated).
+{
+  auto m_rest = MatrixT!T( [ m.nrow - 1 ] ~ m.dim[ 1..$ ]
+                           , cast( T[] )( m.data[ m.restdim..$ ] ) // we trust .dup and fold_rows(m,seed)
+                           );
+  return fold_rows!fun( m_rest, m.data[ 0..m.restdim ].dup );
+}
+
+T_OUT fold_rows(alias /*T_OUT */fun/*( T_OUT, in T[] row )*/, T, T_OUT)
+  ( in MatrixT!T m, T_OUT seed )
+// Fold rows with an explicit seed (NOT duplicated: can be modified).
+{
+  auto data = m.data;
+  auto rd   = m.restdim;
+
+  auto ret = seed;
+  
+  for (size_t i = 0, i_end = data.length; i < i_end; )
+    {
+      immutable i_next = i + rd;
+      ret = fun( ret, data[ i..i_next ] );
+      i = i_next;      
+    }
+
+  return ret;
+}
 
 MatrixT!T interleave( T )( in MatrixT!T[] m_arr )
 pure nothrow @safe
@@ -1064,6 +1125,44 @@ unittest  // ------------------------------
             );
   }
 
+
+  {
+    auto A = Matrix( [0, 4]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0  ] );
+
+    A.append_data( [ 13.0, 14.0, 15.0, 16.0,
+                     17.0, 18.0, 19.0, 20.0 ] );
+    
+    assert( A == Matrix( [ 5, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0 ] )
+            );
+  }
+
+
+  {
+    auto A = Matrix( [0, 4]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0  ] );
+
+    A.append_data( [ [ 13.0, 14.0, 15.0, 16.0 ],
+                     [ 17.0, 18.0, 19.0, 20.0 ] ] );
+    
+    assert( A == Matrix( [ 5, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0 ] )
+            );
+  }
+
   
   {
     auto A = Matrix( [4, 4], 0.0 );
@@ -1175,6 +1274,48 @@ unittest  // ------------------------------
             );
   }
 
+
+
+  {
+    import std.algorithm : fold;
+    
+    auto A = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+
+    double[] fun( double[] a, in double[] b ) pure @safe
+    {
+      // In-place find because we know the seed is duplicated
+      a[] += b[];
+      return a;
+    }
+
+    auto result = fold_rows!(fun)( A );
+
+    assert( result
+            == [ 1+4+7+10, 2+5+8+11, 3+6+9+12 ] );
+  }
+
+  {
+    import std.algorithm : fold;
+    
+    auto A = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+
+    double fun2( in double ret, in double[] row ) pure @safe
+    {
+      return ret + row.fold!"a*b";
+    }
+
+    
+    auto result = fold_rows!(fun2)( A, 0.0 );
+
+    assert( result
+            == 1*2*3 + 4*5*6 + 7*8*9 + 10*11*12 );
+  }
 
 
 
