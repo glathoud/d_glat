@@ -131,7 +131,13 @@ struct MatrixT( T )
     for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
       total *= dim[ i ];
 
-    // Here we cannot support `0` since there is no data.
+    /*
+      Here we cannot support `0` since there is no data.
+
+      Note: if you need to create an empty matrix, pass
+      some empty data array, as in `Matrix([0,8], [])`
+      and NOT `Matrix([0,8])`.
+    */
     debug if (!(0 < total ))
       {
         this.dim = [];
@@ -274,7 +280,6 @@ struct MatrixT( T )
 
   size_t nrow() const @property pure nothrow @safe @nogc
   {
-    
     return dim[ 0 ];
   }
   
