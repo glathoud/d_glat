@@ -7,6 +7,10 @@
 # Usage: dpaco.sh [<...options...>] file0.d dir1 file2.d file3.d dir4
 #
 # Note that the options are written WITHOUT equal sign '='
+# i.e.
+#     dpaco.sh --compiler <path_to_compiler> ...
+# and NOT
+#     dpaco.sh --compiler=<path_to_compiler> ...
 #
 # Example: dpcao.sh --compiler ../my/compiler/ldmd2 --mode debug main.d lib_0 lib_1
 
@@ -24,7 +28,7 @@ EXEC=""
 EXEC_OPT=""
 FORCE=""
 FRESH_CHUNK_SIZE=50
-MODE="release" # debug release relbug relbug0
+MODE="" # debug release relbug relbug0
 OUTBIN="dpaco.bin"
 PARALLEL_OPT=""
 SYSID="$(cat /etc/machine-id)_$(uname -a | sed 's/[^0-9]//g' | echo "ibase=10; obase=16; $(cat)" | bc)"
@@ -36,6 +40,11 @@ do
     case $key in
         -c|--compiler)
             COMPILER="$2"
+            shift
+            shift
+            ;;
+        -co|--compiler-opt)
+            COMPILER_OPT="$2"
             shift
             shift
             ;;
@@ -84,6 +93,10 @@ done
 
 if [ "$COMPILER_OPT" = "" ]; then
 
+    if [ "$MODE" = "" ]; then
+        MODE="release" # default
+    fi
+    
     if [ "$MODE" = "debug" ]; then
         COMPILER_OPT=" -debug -g -gs -gf -link-defaultlib-debug "
 
@@ -170,8 +183,8 @@ function src_list_all()
     for src in "${SRCLIST[@]}"
     do
         if [ -f "$src" ]; then
-            
             echo "$src" ;
+
         elif [ -d "$src" ]; then
             find -L "$src" -name '*.d'
 
@@ -347,15 +360,18 @@ fi
 
 ls -l "$OUTBIN"
 
-cat "$TIMESUMMARY" | sort > "$TIMESUMMARY.sorted"
-
-# Done, display some info
-
-set -v
-
-wc -l "$TIMESUMMARY.sorted"
-tail -10 "$TIMESUMMARY.sorted"
-set +v
+if [ -f "$TIMESUMMARY" ]; then
+    
+    cat "$TIMESUMMARY" | sort > "$TIMESUMMARY.sorted"
+    
+    # Done, display some info
+    
+    set -v
+    
+    wc -l "$TIMESUMMARY.sorted"
+    tail -10 "$TIMESUMMARY.sorted"
+    set +v
+fi
 
 # Optionally start the executable
 
