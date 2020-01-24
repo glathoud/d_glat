@@ -199,10 +199,8 @@ struct MatrixT( T )
 
   bool opEquals( in MatrixT!T other ) const pure nothrow @safe @nogc
   {
-    
-    
     return this.dim == other.dim
-      &&  this.data == other.data;
+      &&  equal_nan( this.data, other.data );
   }
   
   string toString() const

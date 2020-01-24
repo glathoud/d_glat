@@ -6,6 +6,7 @@ import std.array : appender, array;
 import std.conv : to;
 import std.format : format;
 import std.math : abs, isNaN;
+import std.traits : hasMember;
 
 /*
   Tools for arrays. Boost License, see file ./LICENSE
@@ -37,24 +38,35 @@ pure nothrow @safe
 }
 
 
-bool equal_nan( T = double )( in T[] a, in T[] b )
+bool equal_nan(T)( in T[] a, in T[] b )
   pure nothrow @safe @nogc
 // Extended equal that also permits matching NaNs.
 {
-  
-
-  if (a.length != b.length)
-    return false;
-  
-  foreach (i,ai; a)
+  static if (hasMember!(T, "nan"))
     {
-      auto bi = b[ i ];
-      if (!(isNaN( ai )  &&  isNaN( bi )
-            ||  ai == bi))
-        return false;
-    }
+      // e.g. T == double
 
-  return true;
+      if (a.length != b.length)
+        return false;
+
+      foreach (i,x; a)
+        {
+          immutable y = b[ i ];
+          immutable one_equal = x == y
+            ||  isNaN( x )  &&  isNaN( y );
+
+          if (!one_equal)
+            return false;
+        }
+
+      return true;
+    }
+  else
+    {
+      // e.g. T == int
+
+      return a == b;
+    }
 }
 
   

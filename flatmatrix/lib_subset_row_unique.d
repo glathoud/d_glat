@@ -2,6 +2,8 @@ module d_glat.flatmatrix.lib_subset_row_unique;
 
 import d_glat.flatmatrix.core_matrix;
 import std.array : appender;
+import std.math  : isNaN;
+import std.traits : hasMember;
 
 /*
   Return a new matrix where duplicate rows have been eliminated:
@@ -64,7 +66,23 @@ MatrixT!T subset_row_unique
       bool equal = true;
       foreach (i; compare_index_arr)
         {
-          if (x[ i ] != next_x[ i ])
+          immutable x_i = x[ i ]
+            ,  next_x_i = next_x[ i ]
+            ;
+          static if (hasMember!( T, "nan" ))
+            {
+              // e.g. T == double
+              immutable one_equal = x_i == next_x_i
+                ||  isNaN( x_i )  &&  isNaN( next_x_i )
+                ;
+            }
+          else
+            {
+              // e.g. T == int
+              immutable one_equal = x_i == next_x_i;              
+            }
+
+          if (!one_equal)
             {
               equal = false;
               break;
@@ -344,6 +362,47 @@ unittest  // ------------------------------
 
   
   
+  {
+    IgnoreIndex ignore_index;
+    ignore_index[ 2 ] = true;
+    
+    auto A = Matrix( [ 0, 8 ]
+                     , [
+                        0, 0, 0, 0, 0, 0, 0, double.nan
+                        , 0, 0, 0, 0, 0, 0, 0, double.nan
+                        , 1567088100000, double.nan, 1567144783000, 4049.5, 4051, 4046.5, 4049, 61064
+                        , 1567088100000, double.nan, 1567145713000, 4049.5, 4051, 4046.5, 4049, 61064
+                        , 1567088100000, double.nan, 1567146950000, 4049.5, 4051, 4047, 4049, 61064
+                        , 1567088100000, double.nan, 1567148130000, 4049.5, 4051, 4047, 4049, 61064
+                        , 1567088100000, double.nan, 1567156723000, 4049.5, 4051, 4047, 4049, 61064
+                        , 0, 0, 0, 0, 0, 0, 0, 0
+                        ]);
+
+    enum keep_first = false;
+    auto B = subset_row_unique!keep_first( A, ignore_index );
+
+    if (verbose)
+      {
+        writeln;
+        writeln("A: ", A );
+        writeln;
+        writeln("B: ", B);
+      }
+
+    assert( B == Matrix( [ 0, 8 ]
+                         , [
+                            0, 0, 0, 0, 0, 0, 0, double.nan
+                            , 1567088100000, double.nan, 1567145713000, 4049.5, 4051, 4046.5, 4049, 61064
+                            , 1567088100000, double.nan, 1567156723000, 4049.5, 4051, 4047, 4049, 61064
+                            , 0, 0, 0, 0, 0, 0, 0, 0
+                            ]
+                         ));
+  }
+
+  
+  
+
+
   writeln( "unittest passed: "~__FILE__ );
 }
 
