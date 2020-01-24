@@ -358,19 +358,19 @@ then
     set -e
 fi
 
+echo
 ls -l "$OUTBIN"
 
 if [ -f "$TIMESUMMARY" ]; then
-    
+
     cat "$TIMESUMMARY" | sort > "$TIMESUMMARY.sorted"
     
     # Done, display some info
-    
-    set -v
-    
+
+    echo
     wc -l "$TIMESUMMARY.sorted"
+    echo "...of which the worst compilation times are:"
     tail -10 "$TIMESUMMARY.sorted"
-    set +v
 fi
 
 # Optionally start the executable
