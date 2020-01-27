@@ -3,6 +3,11 @@ module d_glat.lib_parallelism;
 import std.parallelism : TaskPool;
 import std.range : iota;
 
+void parallel_or_single( T )( in bool do_parallel, in T[] todo_arr, void delegate( in T one ) fun )
+{
+  parallel_or_single!T( totalCPUs, todo_arr, fun );
+}
+
 void parallel_or_single( T )( in size_t n_parallel, in T[] todo_arr, void delegate( in T one ) fun )
 {
   if (1 < n_parallel)
