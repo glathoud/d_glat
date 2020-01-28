@@ -69,6 +69,36 @@ bool equal_nan(T)( in T[] a, in T[] b )
     }
 }
 
+
+
+size_t[T] get_indmap_of_arr( bool unique = true, T)( in T[] arr )
+{
+  size_t[T] indmap;
+
+  foreach (ind,v; arr)
+    {
+      static if (unique)
+        {
+          if (v in indmap)
+            assert( false, "bug: "~to!string( v )~" not unique." );
+        }
+
+      indmap[ v ] = ind;
+    }
+
+  return indmap;
+}
+
+
+bool[T] get_set_of_arr(T)( in T[] arr )
+{
+  bool[T] set;
+  foreach (v; arr)
+    set[ v ] = true;
+
+  return set;
+}
+
   
 
 size_t[] subset_ind_arr_of_sorted( bool exact = true, T )

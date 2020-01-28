@@ -152,7 +152,7 @@ struct MatrixT( T )
       }
   }
 
-  // --- API: append
+  // --- API: append etc.
 
   void append_data( in T[] newdata ) pure nothrow @safe
   {
@@ -184,13 +184,34 @@ struct MatrixT( T )
     dim[ 0 ] = data.length / rd;
   }
 
+  void appendfill_new_columns( in T fill_value, in size_t n_new_columns )
+  {
+    immutable dlen_old = data.length;
+    immutable nr       = nrow();
+    immutable rd_old   = restdim();
+    
+    dim[ $-1 ] += n_new_columns;
+    immutable rd_new = restdim();
+
+    auto new_data = new T[ nr * rd_new ];
+
+    for (size_t i = 0, j = 0; i < dlen_old; )
+      {
+        immutable i_next = i + rd_old;
+
+        while (i < i_next)
+          new_data[ j++ ] = data[ i++ ];
+          
+        j += n_new_columns;
+      }
+
+    data = new_data;
+  }
   
   // --- API: Comparison
 
   bool approxEqual( in ref Matrix other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
   {
-    
-    
     return this.dim == other.dim
       &&  std.math.approxEqual( this.data, other.data, maxRelDiff, maxAbsDiff );
   }
@@ -254,16 +275,12 @@ struct MatrixT( T )
   // --- Convenience shortcuts
   
   size_t ndim() const @property pure nothrow @safe @nogc
-  {
-    
-    
+  {    
     return dim.length;
   }
 
   size_t restdim() const @property pure nothrow @safe @nogc
   {
-    
-
     if (dim.length < 2)
       return 1;
     
@@ -1164,6 +1181,20 @@ unittest  // ------------------------------
                          13.0, 14.0, 15.0, 16.0,
                          17.0, 18.0, 19.0, 20.0 ] )
             );
+  }
+
+  {
+    auto A = Matrix( [0, 4]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0  ] );
+
+    A.appendfill_new_columns( double.nan, 3 );
+
+    assert( A == Matrix( [0, 7]
+                         , [ 1.0, 2.0, 3.0, 4.0, double.nan, double.nan, double.nan,
+                             5.0, 6.0, 7.0, 8.0, double.nan, double.nan, double.nan,
+                             9.0, 10.0, 11.0, 12.0, double.nan, double.nan, double.nan,  ] ) );
   }
 
   
