@@ -1,5 +1,6 @@
 module d_glat.core_array;
 
+import d_glat.core_assoc_array : aa_set_of_array;
 import d_glat.core_assert;
 import std.algorithm : sort;
 import std.array : appender, array;
@@ -72,6 +73,7 @@ bool equal_nan(T)( in T[] a, in T[] b )
 
 
 size_t[T] get_indmap_of_arr( bool unique = true, T)( in T[] arr )
+// see also: core_assoc_array.aa_ind_of_array
 {
   size_t[T] indmap;
 
@@ -90,14 +92,7 @@ size_t[T] get_indmap_of_arr( bool unique = true, T)( in T[] arr )
 }
 
 
-bool[T] get_set_of_arr(T)( in T[] arr )
-{
-  bool[T] set;
-  foreach (v; arr)
-    set[ v ] = true;
-
-  return set;
-}
+alias get_set_of_arr = aa_set_of_array;
 
   
 

@@ -86,20 +86,27 @@ class JsonbinT( T )
   
       auto m_data = m.data;
 
-      if (endian == Endian.littleEndian)
-        {
-          app.put( cast( ubyte[] )( m_data.dup ));
-        }
+      version (LittleEndian)
+      {
+        app.put( cast( ubyte[] )( m_data.dup ));
+      }
       else
         {
-          ubyte[] ubytes = new ubyte[ m_data.length * (T.sizeof) ];
-          size_t index = 0;
-          foreach (d; m_data)
-            ubytes.write!(T, Endian.littleEndian)( d, &index );
-
-          app.put( ubytes );
+          version (BigEndian)
+          {
+            ubyte[] ubytes = new ubyte[ m_data.length * (T.sizeof) ];
+            size_t index = 0;
+            foreach (d; m_data)
+              ubytes.write!(T, Endian.littleEndian)( d, &index );
+            
+            app.put( ubytes );
+          }
+          else
+            {
+              static assert( false, "Unsupported endianness" );
+            }
         }
-  
+      
       auto ret = app.data;
       app.clear;
       return ret;

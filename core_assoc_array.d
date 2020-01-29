@@ -1,5 +1,6 @@
 module d_glat.core_assoc_array;
 
+import std.algorithm : fold;
 import std.array : Appender, appender, join;
 import std.conv : to;
 import std.exception : assumeUnique;
@@ -24,9 +25,7 @@ T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
 
 
 size_t[T] aa_ind_of_array(T)( in T[] arr ) pure nothrow @safe 
-{
-  
-
+{ 
   size_t[T] ret;
   foreach (ind, v; arr)
     ret[ v ] = ind;
@@ -37,7 +36,6 @@ size_t[T] aa_ind_of_array(T)( in T[] arr ) pure nothrow @safe
 immutable(size_t[T]) aaimm_ind_of_array(T)( in T[] arr )
 pure nothrow @trusted
 {
-  
   return cast(immutable(size_t[T]))( aa_ind_of_array!T( arr ) );
 }
 
@@ -77,9 +75,71 @@ void aa_pretty_inplace( T )
 }
 
 
+bool[T] aa_set_intersection(T)( in bool[T][] arr ... ) pure @safe
+{
+  immutable n = arr.length;
+  if (n == 0)
+    {
+      bool[T] ret; // empty set
+      return ret;
+    }
+  else if (n == 1)
+    {
+      bool[T] ret;
+      foreach (k,v; arr[ 0 ])
+        ret[ k ] = v;
+
+      return ret;
+    }
+  else if (n == 2)
+    {
+      auto a = arr[ 0 ]
+        ,  b = arr[ 1 ]
+        ;        
+      bool[T] ret;
+      foreach (k,v; a)
+        {
+          if (auto p = k in b)
+            if (*p == v)
+              ret[ k ] = v;
+        }
+      return ret;
+    }
+  else
+    {
+      auto seed = aa_set_intersection!T( arr[ 0 ] );
+
+      return arr[1..$].fold!(aa_set_intersection!T)( seed );
+    }
+}
+
+
+bool[T] aa_set_of_array(T)( in T[] arr ) pure nothrow @safe 
+{ 
+  bool[T] ret;
+  foreach (v; arr)
+    ret[ v ] = true;
+
+  return ret;
+}
+
+bool[T] aa_set_union(T)( in bool[T][] arr ... ) pure @safe
+{
+  bool[T] ret;
+  foreach (one; arr)
+    {
+      foreach(k,v; one)
+        ret[ k ] = v;
+    }
+  return ret;
+}
+
+
 unittest
 {
+  import std.array;
   import std.path;
+  import std.string;
 
   immutable verbose = false;
   
@@ -195,6 +255,22 @@ unittest
     assert( output == expected_output );
   }
 
+
+  {
+    auto a = [ "p":true, "q":true, "r":true ];
+    auto b = [           "q":true, "r":true, "s": true ];
+    auto c = [                     "r":true, "s": true, "t": true ];
+
+    assert( aa_set_union( a, b ) == aa_set_of_array( "pqrs".split("").array ) );
+    assert( aa_set_union( a, c ) == aa_set_of_array( "pqrst".split("").array ) );
+    assert( aa_set_union( b, c ) == aa_set_of_array( "qrst".split("").array ) );
+    assert( aa_set_union( a, b, c ) == aa_set_of_array( "pqrst".split("").array ) );
+    
+    assert( aa_set_intersection( a, b ) == aa_set_of_array( "qr".split("").array ) );
+    assert( aa_set_intersection( a, c ) == aa_set_of_array( "r".split("").array ) );
+    assert( aa_set_intersection( b, c ) == aa_set_of_array( "rs".split("").array ) );
+    assert( aa_set_intersection( a, b, c ) == aa_set_of_array( "r".split("").array ) );
+  }
   
   writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
