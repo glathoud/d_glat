@@ -4,7 +4,7 @@
 # By Guillaume Lathoud, 2019, 2020 and later
 # The Boost License applies, as described in file ./LICENSE
 #
-# Usage: dpaco.sh [<...options...>] file0.d dir1 file2.d file3.d dir4
+# Usage: dpaco.sh [<...options...>] [file0.d dir1 file2.d file3.d dir4]
 #
 # Note that the options are written WITHOUT equal sign '='
 # i.e.
@@ -88,6 +88,15 @@ do
             ;;
     esac
 done
+
+# --- default SRCLIST
+
+if [ "$SRCLIST" == "" ]; then
+    OIFS=$IFS
+    IFS=$'\n'
+    SRCLIST=($(ls --hide='*~'))
+    IFS=$OIFS
+fi
 
 # --- setup constants
 
@@ -189,7 +198,7 @@ function src_list_all()
             find -L "$src" -name '*.d'
 
         else
-            echo "Could not find or don't what to do with src: '${src}'" 1&>2 ;
+            >&2 echo "Could not find or don't what to do with src: '${src}'"  ;
             exit 4 ;
         fi
     done   
@@ -227,47 +236,53 @@ function D_module_dotname()
 
 function do_chunk()
 {
-    CHUNK=$1
-    OBJDIR=$2
-    COMPILER=$3
-    COMPILER_OPT=${@:4}
-    CMD_CHUNK="nice --adjustment 5 $COMPILER -c -oq -od=$OBJDIR ${COMPILER_OPT} $CHUNK"
-    ${CMD_CHUNK[@]}
+    CHUNK="$1"
+    if [ "$CHUNK" != "" ]
+    then
+        OBJDIR=$2
+        COMPILER=$3
+        COMPILER_OPT=${@:4}
+        CMD_CHUNK="nice --adjustment 5 $COMPILER -c -oq -od=$OBJDIR ${COMPILER_OPT} $CHUNK"
+        ${CMD_CHUNK[@]}
+    fi
 }
 
 function do_one()
 {
-    FILENAME=$1
-    DOTNAME=$( D_module_dotname "$FILENAME" )
-    OBJDIR=$2
-    COMPILER=$3
-    TIMESUMMARY=$4
-    COMPILER_OPT=${@:5}
-    
-    OBJFILENAME="${OBJDIR}/$DOTNAME.o"
-    TIMEFILENAME="${OBJFILENAME}.time"
-    
-    # test .o: empty or old
-    if [ ! -s "$OBJFILENAME" ] || [ "$OBJFILENAME" -ot "$FILENAME" ]
+    FILENAME="$1"
+    if [ "$FILENAME" != "" ]
     then
-        CMD_ONE="nice --adjustment 5 $COMPILER -c -oq -od=$OBJDIR ${COMPILER_OPT} $FILENAME"
-        echo
-        echo ${CMD_ONE[@]}
-        {
-            {
-                time ${CMD_ONE[@]} ;
-            } 2> "${TIMEFILENAME}"
-        } || {
+        DOTNAME=$( D_module_dotname "$FILENAME" )
+        OBJDIR=$2
+        COMPILER=$3
+        TIMESUMMARY=$4
+        COMPILER_OPT=${@:5}
+        
+        OBJFILENAME="${OBJDIR}/$DOTNAME.o"
+        TIMEFILENAME="${OBJFILENAME}.time"
+        
+        # test .o: empty or old
+        if [ ! -s "$OBJFILENAME" ] || [ "$OBJFILENAME" -ot "$FILENAME" ]
+        then
+            CMD_ONE="nice --adjustment 5 $COMPILER -c -oq -od=$OBJDIR ${COMPILER_OPT} $FILENAME"
             echo
-            echo "Could not compile, reason:"
-            cat "${TIMEFILENAME}"
-            exit 5
-        }
-                
-        TIMEUSER=$( head -3 "${TIMEFILENAME}" | tail -1 | cut -f 2 | sed 's/m\([0-9]\),/m0\1,/' )
-        echo "$TIMEUSER $DOTNAME" >> "$TIMESUMMARY"
-    else
-        echo -n '#'
+            echo ${CMD_ONE[@]}
+            {
+                {
+                    time ${CMD_ONE[@]} ;
+                } 2> "${TIMEFILENAME}"
+            } || {
+                echo
+                echo "Could not compile, reason:"
+                cat "${TIMEFILENAME}"
+                exit 5
+            }
+            
+            TIMEUSER=$( head -3 "${TIMEFILENAME}" | tail -1 | cut -f 2 | sed 's/m\([0-9]\),/m0\1,/' )
+            echo "$TIMEUSER $DOTNAME" >> "$TIMESUMMARY"
+        else
+            echo -n '#'
+        fi
     fi
 }
 
