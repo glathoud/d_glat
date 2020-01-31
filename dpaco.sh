@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-# Parallel compilation of D code
+# Practical parallel compilation of D code,
+# without fiddling around with a build system.
+#
 # By Guillaume Lathoud, 2019, 2020 and later
 # The Boost License applies, as described in file ./LICENSE
 #
