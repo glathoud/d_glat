@@ -19,17 +19,17 @@ import std.stdio;
 */
 
 bool search_bisection_string
-( alias fun, T = string
+( T = string
   , alias T_prop_between_code = (sv,sav,sbv) => `0.5`
   , alias T_equal_code = (sa,sb) => `(`~sa~`)`~`==(`~sb~`)`
   , alias T_le_code    = (sa,sb) => `(`~sa~`)`~`<=(`~sb~`)`
   , alias T_lt_code    = (sa,sb) => `(`~sa~`)`~`<(`~sb~`)`
   )
-  ( in T v, in ulong a0, in ulong b0
+  ( T delegate (in size_t) fun, in T v, in ulong a0, in ulong b0
     , out size_t ind0, out size_t ind1, out double prop )
 {
-  return search_bisection!( fun, T, T_prop_between_code, T_equal_code, T_le_code, T_lt_code )
-    ( v, a0, b0, ind0, ind1, prop );
+  return search_bisection!( T, T_prop_between_code, T_equal_code, T_le_code, T_lt_code )
+    ( fun, v, a0, b0, ind0, ind1, prop );
 }
 
 
@@ -49,13 +49,13 @@ bool search_bisection_string
 **/
 
 bool search_bisection
-( alias fun, T = double
+( T = double
   , alias T_prop_between_code = (sv,sav,sbv) => `(`~sv~` - `~sav~`) / (`~sbv~` - `~sav~`)`
   , alias T_equal_code = (sa,sb) => `(`~sa~`)`~`==(`~sb~`)`
   , alias T_le_code    = (sa,sb) => `(`~sa~`)`~`<=(`~sb~`)`
   , alias T_lt_code    = (sa,sb) => `(`~sa~`)`~`<(`~sb~`)`
   )
-  ( in T v, in ulong a0, in ulong b0
+  ( T delegate( in size_t ) fun, in T v, in ulong a0, in ulong b0
     , out size_t ind0, out size_t ind1, out double prop )
 {
   size_t a = a0;
@@ -155,8 +155,8 @@ unittest
 
     {
       ret = search_bisection
-        !( a => arr[ a ] )
-        ( arr[ 0 ] - 1, 0, arr.length-1
+        ( a => arr[ a ] 
+          , arr[ 0 ] - 1, 0, arr.length-1
           , ind0, ind1, prop
           );
       assert( ret == false );
@@ -164,8 +164,8 @@ unittest
 
     {
       ret = search_bisection
-        !( a => arr[ a ] )
-        ( arr[ $-1 ] + 1, 0, arr.length-1
+        ( a => arr[ a ]
+          , arr[ $-1 ] + 1, 0, arr.length-1
           , ind0, ind1, prop
           );
       assert( ret == false );
@@ -175,8 +175,8 @@ unittest
       void check_in_arr_value( in size_t k, in double v )
       {
         ret = search_bisection
-          !( a => arr[ a ] )
-          ( v, 0, arr.length-1
+          ( a => arr[ a ] 
+            , v, 0, arr.length-1
             , ind0, ind1, prop
             );
         
@@ -201,8 +201,8 @@ unittest
               auto v = arr[ true_ind0 ] + true_prop * (arr[ true_ind1 ] - arr[ true_ind0 ]);
 
               ret = search_bisection
-                !( a => arr[ a ] )
-                ( v, 0, arr.length-1
+                ( a => arr[ a ]
+                  , v, 0, arr.length-1
                   , ind0, ind1, prop
                   );
 
@@ -233,11 +233,11 @@ unittest
     double prop;
 
     {
-      ret = search_bisection!( a => arr[ a ][ 0 ]
-                               , string
-                               , (sv,avc,sbv) => `0.5`
-                               )
-        ( "aaa", 0, arr.length - 1
+      ret = search_bisection!( string
+                              , (sv,avc,sbv) => `0.5`
+                              )
+        ( a => arr[ a ][ 0 ]
+          , "aaa", 0, arr.length - 1
           , ind0, ind1, prop
           );
 
@@ -245,11 +245,11 @@ unittest
     }
 
     {
-      ret = search_bisection!( a => arr[ a ][ 0 ]
-                               , string
-                               , (sv,avc,sbv) => `0.5`
-                               )
-        ( "ZZZZ", 0, arr.length - 1
+      ret = search_bisection!( string
+                              , (sv,avc,sbv) => `0.5`
+                              )
+        ( a => arr[ a ][ 0 ]
+          , "ZZZZ", 0, arr.length - 1
           , ind0, ind1, prop
           );
 
@@ -259,12 +259,11 @@ unittest
     {
       void s_check_in_arr_value( in size_t k, in string[] v )
       {
-        ret = search_bisection
-          !( a => arr[ a ][ 0 ]
-             , string
-             , (sv,avc,sbv) => `0.5`
-             )
-          ( v[ 0 ], 0, arr.length-1
+        ret = search_bisection!( string
+                                 , (sv,avc,sbv) => `0.5`
+                                 )
+          ( a => arr[ a ][ 0 ]
+            , v[ 0 ], 0, arr.length-1
             , ind0, ind1, prop
             );
         
@@ -287,15 +286,14 @@ unittest
           auto true_prop = 0.5;
           auto v0 = arr[ true_ind0 ][ 0 ] ~ "a";
 
-          ret = search_bisection
-            !( a => arr[ a ][ 0 ]
-               , string
-               , (sv,avc,sbv) => `0.5`
-               )
-            ( v0, 0, arr.length-1
+          ret = search_bisection!( string
+                                   , (sv,avc,sbv) => `0.5`
+                                   )
+            ( a => arr[ a ][ 0 ]
+              , v0, 0, arr.length-1
               , ind0, ind1, prop
               );
-
+          
           assert( ret == true );
           assert( ind0 == true_ind0 );
           assert( ind1 == true_ind1 );
@@ -323,8 +321,9 @@ unittest
     double prop;
 
     {
-      ret = search_bisection_string!( a => arr[ a ][ 0 ] )
-        ( "aaa", 0, arr.length - 1
+      ret = search_bisection_string
+        ( a => arr[ a ][ 0 ] 
+          , "aaa", 0, arr.length - 1
           , ind0, ind1, prop
           );
 
@@ -332,8 +331,9 @@ unittest
     }
 
     {
-      ret = search_bisection_string!( a => arr[ a ][ 0 ] )
-        ( "ZZZZ", 0, arr.length - 1
+      ret = search_bisection_string
+        ( a => arr[ a ][ 0 ] 
+          , "ZZZZ", 0, arr.length - 1
           , ind0, ind1, prop
           );
 
@@ -344,8 +344,8 @@ unittest
       void s2_check_in_arr_value( in size_t k, in string[] v )
       {
         ret = search_bisection_string
-          !( a => arr[ a ][ 0 ] )
-          ( v[ 0 ], 0, arr.length-1
+          ( a => arr[ a ][ 0 ]
+            , v[ 0 ], 0, arr.length-1
             , ind0, ind1, prop
             );
         
@@ -369,8 +369,8 @@ unittest
           auto v0 = arr[ true_ind0 ][ 0 ] ~ "a";
 
           ret = search_bisection_string
-            !( a => arr[ a ][ 0 ] )
-            ( v0, 0, arr.length-1
+            ( a => arr[ a ][ 0 ]
+              , v0, 0, arr.length-1
               , ind0, ind1, prop
               );
 
