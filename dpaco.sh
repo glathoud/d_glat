@@ -9,9 +9,9 @@
 # Usage: dpaco.sh [<...options...>] [file0.d dir1 file2.d file3.d dir4]
 #
 # Note that the options are written WITHOUT equal sign '='
-# i.e.
+# i.e.:
 #     dpaco.sh --compiler <path_to_compiler> ...
-# and NOT
+# and NOT:
 #     dpaco.sh --compiler=<path_to_compiler> ...
 #
 # Example: 
