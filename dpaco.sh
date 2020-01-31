@@ -14,8 +14,12 @@
 # and NOT
 #     dpaco.sh --compiler=<path_to_compiler> ...
 #
-# Example: dpcao.sh --compiler ../my/compiler/ldmd2 --mode debug main.d lib_0 lib_1
-
+# Example: 
+#     dpcao.sh --compiler ../my/compiler/ldmd2 --mode debug main.d lib_0 lib_1
+#
+# Example without specifying the source files/dirs 
+# => will grab all available files/dirs in the current path:
+#     dpcao.sh --compiler ../my/compiler/ldmd2 --mode debug
 
 ME_0=${0}
 MY_ARGS=$@
