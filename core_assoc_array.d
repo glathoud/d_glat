@@ -41,6 +41,29 @@ pure nothrow @trusted
 
 
 
+U[T] aa_indmod_of_array(T, U)( U delegate( in size_t ind ) indmodfun, in T[] arr ) 
+// Modified index values
+{ 
+  U[T] ret;
+  foreach (ind, v; arr)
+    ret[ v ] = indmodfun( ind );
+
+  return ret;
+}
+
+
+U[T] aa_indmod_of_array(T, U)( U delegate( in size_t ind, in T ) indmodfun, in T[] arr )
+// Modified index values
+{ 
+  U[T] ret;
+  foreach (ind, v; arr)
+    ret[ v ] = indmodfun( ind, v );
+
+  return ret;
+}
+
+
+
 string aa_pretty( T )( in T aa ) 
 {
   auto app = appender!(string[]);
@@ -123,9 +146,29 @@ bool[T] aa_set_of_array(T)( in T[] arr ) pure nothrow @safe
   return ret;
 }
 
-bool[T] aa_set_union(T)( in bool[T][] arr ... ) pure @safe
+U[T] aa_setmod_of_array(T,U)( U delegate( in T ) modfun, in T[] arr )
+// Modified set values
+{ 
+  U[T] ret;
+  foreach (ind,v; arr)
+    ret[ v ] = modfun( v );
+
+  return ret;
+}
+
+U[T] aa_setmod_of_array(T,U)( U delegate( in size_t, in T ) modfun, in T[] arr )
+// Modified set values
+{ 
+  U[T] ret;
+  foreach (ind,v; arr)
+    ret[ v ] = modfun( ind, v );
+
+  return ret;
+}
+
+U[T] aa_set_union(T,U)( in U[T][] arr ... ) pure @safe
 {
-  bool[T] ret;
+  U[T] ret;
   foreach (one; arr)
     {
       foreach(k,v; one)
