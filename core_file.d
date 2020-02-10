@@ -9,7 +9,7 @@ module d_glat.core_file;
 import core.stdc.stdlib : exit;
 import std.conv : octal;
 import std.datetime.systime : SysTime;
-import std.file : exists, getAttributes, getTimes, isDir, isFile, mkdirRecurse, isSymlink, readLink;
+import std.file : exists, getAttributes, getTimes, getSize, isDir, isFile, mkdirRecurse, isSymlink, readLink;
 import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
 import std.stdio : stderr, writefln, writeln;
 
@@ -62,6 +62,17 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
       stderr.writefln( "Output: File already exists, but does not have user-write permission: %s", outfilename );
       exit( -1 );
     }
+}
+
+
+bool exists_non_empty( in string filename )
+/*
+  Useful to detect e.g. a file that was not completely written
+  before electrical current was lost, which abruptly stopped the
+  computer.
+ */
+{
+  return exists( filename )  &&  0 < getSize( filename );
 }
 
 
