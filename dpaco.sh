@@ -350,8 +350,8 @@ then
         echo "ERROR:"
         echo "$ERROR"
         echo 
-        TO_DELETE=$(grep -o -e '^.*\.o' <<<$ERROR)
-
+        TO_DELETE=$(grep -o -e '^[^:]*\.o' <<<$ERROR | grep -v '\.\.' | grep -v -e '^/usr/')
+        
         echo
         echo "TO_DELETE:"
         echo "$TO_DELETE"
