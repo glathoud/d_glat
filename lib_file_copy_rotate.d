@@ -8,6 +8,7 @@ module d_glat.lib_file_copy_rotate;
 
 import d_glat.core_file;
 import d_glat.core_glob;
+import d_glat.core_gzip;
 import std.algorithm : map, sort;
 import std.array : array;
 import std.datetime;
@@ -15,6 +16,7 @@ import std.datetime.systime;
 import std.file;
 import std.path : baseName;
 import std.range : enumerate;
+import std.string : endsWith;
 
 string[] file_copy_fetch
 (string prefix = ".save-")
@@ -28,6 +30,7 @@ string[] file_copy_fetch
 bool file_copy_rotate
 ( string   units = "weeks"
   , size_t[] max_interval_arr = [1,2,4,8,16,32]
+  , bool     compress = true
   , string   prefix = ".save-" )
 ( in string  filename )
 /*
@@ -63,9 +66,20 @@ bool file_copy_rotate
   if (first_duration > first_dur_max)
     {
       ret_modified = true;
-      
-      immutable new_filename = fipr~(dt_now.toISOExtString);
-      std.file.copy( filename, new_filename );
+
+      immutable new_fn_core = fipr~(dt_now.toISOExtString);
+      if (compress)
+        {
+          immutable new_filename = new_fn_core~".gz";
+          std.file.write( new_filename
+                          , gzip( cast(ubyte[])( std.file.read( filename )))
+                          );
+        }
+      else
+        {
+          immutable new_filename = new_fn_core;
+          std.file.copy( filename, new_filename );
+        }
 
       save_arr = _grab_and_sort( fipr );
     }
@@ -139,11 +153,11 @@ DtFn[] _grab_and_sort( in string fipr )
 
 DateTime _get_datetime_of_filename( in string fipr, in string fn )
 {
-immutable fipr_bn = baseName( fipr )
-  , fn_bn = baseName( fn )
-  , rest = fn_bn[ fipr_bn.length..$ ]
-  ;
-return DateTime.fromISOExtString( rest );
+  immutable fipr_bn = baseName( fipr )
+    , fn_bn = baseName( fn )
+    , rest = fn_bn[ fipr_bn.length..$ ]
+    ;
+  return DateTime.fromISOExtString( rest.endsWith( ".gz" )  ?  rest[ 0..$-3 ]  :  rest );
 }
 
 

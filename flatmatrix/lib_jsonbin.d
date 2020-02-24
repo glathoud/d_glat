@@ -75,7 +75,7 @@ class JsonbinT( T )
     return parseJSON( j_str );
   }
   
-  ubyte[] toUbytes( in string compression = COMPRESSION_GZIP ) const @trusted
+  ubyte[] toUbytes( in string compression = COMPRESSION_NONE ) const @trusted
     {
       auto app = appender!(ubyte[]);
 
@@ -256,8 +256,57 @@ class JsonbinT( T )
 
 };
 
-alias jsonbin_of_filename_or_copy = Action_of_filename_or_copy!/*only_meta:*/false;
-alias jsonbinmeta_of_filename_or_copy = Action_of_filename_or_copy!/*only_meta:*/true;
+
+
+JsonbinT!T jsonbin_of_filename_or_copy
+(T = double, string prefix = ".save-")
+( in string filename, bool verbose = true )
+{
+  string error_msg;
+  auto ret =
+    Action_of_filename_or_copy!(/*only_meta:*/false,T,prefix)
+    ( filename, error_msg, verbose );
+
+  if (0 < error_msg.length)
+    assert( false, error_msg );
+
+  return ret;
+}
+
+JsonbinT!T jsonbinmeta_of_filename_or_copy
+(T = double, string prefix = ".save-")
+( in string filename, bool verbose = true )
+{
+  string error_msg;
+  auto ret =
+    Action_of_filename_or_copy!(/*only_meta:*/true,T,prefix)
+    ( filename, error_msg, verbose );
+
+  if (0 < error_msg.length)
+    assert( false, error_msg );
+
+  return ret;
+}
+
+
+
+JsonbinT!T jsonbin_of_filename_or_copy
+(T = double, string prefix = ".save-")
+( in string filename, ref string error_msg, bool verbose = true )
+{
+  return Action_of_filename_or_copy!(/*only_meta:*/false,T,prefix)
+    ( filename, error_msg, verbose );
+}
+
+JsonbinT!T jsonbinmeta_of_filename_or_copy
+(T = double, string prefix = ".save-")
+( in string filename, ref string error_msg, bool verbose = true )
+{
+  return Action_of_filename_or_copy!(/*only_meta:*/true,T,prefix)
+    ( filename, error_msg, verbose );
+}
+
+
 
 JsonbinT!T Action_of_filename_or_copy
 ( bool only_meta
@@ -340,7 +389,22 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )( in string 
 JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
 ( in string filename, ref string error_msg )
 {
-  return jsonbin_of_chars!(T, only_meta)( cast( char[] )( std.file.read( filename ) ), error_msg );
+  if (!exists( filename ))
+    {
+      JsonbinT!T jb_empty;
+      error_msg = "jsonbin_of_filename[error_msg]: could not find filename "~filename;
+      return jb_empty;
+    }
+
+  auto data = cast( ubyte[] )( std.file.read( filename ) );
+
+  // Two possibilities to compress: whole file (automatic from the
+  // ".gz" filename extension), or only data part (explicit from
+  // `compression_type == COMPRESSION_GZIP`)
+  if (filename.endsWith( ".gz" ))
+    data = gunzip( data );
+  
+  return jsonbin_of_ubytes!(T, only_meta)( data, error_msg );
 }
 
 JsonbinT!T jsonbin_of_ubytes( T = double, bool only_meta = false )( in ubyte[] cdata )
@@ -386,7 +450,7 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
   enforce( s_arr.length == 2 );
 
   immutable s_T   = s_arr[ 0 ].idup;
-  enforce( s_T == T.stringof );
+  enforce( s_T == T.stringof, s_T );
   
   immutable s_dim = s_arr[ 1 ].idup;
 
@@ -469,11 +533,19 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
     }
 }
  
-void jsonbin_write_to_filename( in Jsonbin jb, in string filename, in string compression_type = COMPRESSION_GZIP )
+void jsonbin_write_to_filename( in Jsonbin jb, in string filename, in string compression_type = COMPRESSION_NONE )
 {
   ensure_file_writable_or_exit( filename, /*ensure_dir:*/true );
+
+  auto data = jb.toUbytes( compression_type );
+
+  // Two possibilities to compress: whole file (automatic from the
+  // ".gz" filename extension), or only data part (explicit from
+  // `compression_type == COMPRESSION_GZIP`)
+  if (filename.endsWith( ".gz" ))
+    data = gzip( data );
   
-  std.file.write( filename, jb.toUbytes( compression_type ) );
+  std.file.write( filename, data );
 }
 
 
