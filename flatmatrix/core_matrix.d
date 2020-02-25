@@ -12,7 +12,7 @@ module d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_array;
 import d_glat.core_assert;
-import std.algorithm : map, max, sort;
+import std.algorithm : map, max, min, sort;
 import std.array : appender;
 import std.conv : to;
 import std.format : format;
@@ -206,6 +206,83 @@ struct MatrixT( T )
       }
 
     data = new_data;
+  }
+  
+  void slice( in long begin, in long end = +long.max )
+    /* Input: Accepts negative values for `begin` and `end`,
+       e.g. `-10` means `nrow-10`. Both designate rows.
+
+       Behaviour: Modifies `data` in-place, keeping only rows
+       `begin..end`. Updates `dim` accordingly.
+    */
+  {
+    immutable nr = nrow();
+
+    if (begin == 0  &&  end >= nr)
+      return; // Nothing to do
+
+    immutable rd = restdim();
+    
+    immutable size_t row_begin =
+      begin < 0
+      ?  (-begin < nr  ?  nr + begin  :  0)
+      :  ( begin < nr  ?       begin  :  nr);
+    
+    immutable size_t row_end   = max
+      ( row_begin
+        , end < 0
+        ?  (-end < nr  ?  nr + end  :  0)
+        :  ( end < nr  ?       end  :  nr)
+        );
+    
+    immutable size_t data_begin = rd * row_begin;
+    immutable size_t data_end   = rd * row_end;
+
+    data = data[ data_begin..data_end ];
+
+    immutable new_nrow = row_end - row_begin;
+
+    debug assert( data.length == rd * new_nrow );
+    
+    dim[ 0 ] = new_nrow;
+  }
+    
+  T[] splice( in long begin, in long n = +long.max, in T[] to_insert = [] )
+    /* Input: Accepts negative values for `begin`, e.g. `-10` means
+       `nrow-10`. `begin` and `n` designate a row resp. a number of
+       rows.
+
+       Behaviour: Modifies `data` in-place, replacing rows
+       `begin..begin+n` with the optional `to_insert` data. Updates
+       `dim` accordingly.
+
+       Returns: the removed data (original rows `begin..begin+n`).
+    */
+  {
+    immutable nr = nrow();
+    immutable rd = restdim();
+    
+    immutable size_t row_begin =
+      begin < 0
+      ?  (-begin < nr  ?  nr + begin  :  0)
+      :  ( begin < nr  ?       begin  :  nr);
+    
+    immutable size_t row_end   =
+      min( nr, n < 1 ?  row_begin  :  row_begin + n );
+    
+    immutable size_t data_begin = rd * row_begin;
+    immutable size_t data_end   = rd * row_end;
+
+    auto ret = data[ data_begin..data_end ];
+
+    data = data[ 0..data_begin ] ~ to_insert ~ data[ data_end..$ ];
+
+    if (0 != data.length % rd)
+      assert( false, "Fails to verify: 0 == data.length % restdim   (resp. "~to!string(data.length)~" and "~to!string(restdim)~")");
+      
+    dim[ 0 ] = data.length / rd;
+
+    return ret;
   }
   
   // --- API: Comparison
@@ -1081,6 +1158,8 @@ unittest  // ------------------------------
   stdout.flush;
   
   immutable verbose = false;
+
+  import std.exception : assumeUnique;
   
   size_t[] buffer;
   
@@ -1919,6 +1998,213 @@ unittest  // ------------------------------
     assert( A.data != B.data );
   }
 
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    A.slice( 2, 5 );
+
+    assert( A == Matrix( [0, 4]
+                         , [ 9.0, 10.0, 11.0, 12.0,
+                             13.0, 14.0, 15.0, 16.0,
+                             17.0, 18.0, 19.0, 20.0,
+                             ] ) );
+  }
+
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    A.slice( 2 );
+
+    assert( A == Matrix( [0, 4]
+                         , [ 9.0, 10.0, 11.0, 12.0,
+                             13.0, 14.0, 15.0, 16.0,
+                             17.0, 18.0, 19.0, 20.0,
+                             21.0, 22.0, 23.0, 24.0,
+                             25.0, 26.0, 27.0, 28.0,
+                             29.0, 30.0, 31.0, 32.0
+                             ] ) );
+  }
+
+  
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    A.slice( -2 );
+
+    assert( A == Matrix( [0, 4]
+                         , [ 25.0, 26.0, 27.0, 28.0,
+                             29.0, 30.0, 31.0, 32.0
+                             ] ) );
+  }
+
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    A.slice( -4, -2 );
+
+    assert( A == Matrix( [0, 4]
+                         , [ 17.0, 18.0, 19.0, 20.0,
+                             21.0, 22.0, 23.0, 24.0,
+                             ] ) );
+  }
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    const removed = A.splice( 1, 5 );
+
+    assert( removed == [ 5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         ] );
+       
+    assert( A == Matrix( [0, 4]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] ) );
+  }
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    const removed = A.splice( -7, 5 );
+
+    assert( removed == [ 5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         ] );
+       
+    assert( A == Matrix( [0, 4]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] ) );
+  }
+
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    immutable inserted = assumeUnique
+      (  [ -0.1, -0.2, -0.3, -0.4,
+           -0.5, -0.6, -0.7, -0.8,
+           -0.9, -0.10, -0.11, -0.12,
+           ] );
+    
+    const removed = A.splice( 1, 5, inserted );
+
+    assert( removed == [ 5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         ] );
+       
+    assert( A == Matrix( [0, 4]
+                         , [ 1.0, 2.0, 3.0, 4.0, ]
+                         ~ inserted 
+                         ~ [ 25.0, 26.0, 27.0, 28.0,
+                             29.0, 30.0, 31.0, 32.0 ] ) );
+  }
+  
+  
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    immutable inserted = assumeUnique
+      (  [ -0.1, -0.2, -0.3, -0.4,
+           -0.5, -0.6, -0.7, -0.8,
+           -0.9, -0.10, -0.11, -0.12,
+           ] );
+    
+    const removed = A.splice( -7, 5, inserted );
+
+    assert( removed == [ 5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         ] );
+       
+    assert( A == Matrix( [0, 4]
+                         , [ 1.0, 2.0, 3.0, 4.0, ]
+                          ~ inserted 
+                         ~ [ 25.0, 26.0, 27.0, 28.0,
+                             29.0, 30.0, 31.0, 32.0 ] ) );
+  }
+
+  
   {
     auto A = Matrix( [0, 4],
                      [
