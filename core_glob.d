@@ -10,7 +10,7 @@ public import std.file : SpanMode;
 
 import std.algorithm : map;
 import std.array : array;
-import std.file : dirEntries;
+import std.file : dirEntries, exists;
 import std.path : baseName, dirName;
 
 shared static GLOB_JPG = "*.[jJ][pP][gG]";
@@ -22,6 +22,9 @@ string[] dirSA( string path, string glob, SpanMode spanMode = SpanMode.breadth, 
 // In most cases `foreach( name ; dirEntries( ... ))` is enough.
 // `dirSA` is ONLY only if you really need the array of strings.
 {
+  if (!exists( path ))
+    return [];
+  
   auto dE = dirEntries( path, glob, spanMode, followSymlink );
   return ( map!`cast( string )a`( dE ) ).array;
 }
