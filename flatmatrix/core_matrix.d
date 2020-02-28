@@ -10,14 +10,18 @@ module d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
+import core.memory;
 import d_glat.core_array;
 import d_glat.core_assert;
+import d_glat.core_memory;
+import d_glat.core_runtime;
 import std.algorithm : map, max, min, sort;
-import std.array : appender;
+import std.array : appender, array;
 import std.conv : to;
 import std.format : format;
 import std.math;
 import std.range : enumerate;
+import std.string : split;
 import std.typecons : Nullable;
 
 immutable double numeric_epsilon = 2.220446049250313e-16;
@@ -161,7 +165,9 @@ struct MatrixT( T )
     if (0 != newdata.length % rd)
       assert( false, "Fails to verify: 0 == newdata.length % restdim   (resp. "~to!string(newdata.length)~" and "~to!string(restdim)~")");
 
-    data = data~newdata;
+    auto apdr = appender(&data);
+    apdr.put( newdata );
+    
     dim[ 0 ] = data.length / rd;
   }
 
@@ -169,15 +175,11 @@ struct MatrixT( T )
   {
     immutable rd = restdim;
     
-    auto apdr = appender!(double[]);
-
-    apdr.put( data );
-
+    auto apdr = appender(&data);
+    
     foreach (v; newdata)
       apdr.put( v );
        
-    data = apdr.data;
-    
     if (0 != data.length % rd)
       assert( false, "Fails to verify: 0 == data.length % restdim   (resp. "~to!string(data.length)~" and "~to!string(restdim)~")");
     
@@ -771,32 +773,71 @@ pure nothrow @safe
 
 void sort_inplace( T )( ref MatrixT!T m )
 {
+  // Impl. note: used mostly C pointers to make sure the memory will
+  // be correctly allocated and deallocated. Also sparing memory in
+  // some places (lessThan).
+  
   immutable restdim = m.restdim;
-  auto data  = m.data;
-  immutable n = data.length / restdim;
 
-  auto c_arr = new double[][](n);
+  auto data  = m.data;
+  
+  immutable data_len = data.length;
+  immutable        n = data_len / restdim;
+  
+  auto c_arr = allocArray!size_t( n );
+  scope(exit) deallocate( c_arr );
   {
-    for (size_t i = 0, j = 0; i < n; ++i)
+    size_t ci = 0;
+    foreach (i; 0..n)
       {
-        immutable next_j = j + restdim;
-        c_arr[ i ] = data[ j..next_j ];
-        j = next_j;
+        c_arr[ i ] = ci;
+        ci += restdim;
       }
   }
 
-  c_arr.sort;
+  auto ptr = data.ptr;
 
-  auto data2 = new double[ data.length ];
+  bool lessThan( in size_t a, in size_t b )
+  {
+
+      T* a_ptr = ptr + a;
+      T* b_ptr = ptr + b;
+
+      const a_ptr_end = a_ptr + restdim;
+      
+      while (a_ptr < a_ptr_end)
+        {
+          auto va = *a_ptr;
+          auto vb = *b_ptr;
+
+          if (va < vb)
+            return true;
+
+          if (va > vb)
+            return false;
+
+          ++a_ptr;
+          ++b_ptr;
+        }
+
+      return false;
+    }
+  
+  c_arr.sort!lessThan;
+  
+  auto data2 = allocArray!T( data_len );
+  scope(exit) deallocate( data2 );
+
+  data2[] = data[];
 
   for (size_t i = 0, j = 0; i < n; ++i)
     {
+      immutable ci = c_arr[ i ];
+
       immutable next_j = j + restdim;
-      data2[ j..next_j ][] = c_arr[ i ][];
+      data[ j..next_j ][] = data2[ ci..ci+restdim ][];
       j = next_j;
     }
-  
-  m.data = data2;
 }
 
 
@@ -916,7 +957,7 @@ void subset_row_filter_inplace
 
   size_t j = 0;
   {
-    double[] row;
+    T[] row;
     for (size_t i = 0, row_ind = 0; i < A_data_length; ++row_ind )
     {
       immutable i_next = i + rd;

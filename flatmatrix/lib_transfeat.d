@@ -75,27 +75,31 @@ void set_default_transformations( T )
   ( ref OneTransOfStringT!T tmp ) pure nothrow @safe
 {
   auto b_nmv = new Buffer_nmv_inplaceT!T;  
-  tmp[ "nmv" ] = ( ref a, ref b ) pure nothrow @safe {
-    nmv_inplace_dim!T( a, b, b_nmv );
-  };
+  tmp[ "nmv" ] = ( ref a, ref b ) pure nothrow @safe
+    {
+      nmv_inplace_dim!T( a, b, b_nmv );
+    };
 
   static if (is(T == double))
     {
       auto b_nmvpca = new Buffer_nmvpca_inplace;
-      tmp[ "nmvpca" ] = ( ref a, ref b ) pure nothrow @safe {
-        nmvpca_inplace_dim( a, b, b_nmvpca );
-      };
+      tmp[ "nmvpca" ] = ( ref a, ref b ) pure nothrow @safe
+        {
+          nmvpca_inplace_dim( a, b, b_nmvpca );
+        };
     }
   
-  tmp[ "pairs:a-b" ] = ( ref a, ref b ) pure nothrow @safe {
-    pairs_inplace_dim!"a-b"( a, b );
-  };
+  tmp[ "pairs:a-b" ] = ( ref a, ref b ) pure nothrow @safe
+    {
+      pairs_inplace_dim!"a-b"( a, b );
+    };
 
   auto b_sortindex = new Buffer_sortindex_inplaceT!T;
-  tmp[ "sortindex" ] = ( ref a, ref b ) pure nothrow @safe {
-    sortindex_inplace_dim( a, b, b_sortindex );
-  };
-
+  tmp[ "sortindex" ] = ( ref a, ref b ) pure nothrow @safe
+    {
+      sortindex_inplace_dim( a, b, b_sortindex );
+    };
+  
 }
 
 

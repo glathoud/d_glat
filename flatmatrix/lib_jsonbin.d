@@ -14,6 +14,7 @@ public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_file;
 import d_glat.core_gzip;
+import d_glat.core_runtime;
 import d_glat.lib_file_copy_rotate;
 import std.algorithm;
 import std.bitmanip;
@@ -61,7 +62,7 @@ class JsonbinT( T )
       this.j_str = j_str;
       this.m     = m;
     }
-  
+
   // --- API: methods
   
   bool isEmpty() const @safe pure nothrow
@@ -526,10 +527,8 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
             ~", typically from a corrupt/truncated file";
           return new JsonbinT!T();
         }
-  
-      auto m = MatrixT!T( dim, data );
-  
-      return new JsonbinT!T( j_str, m );      
+
+      return new JsonbinT!T( j_str, MatrixT!T( dim, data ) );      
     }
 }
  
