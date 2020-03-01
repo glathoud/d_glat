@@ -783,9 +783,8 @@ void sort_inplace( T )( ref MatrixT!T m )
   
   immutable data_len = data.length;
   immutable        n = data_len / restdim;
-  
-  auto c_arr = allocArray!size_t( n );
-  scope(exit) deallocate( c_arr );
+
+  mixin(localloc(`c_arr,size_t,n`));
   {
     size_t ci = 0;
     foreach (i; 0..n)
@@ -825,9 +824,8 @@ void sort_inplace( T )( ref MatrixT!T m )
   
   c_arr.sort!lessThan;
   
-  auto data2 = allocArray!T( data_len );
-  scope(exit) deallocate( data2 );
-
+  mixin(localloc(`data2,T,data_len`));
+  
   data2[] = data[];
 
   for (size_t i = 0, j = 0; i < n; ++i)
