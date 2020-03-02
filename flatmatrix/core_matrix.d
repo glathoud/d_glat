@@ -773,36 +773,42 @@ pure nothrow @safe
 
 void sort_inplace( T )( ref MatrixT!T m )
 {
-  // Impl. note: used mostly C pointers to make sure the memory will
-  // be correctly allocated and deallocated. Also sparing memory in
-  // some places (lessThan).
-  
-  immutable restdim = m.restdim;
+  immutable rd = m.restdim;
 
   auto data  = m.data;
   
   immutable data_len = data.length;
-  immutable        n = data_len / restdim;
+  immutable       n0 = data_len / rd;
 
-  mixin(localloc(`c_arr,size_t,n`));
+  void sort_inplace_impl(U)()
   {
-    size_t ci = 0;
-    foreach (i; 0..n)
-      {
-        c_arr[ i ] = ci;
-        ci += restdim;
-      }
-  }
+    immutable n = cast(U)( n0 );
+        
+    // Impl. note: used mostly C pointers to make sure the memory will
+    // be correctly allocated and deallocated. Also sparing memory in
+    // some places (lessThan).
 
-  auto ptr = data.ptr;
+    // Init
+    
+    mixin(localloc(`desired_arr,U,n`)); // Used now, to sort
+    mixin(localloc(`what_is_arr,U,n`)); // Used later, while swapping data
+    mixin(localloc(`where_is_arr,U,n`)); // Used later, while swapping data
 
-  bool lessThan( in size_t a, in size_t b )
-  {
+    foreach (U i; 0..n)
+      desired_arr[ i ] = what_is_arr[ i ] = where_is_arr[ i ] = i;
 
-      T* a_ptr = ptr + a;
-      T* b_ptr = ptr + b;
 
-      const a_ptr_end = a_ptr + restdim;
+    // Sort using indices only, to spare memory
+    
+    auto ptr = data.ptr;
+
+    bool lessThan( in size_t a, in size_t b )
+    {
+
+      T* a_ptr = ptr + a * rd;
+      T* b_ptr = ptr + b * rd;
+
+      const a_ptr_end = a_ptr + rd;
       
       while (a_ptr < a_ptr_end)
         {
@@ -822,26 +828,59 @@ void sort_inplace( T )( ref MatrixT!T m )
       return false;
     }
   
-  c_arr.sort!lessThan;
-  
-  mixin(localloc(`data2,T,data_len`));
-  
-  data2[] = data[];
+    desired_arr.sort!lessThan;
 
-  for (size_t i = 0, j = 0; i < n; ++i)
-    {
-      immutable ci = c_arr[ i ];
+    // Now swap data as needed, according to the sorted indices
+    
+    mixin(localloc(`swap_buffer,T,rd`));
+  
+    for (size_t i = 0, where_to = 0; i < n; ++i)
+      {
+        immutable where_to_end = where_to + rd;
 
-      immutable next_j = j + restdim;
-      data[ j..next_j ][] = data2[ ci..ci+restdim ][];
-      j = next_j;
-    }
+        immutable where_is_i   = where_is_arr[ desired_arr[ i ] ];
+          
+        if (where_is_i != i)
+          {
+            // Swap some data
+
+            debug assert( i < where_is_i );
+              
+            immutable where_from     = where_is_i * rd;
+            immutable where_from_end = where_from + rd;
+
+            debug assert( where_to_end <= where_from );
+              
+            swap_buffer[]                        = data[ where_to..where_to_end ][];
+            data[ where_to..where_to_end ][]     = data[ where_from..where_from_end ][];
+            data[ where_from..where_from_end ][] = swap_buffer[];
+
+            // Now remember what we wrote at `where_from`
+              
+            immutable other_i = what_is_arr[ where_is_i ] = what_is_arr[ i ];
+            where_is_arr[ other_i ] = where_is_i;
+          }
+
+        where_to = where_to_end;
+      }
+  }
+
+  // Extra savings on memory by using a small type (usually `uint`).
+  
+  if (n0 <= uint.max)
+    sort_inplace_impl!uint;
+
+  else if (n0 <= ushort.max)
+    sort_inplace_impl!ushort;
+      
+  else
+    sort_inplace_impl!size_t;
 }
 
 
 private void _check_dim_match( in size_t i
                                , in size_t[] da, in size_t[] db )
-pure nothrow @safe 
+  pure nothrow @safe 
 {
   
   // Special case: [4, 1] matches [4]
