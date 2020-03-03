@@ -438,100 +438,34 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
 {
   error_msg = "";
 
-  // First line: json
-  
-  immutable i     = cdata.countUntil( '\n' );
-  immutable j_str = cdata[ 0..i ].idup;
-  auto rest_0     = cdata[ i+1..$ ];
+  size_t   index = 0;
+  string   j_str;
+  size_t[] dim;
+  string   compression;
 
-  // Second line: data type (e.g. "double"), and matrix dimensions
-
-  immutable j_0   = rest_0.countUntil( '\n' );
-  const     s_arr = rest_0[ 0..j_0 ].split( ':' );
-  enforce( s_arr.length == 2 );
-
-  immutable s_T   = s_arr[ 0 ].idup;
-  enforce( s_T == T.stringof, s_T );
-  
-  immutable s_dim = s_arr[ 1 ].idup;
-
-  auto dim = to!(size_t[])( s_dim.strip );
-
-  auto rest_1     = rest_0[ j_0+1..$ ];
-
-  // Third line: "compression:gzip|none|..."
-
-  immutable j_1     = rest_1.countUntil( '\n' );
-  const     s_arr_1 = rest_1[ 0..j_1 ].split( ':' );
-
-  enforce( s_arr_1.length == 2, rest_1[ 0..j_1 ] );
-  
-  immutable s_1_compressionstring = s_arr_1[ 0 ].idup;
-  enforce( s_1_compressionstring == COMPRESSION );
-  
-  immutable compression = s_arr_1[ 1 ].idup.strip;
-
-  auto rest_2     = rest_1[ j_1+1..$ ];
-  
-  // Rest: binary data, compression or not
-
-  auto rest       = (){
-    auto tmp = cast( ubyte[] )( rest_2 );
-    switch (compression)
-      {
-      case COMPRESSION_NONE:
-        return tmp;
-
-      case COMPRESSION_GZIP:
-        return gunzip( tmp );
-
-      default:
-        assert( false, "jsonbin_of_chars: Unsupported compression: "~compression );
-      }
-    assert( false, "bug" );
-  }();
+  jsonbin_read_chars_meta!T( cdata
+                             , index 
+                             , j_str, dim, compression );
 
   static if (only_meta)
     {
-      return new Jsonbin( j_str, Matrix( dim, 0 ) );
+      return new JsonbinT!T( j_str, Matrix( dim, 0 ) );
     }
-  else
-    {  
-      T[] data;
 
-      // We always saved the data in littleEndian format
+  auto data = jsonbin_read_chars_rest!T( cdata, index, compression
+                                         , error_msg );
 
-      if (0 != rest.length % T.sizeof)
-        {
-          error_msg = "corrupt or truncated data, cannot cast or peek, detail: endian == Endian.littleEndian: "~to!string( endian == Endian.littleEndian );
-          return new JsonbinT!T();
-        }
-  
-      if (endian == Endian.littleEndian)
-        {
-          data = cast( T[] )( rest );
-        }
-      else
-        {
-          immutable n = rest.length / T.sizeof;
-          data = new T[ n ];
-          size_t index;
-          foreach (k; 0..n)
-            data[ k ] = rest.peek!(T, Endian.littleEndian)( &index );
-        }
-
-      if (data.length != dim.reduce!`a*b`)
-        {
-          error_msg = "invalid data.length "~to!string(data.length)
-            ~", does not match dim "~to!string(dim)
-            ~", typically from a corrupt/truncated file";
-          return new JsonbinT!T();
-        }
-
-      return new JsonbinT!T( j_str, MatrixT!T( dim, data ) );      
+  if (0 == error_msg.length  &&  data.length != dim.reduce!`a*b`)
+    {
+      error_msg = "invalid data.length "~to!string(data.length)
+        ~", does not match dim "~to!string(dim)
+        ~", typically from a corrupt/truncated file";
+      return new JsonbinT!T();
     }
+
+  return new JsonbinT!T( j_str, Matrix( dim, data ) );
 }
- 
+
 void jsonbin_write_to_filename( in Jsonbin jb, in string filename, in string compression_type = COMPRESSION_NONE )
 {
   ensure_file_writable_or_exit( filename, /*ensure_dir:*/true );
@@ -546,6 +480,187 @@ void jsonbin_write_to_filename( in Jsonbin jb, in string filename, in string com
   
   std.file.write( filename, data );
 }
+
+
+/* --------------------------------------------------
+
+ Low-level API
+
+ Usually not needed, but maybe interesting when having issues with
+ the GC.
+
+*/
+
+T[] jsonbindata_of_filename_or_copy
+( T = double
+  , string prefix = ".save-"
+  )
+( in string filename, ref string error_msg
+  , ref string j_str, ref size_t[] dim
+  , bool verbose = true )
+{
+  auto ret =
+    jsonbindata_of_filename!T( filename, error_msg
+                               , j_str, dim
+                               , verbose
+                               );
+
+  if (0 < error_msg.length)
+    {
+      if (verbose)
+        {
+          stderr.writeln( "jsonbindata_of_filename_or_copy: failed on the main filename '"~filename~"' with error '"~error_msg~"' => about to try to find a fallback that work." );
+        }
+      
+      auto fallback_arr = file_copy_fetch!prefix( filename ).sort;
+      
+      foreach_reverse (fallback; fallback_arr) // try latest first
+        {
+          ret = jsonbindata_of_filename!T
+            ( fallback, error_msg
+              , j_str, dim
+              , verbose
+              );
+          
+          if (0 < error_msg.length)
+            {
+              if (verbose)
+                {
+                  stderr.writeln( "jsonbindata_of_filename_or_copy: failed on a fallback as well: '"~fallback~"' with error '"~error_msg~"'");
+                }
+            }
+          else
+            {
+              assert( 0 == error_msg.length );
+
+              if (verbose)
+                {
+                  stderr.writeln("jsonbindata_of_filename_or_copy: successfuly used the fallback: '"~fallback~"'");
+                }
+              
+              break; // Worked!
+            }
+        }
+    } 
+
+  return ret;
+}
+
+
+T[] jsonbindata_of_filename
+(T = double)
+( in string filename, ref string error_msg
+  , ref string j_str, ref size_t[] dim
+  , bool verbose = true )
+// Reads everything but does NOT create a Jsonbin instance, instead
+// returns each piece of information separately.
+{
+  auto cdata = cast(char[])( std.file.read( filename ) );
+
+  size_t index = 0;
+  string compression;
+  jsonbin_read_chars_meta!T( cdata
+                             , index
+                             , j_str, dim, compression );
+
+
+  return jsonbin_read_chars_rest!T
+    ( cdata, index, compression
+      , error_msg );
+}
+
+void jsonbin_read_chars_meta( T )
+  ( in char[] cdata
+    , /*input/output*/ref size_t index
+    , /*outputs:*/ref string j_str, ref size_t[] dim, ref string compression 
+    )
+// Low-level access to metadata, `index` is updated.
+{
+  // First line: json
+
+  immutable i = index + cdata[ index..$ ].countUntil( '\n' );
+  j_str = cdata[ index..i ].idup;
+  index = i+1;
+    
+  // Second line: data type (e.g. "double"), and matrix dimensions
+    
+  immutable j_0   = index + cdata[ index..$ ].countUntil( '\n' );
+  const     s_arr = cdata[ index..j_0 ].split( ':' );
+  index = j_0 + 1;
+
+  enforce( s_arr.length == 2 );
+    
+  immutable s_T   = s_arr[ 0 ].idup;
+  enforce( s_T == T.stringof, s_T );
+    
+  immutable s_dim = s_arr[ 1 ].idup;
+    
+  dim = to!(size_t[])( s_dim.strip );
+
+  // Third line: "compression:gzip|none|..."
+    
+  immutable j_1     = index + cdata[ index..$ ].countUntil( '\n' );
+  const     s_arr_1 = cdata[ index..j_1 ].split( ':' );
+  index = j_1 + 1;
+  
+  enforce( s_arr_1.length == 2, to!string( s_arr_1 ) );
+    
+  immutable s_1_compressionstring = s_arr_1[ 0 ].idup;
+  enforce( s_1_compressionstring == COMPRESSION );
+    
+  compression = s_arr_1[ 1 ].idup.strip;
+}
+
+T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string compression
+                                , ref string error_msg
+                                )
+// Low-level access to data starting at `index`.
+{
+  // Rest: binary data, compression or not
+
+  auto rest       = (){
+    auto tmp = cast( ubyte[] )( cdata[ index..$ ] );
+    switch (compression)
+      {
+      case COMPRESSION_NONE:
+        return tmp;
+
+      case COMPRESSION_GZIP:
+        return gunzip( tmp );
+
+      default:
+        assert( false, "jsonbin_of_chars: Unsupported compression: "~compression );
+      }
+    assert( false, "bug" );
+  }();
+
+  // We always saved the data in littleEndian format
+
+  T[] data;
+
+  immutable must_be_zero = rest.length % T.sizeof;
+  if (0 != must_be_zero)
+    {
+      error_msg = "corrupt or truncated data, cannot cast or peek, details: endian == Endian.littleEndian: "~to!string( endian == Endian.littleEndian )~", rest.length: "~to!string( rest.length )~", T.sizeof: "~to!string( T.sizeof )~", %: "~to!string( must_be_zero );
+    }
+  else
+    {
+      version (LittleEndian)
+        {
+          data = cast( T[] )( rest );
+        }
+      else
+        {
+          immutable n = rest.length / T.sizeof;
+          data = new T[ n ];
+          size_t q = 0;
+          foreach (k; 0..n)
+            data[ k ] = rest.peek!(T, Endian.littleEndian)( &q );
+        }
+    }
+  return data;
+}
+ 
 
 
 
