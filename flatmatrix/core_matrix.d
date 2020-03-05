@@ -773,11 +773,14 @@ pure nothrow @safe
 
 void sort_inplace( T )( ref MatrixT!T m )
 {
-  immutable rd = m.restdim;
 
-  auto data  = m.data;
-  
+  auto      data     = m.data;
   immutable data_len = data.length;
+
+  if (data_len < 1)
+    return;
+  
+  immutable       rd = m.restdim;
   immutable       n0 = data_len / rd;
 
   void sort_inplace_impl(U)()
@@ -2302,6 +2305,11 @@ unittest  // ------------------------------
                           1.0, 8.0, 19.0, 11.0
                           ]
                          ) );
+  }
+
+  {
+    auto A = Matrix();
+    sort_inplace( A ); // does nothing because A empty, and must not crash
   }
 
   writeln( "unittest passed: "~__FILE__ );
