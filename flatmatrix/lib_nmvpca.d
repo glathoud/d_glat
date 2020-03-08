@@ -23,8 +23,6 @@ Matrix nmvpca( in Matrix a ) pure nothrow @safe
 // Returns a new matrix. If the PCA failed,
 // `b` will be filled with `NaN`s.
 {
-  
-
   auto b = Matrix( a.dim );
   auto buffer = new Buffer_nmvpca_inplace;
   nmvpca_inplace( a, b, buffer );

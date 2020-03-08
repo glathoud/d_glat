@@ -3,6 +3,16 @@ module d_glat.core_memory;
 import core.stdc.stdlib;
 import std.array : split;
 
+string create(S)( in string name ) pure nothrow @safe
+{
+  return `auto `~name~` = allocate!`~S.stringof~`;`;
+}
+
+string local(S)( in string name ) pure nothrow @safe
+{
+  return create!S( name )~` scope(exit) deallocate(`~name~`);`;
+}
+
 string localloc( in string name_T_count ) pure @safe
 /* Shortcut. Returns code string for mixin. Example:
 
@@ -22,9 +32,7 @@ string localloc( in string name_T_count ) pure @safe
   immutable    T  = q[ 1 ];
   immutable count = q[ 2 ];
 
-  return `auto `~name~` = allocArray!(`~T~`)( `~count~` );
-  scope(exit) deallocate(`~name~`);
-  `;
+  return `auto `~name~` = allocArray!(`~T~`)( `~count~` ); scope(exit) deallocate(`~name~`);`;
 }
 
   
@@ -47,6 +55,13 @@ void[] allocate(size_t size) @nogc
     return ptr[0 .. size];
 }
 
+S* allocate(S)() @nogc
+// To allocate a structure
+{
+  return cast(S*)( S.sizeof.allocate );
+}
+
+
 T[] allocArray(T)(size_t count) @nogc
 { 
     // Make sure to account for the size of the
@@ -54,15 +69,31 @@ T[] allocArray(T)(size_t count) @nogc
     return cast(T[])allocate(T.sizeof * count); 
 }
 
-// Two versions of deallocate for convenience
-void deallocate(void* ptr) @nogc
-{	
-    // free handles null pointers fine.
-    free(ptr);
+T[] copyArray(T)( in T[] arr ) @nogc
+{
+  auto ret = allocArray!T( arr.length );
+  ret[] = arr[];
+  return ret;
+}
+
+
+// Multiple versions of deallocate for convenience
+
+void deallocate(S)( S* ptr ) @nogc
+{
+  // If implemented: convenience recursive deallocation
+  static if(__traits(compiles, __traits(getMember, S, free_nogc)))
+    {
+      static if(is(typeof(__traits(getMember, S, free_nogc)) == function))
+        {
+          S.free_nogc();
+        }
+    }
+  
+  free( ptr );
 }
 
 void deallocate(void[] mem) @nogc
 { 
-    deallocate(mem.ptr); 
+    deallocate(mem.ptr);
 }
-

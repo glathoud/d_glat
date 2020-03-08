@@ -26,7 +26,6 @@ class Buffer_nmv_inplaceT(T)
 MatrixT!T nmv(T)( in MatrixT!T a ) pure nothrow @safe
 // Functional wrapper around `nmv_inplace_dim`
 {
-  
   MatrixT!T b;
   auto buffer = new Buffer_nmv_inplaceT!T;
 
@@ -42,8 +41,6 @@ void nmv_inplace_dim( T )( in ref MatrixT!T a
                            )
   pure nothrow @safe
 {
-  
-
   b.setDim( a.dim );
 
   auto  m_mean  = buffer.m_mean;

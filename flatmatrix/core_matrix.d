@@ -10,6 +10,8 @@ module d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
+public import d_glat.core_memory;
+
 import core.memory;
 import d_glat.core_array;
 import d_glat.core_assert;
@@ -18,6 +20,7 @@ import d_glat.core_runtime;
 import std.algorithm : map, max, min, sort;
 import std.array : appender, array;
 import std.conv : to;
+import std.exception : enforce;
 import std.format : format;
 import std.math;
 import std.range : enumerate;
@@ -30,6 +33,10 @@ alias MatrixStringTransformfunT( T ) =
   string delegate( in size_t, in size_t , in size_t, in T );
 
 alias MaybeMSTT( T ) = Nullable!(MatrixStringTransformfunT!T);
+
+// ---------- Main type
+
+alias Matrix = MatrixT!double;
 
 struct MatrixT( T )
 {
@@ -44,18 +51,31 @@ struct MatrixT( T )
 
   // --- API: Constructors
 
-  this( size_t[] dim, T[] data ) pure nothrow @safe
-    {
+  this( size_t[] dim, T[] data ) pure nothrow @safe @nogc
+    { set( dim, data ); }
+
+  this( in size_t[] dim, in T init_val ) pure nothrow @safe
+    { set( dim, init_val ); }
+  
+  this( in size_t[] dim ) pure nothrow @safe
+    // Typically a `double.nan` initialization.
+    { setDim( dim ); }
+  
+  // --- API: reinitialization (top-level setters)
+
+  void set( size_t[] dim, T[] data ) pure nothrow @safe
+  {
       this.dim = dim;
       this.data = data;
 
       // One of the `dim[i]` numbers may be `0` => will be
       // automatically computed
       complete_dim();
-    }
+  }
+
   
-  this( in size_t[] dim, in T init_val ) pure nothrow @safe
-    {
+  void set( in size_t[] dim, in T init_val ) pure nothrow @safe
+  {
       this.dim = dim.dup;
 
       size_t total = dim[ 0 ];
@@ -70,13 +90,27 @@ struct MatrixT( T )
       complete_dim();
     }
 
-  this( in size_t[] dim ) pure nothrow @safe
-    // Typically a `double.nan` initialization.
-    {
-      this.setDim( dim );
-    }
+  void setDim( in size_t[] dim ) pure nothrow @safe
+  {
+    size_t total = dim[ 0 ];
+    for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
+      total *= dim[ i ];
 
-  void complete_dim() pure nothrow @safe
+    if (!(0 < total))
+      {
+        assert( false, "Here we cannot support `0` (for automatic nrow) since there is no data. Note: if you need to create an empty matrix, pass some empty data array, as in `Matrix([0,8], []) and NOT `Matrix([0,8])`." );
+      }
+    
+    if (this.dim != dim)
+      {
+        this.dim  = dim.dup;
+        this.data = new T[ total ];
+      }
+  }
+
+  // --- API: reinitialization (lower level)
+
+  void complete_dim() pure nothrow @safe @nogc
   // Find at most one `0` value in the `dim` array, and compute that
   // dimension out of `data.length` and the other `dim[i]` values.
   {  
@@ -123,36 +157,7 @@ struct MatrixT( T )
       }
     else
       {
-        assert( sub_total == data.length, "Fails to verify: sub_total == data.length (sub_total: "~to!string(sub_total)~", data.length: "~to!string(data.length)~")" );
-      }
-  }
-
-  // --- API: reinitialization
-
-  void setDim( in size_t[] dim ) pure nothrow @safe
-  {
-    size_t total = dim[ 0 ];
-    for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
-      total *= dim[ i ];
-
-    /*
-      Here we cannot support `0` since there is no data.
-
-      Note: if you need to create an empty matrix, pass
-      some empty data array, as in `Matrix([0,8], [])`
-      and NOT `Matrix([0,8])`.
-    */
-    debug if (!(0 < total ))
-      {
-        this.dim = [];
-        this.data = [];
-        auto x = this.dim[ 0 ];
-      }
-
-    if (this.dim != dim)
-      {
-        this.dim = dim.dup;
-        this.data = new T[ total ];
+        assert( sub_total == data.length, "Fails to verify: sub_total == data.length" );
       }
   }
 
@@ -392,7 +397,7 @@ struct MatrixT( T )
   }
 };
 
-alias Matrix = MatrixT!double;
+
 
 
 /*
@@ -805,11 +810,11 @@ void sort_inplace( T )( ref MatrixT!T m )
     
     auto ptr = data.ptr;
 
-    bool lessThan( in size_t a, in size_t b )
-    {
 
-      T* a_ptr = ptr + a * rd;
-      T* b_ptr = ptr + b * rd;
+    bool lessThan( scope size_t a, scope size_t b ) @nogc
+    {
+      T* a_ptr = (cast(T*)( ptr )) + a * rd;
+      T* b_ptr = (cast(T*)( ptr )) + b * rd;
 
       const a_ptr_end = a_ptr + rd;
       
@@ -830,9 +835,9 @@ void sort_inplace( T )( ref MatrixT!T m )
 
       return false;
     }
-  
+    
     desired_arr.sort!lessThan;
-
+                      
     // Now swap data as needed, according to the sorted indices
     
     mixin(localloc(`swap_buffer,T,rd`));

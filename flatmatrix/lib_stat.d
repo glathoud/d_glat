@@ -54,8 +54,6 @@ void mean_cov_inplace_dim( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe
 {
-  
-
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
   mean_cov_inplace_nogc!( unbiased, T )( m, m_mean, m_cov );
@@ -67,8 +65,6 @@ void mean_cov_inplace_nogc( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe @nogc
 {
-  
-
   debug
     {
       assert( m_mean.dim[ 0 ] == 1 );
@@ -165,8 +161,6 @@ void mean_cov_inplace_dim( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe
 {
-  
-
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
   mean_cov_inplace_nogc!( unbiased, T )( m, subset, m_mean, m_cov );
@@ -179,8 +173,6 @@ void mean_cov_inplace_nogc( bool unbiased = true, T )
     , ref MatrixT!T m_cov )
 pure nothrow @safe @nogc
 {
-  
-
   debug
     {
       assert( m_mean.dim[ 0 ] == 1 );
@@ -285,8 +277,6 @@ void mean_var_inplace_dim
     )
   pure nothrow @safe
 {
-  
-
   auto mv_dim = [ 1UL ] ~ m.dim[ 1..$ ];
   m_mean.setDim( mv_dim );
   m_var .setDim( mv_dim );
@@ -301,8 +291,6 @@ void mean_var_inplace_nogc
     )
   pure nothrow @safe @nogc
 {
-  
-
   debug
     {
       assert( m_mean.dim[ 0 ] == 1 );
