@@ -6,9 +6,12 @@
 */
 module d_glat.lib_file_copy_rotate;
 
+import core.memory;
 import d_glat.core_file;
 import d_glat.core_glob;
 import d_glat.core_gzip;
+import d_glat.core_runtime;
+import d_oa_common.core_unittest;
 import std.algorithm : map, sort;
 import std.array : array;
 import std.datetime;
@@ -70,10 +73,11 @@ bool file_copy_rotate
       immutable new_fn_core = fipr~(dt_now.toISOExtString);
       if (compress)
         {
+          mixin(_wr_here);printMemUsage();
+          
           immutable new_filename = new_fn_core~".gz";
-          std.file.write( new_filename
-                          , gzip( cast(ubyte[])( std.file.read( filename )))
-                          );
+
+          std.file.write( new_filename, gzip( cast(ubyte[])( std.file.read( filename ))) );
         }
       else
         {

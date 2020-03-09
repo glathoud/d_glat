@@ -12,8 +12,10 @@ public import d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
+import core.memory;
 import d_glat.core_file;
 import d_glat.core_gzip;
+import d_glat.core_memory;
 import d_glat.core_runtime;
 import d_glat.lib_file_copy_rotate;
 import std.algorithm;
@@ -75,7 +77,7 @@ class JsonbinT( T )
   {
     return parseJSON( j_str );
   }
-  
+
   ubyte[] toUbytes( in string compression = COMPRESSION_NONE ) const @trusted
     {
       auto app = appender!(ubyte[]);
@@ -466,19 +468,82 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
   return new JsonbinT!T( j_str, Matrix( dim, data ) );
 }
 
-void jsonbin_write_to_filename( in Jsonbin jb, in string filename, in string compression_type = COMPRESSION_NONE )
+void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in string compression_type = COMPRESSION_NONE )
 {
   ensure_file_writable_or_exit( filename, /*ensure_dir:*/true );
-
-  auto data = jb.toUbytes( compression_type );
 
   // Two possibilities to compress: whole file (automatic from the
   // ".gz" filename extension), or only data part (explicit from
   // `compression_type == COMPRESSION_GZIP`)
+
   if (filename.endsWith( ".gz" ))
-    data = gzip( data );
+    {
+      std.file.write( filename, gzip( jb.toUbytes( compression_type ) ) );
+    }
+  else if (compression_type == COMPRESSION_GZIP)
+    {
+      std.file.write( filename, jb.toUbytes( compression_type ) );
+    }
+  else if (compression_type == COMPRESSION_NONE)
+    {
+      // Special implementation to spare the GC
+      jsonbin_write_uncompressed_to_file!T( jb, File( filename, "wb" ) );
+    }
+  else
+    {
+      assert( false, "Not supported: "~compression_type );
+    }
+}
+
+void jsonbin_write_uncompressed_to_file(T)( in JsonbinT!T jb, File file )
+{
+  // Code duplicated w.r.t. `toUbytes`
+  // Reason: spare the GC
   
-  std.file.write( filename, data );
+  // First line: JSON
+  
+  file.write( jb.j_str );
+  file.write( '\n' );
+  
+  // Second line: <type>:<dim>
+  // e.g. "double:[123456,10]
+  
+  file.write( T.stringof~':'~to!string(jb.m.dim) );
+file.write( '\n' );
+
+  // Third line: compression
+  
+  file.write( COMPRESSION~':'~COMPRESSION_NONE );
+  
+  while( !(0 == (file.tell+1) % T.sizeof) )
+    file.write( ' ' ); // Some padding for alignment
+      
+  file.write( '\n' );
+      
+  // We always save the data in littleEndian format
+  
+  auto m_data = jb.m.data;
+  
+  version (LittleEndian)
+  {
+    file.rawWrite( cast( ubyte[] )( m_data ) );
+  }
+  else
+    {
+      version (BigEndian)
+      {
+        ubyte[] ubytes = new ubyte[ m_data.length * (T.sizeof) ];
+        size_t index = 0;
+        foreach (d; m_data)
+          file.rawWrite!(T, Endian.littleEndian)( d, &index );
+        
+        return ubytes;
+      }
+      else
+        {
+          static assert( false, "jsonbin_write_uncompressed_to_file: Unsupported endianness" );
+        }
+    } 
 }
 
 
