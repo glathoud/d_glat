@@ -453,19 +453,21 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
     {
       return new JsonbinT!T( j_str, Matrix( dim, 0 ) );
     }
-
-  auto data = jsonbin_read_chars_rest!T( cdata, index, compression
-                                         , error_msg );
-
-  if (0 == error_msg.length  &&  data.length != dim.reduce!`a*b`)
+  else
     {
-      error_msg = "invalid data.length "~to!string(data.length)
-        ~", does not match dim "~to!string(dim)
-        ~", typically from a corrupt/truncated file";
-      return new JsonbinT!T();
+      auto data = jsonbin_read_chars_rest!T( cdata, index, compression
+                                             , error_msg );
+      
+      if (0 == error_msg.length  &&  data.length != dim.reduce!`a*b`)
+        {
+          error_msg = "invalid data.length "~to!string(data.length)
+            ~", does not match dim "~to!string(dim)
+            ~", typically from a corrupt/truncated file";
+          return new JsonbinT!T();
+        }
+      
+      return new JsonbinT!T( j_str, Matrix( dim, data ) );
     }
-
-  return new JsonbinT!T( j_str, Matrix( dim, data ) );
 }
 
 void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in string compression_type = COMPRESSION_NONE )
