@@ -13,6 +13,7 @@ public import d_glat.flatmatrix.core_matrix;
 */
 
 import core.memory;
+import d_glat.core_assert;
 import d_glat.core_file;
 import d_glat.core_gzip;
 import d_glat.core_memory;
@@ -140,7 +141,7 @@ class JsonbinT( T )
           break;
 
         default:
-          assert( false, "Jsonbin.toUbytes: Unsupported compression: "~compression );
+          mixin(alwaysAssertStderr( `false`, `"Jsonbin.toUbytes: Unsupported compression: "~compression` ));
         }
 
       return app.data;
@@ -270,9 +271,8 @@ JsonbinT!T jsonbin_of_filename_or_copy
     Action_of_filename_or_copy!(/*only_meta:*/false,T,prefix)
     ( filename, error_msg, verbose );
 
-  if (0 < error_msg.length)
-    assert( false, error_msg );
-
+  mixin(alwaysAssertStderr(`0 == error_msg.length`,`error_msg`));
+  
   return ret;
 }
 
@@ -285,9 +285,8 @@ JsonbinT!T jsonbinmeta_of_filename_or_copy
     Action_of_filename_or_copy!(/*only_meta:*/true,T,prefix)
     ( filename, error_msg, verbose );
 
-  if (0 < error_msg.length)
-    assert( false, error_msg );
-
+  mixin(alwaysAssertStderr(`0 == error_msg.length`,`error_msg`));
+  
   return ret;
 }
 
@@ -378,14 +377,9 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )( in string 
   string error_msg;
   auto ret = jsonbin_of_filename!(T, only_meta)( filename, error_msg );
 
-  if (0 < error_msg.length)
-    {
-      assert( false
-              , "jsonbin_of_filename: failed on filename '"
-              ~filename~"' with error '"~error_msg~"'"
-              );
-    }
-
+  mixin(alwaysAssertStderr(`0 == error_msg.length`
+                           ,`"jsonbin_of_filename: failed on filename '"~filename~"' with error '"~error_msg~"'"`));
+  
   return ret;
 }
 
@@ -428,9 +422,9 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )( in char[] cda
   string error_msg;
 
   auto ret = jsonbin_of_chars!(T, only_meta)( cdata, error_msg );
-  if (0 < error_msg.length)
-    assert( false, error_msg );
 
+  mixin(alwaysAssertStderr(`0 == error_msg.length`,`error_msg`));
+  
   return ret;
 }
 
@@ -493,7 +487,7 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
     }
   else
     {
-      assert( false, "Not supported: "~compression_type );
+      mixin(alwaysAssertStderr(`false`,`"Not supported: "~compression_type`));
     }
 }
 
@@ -696,7 +690,7 @@ T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string comp
         return gunzip( tmp );
 
       default:
-        assert( false, "jsonbin_of_chars: Unsupported compression: "~compression );
+        mixin(alwaysAssertStderr(`false`, `"jsonbin_of_chars: Unsupported compression: "~compression` ));
       }
     assert( false, "bug" );
   }();

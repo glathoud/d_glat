@@ -1,5 +1,12 @@
 module d_glat.core_assert;
 
+string alwaysAssertStderr( in string testcode, in string msgcode )
+// to use with `mixin`. *always* asserts (in release mode as well)
+{
+  return `if (!(`~testcode~`)) { immutable __outmsg = `~msgcode~`; stderr.writeln( __outmsg ); assert( false, __outmsg ); }`;
+}
+
+
 void assertWrap( bool test, string delegate() pure @safe getS = () { return ""; } )
   pure nothrow @safe
 /*
