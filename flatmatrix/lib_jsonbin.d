@@ -616,18 +616,29 @@ T[] jsonbindata_of_filename
 // Reads everything but does NOT create a Jsonbin instance, instead
 // returns each piece of information separately.
 {
-  auto cdata = cast(char[])( std.file.read( filename ) );
+  immutable string CATCH_CODE = q{
+      error_msg = "jsonbindata_of_filename (filename:"~filename~") caught RangeError: "~to!string(e);
+      T[] ret;
+      return ret;
+  };
 
-  size_t index = 0;
-  string compression;
-  jsonbin_read_chars_meta!T( cdata
-                             , index
-                             , j_str, dim, compression );
-
-
-  return jsonbin_read_chars_rest!T
-    ( cdata, index, compression
-      , error_msg );
+  try
+    {
+      auto cdata = cast(char[])( std.file.read( filename ) );
+      
+      size_t index = 0;
+      string compression;
+      jsonbin_read_chars_meta!T( cdata
+                                 , index
+                                 , j_str, dim, compression );
+      
+      
+      return jsonbin_read_chars_rest!T
+        ( cdata, index, compression
+          , error_msg );
+    }
+  catch (core.exception.RangeError e) { mixin(CATCH_CODE); }
+  catch (object.Exception e) { mixin(CATCH_CODE); }
 }
 
 void jsonbin_read_chars_meta( T )

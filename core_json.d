@@ -121,9 +121,9 @@ T[] json_get_array(T)( in JSONValue jv )
 }
 
 
-double json_get_double( in JSONValue jv )
+double json_get_double( bool accept_null = false )( in JSONValue jv )
 {
-  return get_double_of_json( jv );
+  return get_double_of_json!accept_null( jv );
 }
 
 long json_get_long( in JSONValue jv )

@@ -89,9 +89,9 @@ void set_default_transformations( T )
         };
     }
   
-  tmp[ "pairs:a-b" ] = ( ref a, ref b ) pure nothrow @safe
+  tmp[ "pairs:a-b" ] = ( ref c_in, ref d_out ) pure nothrow @safe
     {
-      pairs_inplace_dim!"a-b"( a, b );
+      pairs_inplace_dim!"a-b"( c_in, d_out );
     };
 
   auto b_sortindex = new Buffer_sortindex_inplaceT!T;

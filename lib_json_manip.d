@@ -8,6 +8,7 @@ Boost license, as described in the file ./LICENSE
 */
 
 public import d_glat.core_json;
+public import std.json;
 
 import d_glat.core_sexpr;
 import d_glat.lib_json_manip;
@@ -17,7 +18,6 @@ import std.conv;
 import std.digest.sha;
 import std.exception;
 import std.format : format;
-import std.json;
 import std.stdio;
 import std.typecons;
 

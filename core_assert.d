@@ -1,5 +1,9 @@
 module d_glat.core_assert;
 
+public import std.stdio : stderr;
+
+import std.array : replace;
+
 string alwaysAssertStderr( in string testcode, in string msgcode )
 // to use with `mixin`. *always* asserts (in release mode as well)
 {
