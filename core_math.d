@@ -15,6 +15,19 @@ import std.exception : enforce;
   The Boost license applies to this file, as described in ./LICENSE
  */
 
+T[] cumsum( T )( in T[] arr ) pure nothrow @safe
+{
+  immutable n = arr.length;
+  auto ret = new T[ n ];
+
+  T v_cumsum = ret[ 0 ] = arr[ 0 ];
+  foreach (i; 1..n)
+    ret[ i ] = v_cumsum = v_cumsum + arr[ i ];
+
+  return ret;
+}
+
+
 
 alias Buffer_e_w_logsum = Buffer_e_w_logsumT!double;
 

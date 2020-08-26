@@ -56,7 +56,11 @@ import std.stdio;
 immutable META_CAT  = "cat";
 immutable META_PIPE = "pipe";
 
-alias Transfeat = TransfeatT!double;
+
+// shortcuts for a common use case: `double`
+alias Transfeat        = TransfeatT!double;
+alias OneTrans         = OneTransT!double;
+alias OneTransOfString = OneTransOfStringT!double;
 
 alias OneTransT( T ) = void delegate
   ( in ref MatrixT!T m_one_in
@@ -64,9 +68,6 @@ alias OneTransT( T ) = void delegate
 
 alias OneTransOfStringT( T ) = OneTransT!T[string];
 
-// common case
-alias OneTrans         = OneTransT!double;
-alias OneTransOfString = OneTransOfStringT!double;
 
 // The transformations available by default.
 // You can add your own through `one_trans_of_string`.

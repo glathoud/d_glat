@@ -32,7 +32,7 @@ MatrixT!T pairs( alias expstr_or_fun, T )
 
 void pairs_inplace_dim( alias expstr_or_fun, T )
 ( in ref MatrixT!T m, ref MatrixT!T m_pairdelta )
-  pure nothrow @safe
+ pure nothrow @safe
 {
   immutable n = m.dim[ 0 ];
   m_pairdelta.setDim( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
@@ -59,8 +59,6 @@ void pairs_inplace( alias expstr_or_fun, T )
   Examples: see the unit tests further below.
 */
 {
-  
-  
   immutable n = m.dim[ 0 ];
   debug
     {
@@ -69,6 +67,7 @@ void pairs_inplace( alias expstr_or_fun, T )
       assert( m_pairdelta.dim.length >= 2 );
       assert( m_pairdelta.dim[ 0 ] == n_pair );
       assert( m.dim[ 1..$ ] == m_pairdelta.dim[ 1..$ ] );
+      assert( m.data.length == m.nrow * m.restdim );
     }
 
   immutable restdim = m.restdim;
@@ -83,12 +82,13 @@ void pairs_inplace( alias expstr_or_fun, T )
 
   size_t i = 0;
   immutable i_end = data.length;
-    
+
+  debug assert( i_end == m.nrow * m.restdim );
+  
   size_t ipd = 0;
   size_t ipd_next = restdim;
 
   debug immutable ipd_end = pairdelta.length;
-
 
   static if (is_expstr)
     {

@@ -649,6 +649,8 @@ void extract_ind_inplace_nogc( T )
     , ref T[] ret ) pure nothrow @safe @nogc
 /* Extract "flat column" `ind` and put it into `ret`, which is assumed
    to be already allocated as `X.nrow`-long.
+
+   See also `set_ind_inplace_nogc`.
 */
 {
   
@@ -670,6 +672,7 @@ void extract_ind_inplace_nogc( T )
       ret[ j ] = data[ i ];
     }
 }
+
 
 T[] fold_rows(alias /*T[] */fun/*( T[], in T[] row )*/, T)
   ( in MatrixT!T m )
@@ -772,6 +775,35 @@ pure nothrow @safe
           buffer[ i_m ] = next_i_in;
           i_out = next_i_out;
         }
+    }
+}
+
+
+
+void set_ind_inplace_nogc( T )
+  ( ref MatrixT!T X, in size_t ind, in T[] v ) pure nothrow @safe @nogc
+/*
+  Write the vector `v` into the column `ind` of `X` (0 <= ind < X.restdim).
+
+  See also: extract_ind_inplace_nogc.
+ */
+{
+  immutable rd = X.restdim;
+  debug
+    {
+      assert( 0 <= ind );
+      assert( ind <= rd );
+      assert( v.length == X.nrow );
+    }
+
+  auto data = X.data;
+  immutable i_end = data.length;
+  
+  for (size_t i = ind, j = 0;
+       i < i_end;
+       i+=rd, ++j)
+    {
+      data[ i ] = v[ j ];
     }
 }
 
@@ -2082,6 +2114,30 @@ unittest  // ------------------------------
     assert( A != B );
     assert( A.dim == B.dim );
     assert( A.data != B.data );
+  }
+
+  {
+    auto A = Matrix( [ 0, 4 ]
+                     , [ 1.0, 2.0, 3.0, 4.0,
+                         5.0, 6.0, 7.0, 8.0,
+                         9.0, 10.0, 11.0, 12.0,
+                         13.0, 14.0, 15.0, 16.0,
+                         17.0, 18.0, 19.0, 20.0,
+                         21.0, 22.0, 23.0, 24.0,
+                         25.0, 26.0, 27.0, 28.0,
+                         29.0, 30.0, 31.0, 32.0 ] );
+
+    A.set_ind_inplace_nogc( 2, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0] );
+
+    assert( A == Matrix( [0, 4]
+                         , [ 1.0, 2.0,   -1.0, 4.0,
+                             5.0, 6.0,   -2.0, 8.0,
+                             9.0, 10.0,  -3.0, 12.0,
+                             13.0, 14.0, -4.0, 16.0,
+                             17.0, 18.0, -5.0, 20.0,
+                             21.0, 22.0, -6.0, 24.0,
+                             25.0, 26.0, -7.0, 28.0,
+                             29.0, 30.0, -8.0, 32.0 ] ) );
   }
 
   {

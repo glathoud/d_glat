@@ -35,7 +35,7 @@ SExpr parse_sexpr( alias maybe_check_fun = false )( in char[] a )
     {
       enforce!StringException
         ( maybe_check_fun( ret )
-          , "Invalid SExpr syntax, as per `maybe_check_fun`"
+          , "Invalid SExpr syntax, as per `maybe_check_fun`: \""~a~"\""
           );
     }
   

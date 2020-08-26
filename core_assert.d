@@ -6,6 +6,7 @@ import std.array : replace;
 
 string alwaysAssertStderr( in string testcode, in string msgcode )
 // to use with `mixin`. *always* asserts (in release mode as well)
+// e.g:  mixin(alwaysAssertStderr(`a<b`, `"a<b not verified for a:"~to!string(a)~" and b:"~to!string(b)`))
 {
   return `if (!(`~testcode~`)) { immutable __outmsg = `~msgcode~`; stderr.writeln( __outmsg ); assert( false, __outmsg ); }`;
 }
