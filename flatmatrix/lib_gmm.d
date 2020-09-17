@@ -18,7 +18,7 @@ public import d_glat.flatmatrix.lib_matrix;
 import d_glat.core_array;
 import d_glat.core_math;
 import d_glat.flatmatrix.lib_stat;
-import std.algorithm : max;
+import std.algorithm : all, max;
 import std.array : array;
 import std.conv : to;
 import std.math;
@@ -137,12 +137,12 @@ struct GmmT( T )
     debug assert( i_out == ll_data.length );
   }
 
-  void setSingle( in ref Matrix m_feature )
-    nothrow @safe
+  void setSingle( in ref Matrix m_feature, in bool diag_only = false )
+  nothrow @safe
   {
     // Single group
     auto group_arr = [ iota( 0, m_feature.nrow ).array ];
-    setOfGroupArr( m_feature, group_arr );
+    setOfGroupArr( m_feature, group_arr, diag_only );
   }
 
 
@@ -152,9 +152,10 @@ struct GmmT( T )
   private auto _b_det = new Buffer_detT!T;
   
   void setOfGroupArr( in ref Matrix m_feature
-                      , in ref size_t[][] group_arr
+                      , in size_t[][] group_arr
+                      , in bool diag_only = false
                       )
-    nothrow @safe
+  nothrow @safe
   {
     n   = group_arr.length;
     dim = m_feature.restdim;
@@ -164,23 +165,44 @@ struct GmmT( T )
 
     is_finite = true;
     is_finite_arr[] = true;
-    
+
     foreach (i_g, group; group_arr)
       {
-        mean_cov_inplace_dim
-          ( /*Inputs:*/  m_feature, /*subset:*/group
-            /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
-
-        if (fallback_zero_var)
-          _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ]
-                                              , _nonzero_var_arr
-                                              , _zero_j_arr
-                                              );
+        if (diag_only)
+          {
+            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/true)
+              ( /*Inputs:*/  m_feature, /*subset:*/group
+                /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
+          }
+        else
+          {
+            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/false)
+              ( /*Inputs:*/  m_feature, /*subset:*/group
+                /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
+          }
         
-        bool success =
-          inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ]
-                       , _b_inv_inplace
-                       );
+        // The try/catch trick in inv_inplace does not seem to work
+        // in "relbug" or "release" mode (Segmentation fault), only
+        // in "debug" mode (RangeError properly thrown and caught).
+        // So we have to prevent this issue by testing ourselves.
+        //
+        // also there might be some NaNs so that the
+        // fallback_zero_var wouldn't always quite work => test for
+        // isFinite first for that as well.
+        bool success = m_cov_arr[ i_g ].data.all!isFinite;
+        if (success)
+          {
+            if (fallback_zero_var)
+              _do_fallback_zero_var_if_necessary( m_cov_arr[ i_g ]
+                                                  , _nonzero_var_arr
+                                                  , _zero_j_arr
+                                                  );
+
+            success =
+              inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ]
+                           , _b_inv_inplace
+                           );
+          }
 
         if (!success)
           {
@@ -219,7 +241,7 @@ struct GmmT( T )
     
     sink( "\n}\n" );
   }
-  
+
  private:
 
   void _resize() pure nothrow @safe
@@ -267,6 +289,11 @@ void _do_fallback_zero_var_if_necessary( T )
     , /*buffer:*/ref size_t[] zero_j_arr
     )
   pure nothrow @safe
+/*
+  If there are zero variance values (0.0) on the diagonal, and there
+  are also non-zero variance values, replace the diag-zeroes with a
+  filler value fudged out of the non-zero values.
+ */
 {
   
 

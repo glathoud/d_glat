@@ -12,6 +12,7 @@ import std.datetime.systime : SysTime;
 import std.file : exists, getAttributes, getTimes, getSize, isDir, isFile, mkdirRecurse, isSymlink, readLink;
 import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
 import std.stdio : stderr, writefln, writeln;
+import std.typecons : Nullable;
 
 bool ensure_dir_exists( in string dir_name )
 // Return `true` if the dir already existed, otherwise, create it
@@ -65,14 +66,15 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
 }
 
 
-bool exists_non_empty( in string filename )
+bool exists_non_empty( in string filename, in Nullable!(bool[string]) existing_filename_set = null )
 /*
   Useful to detect e.g. a file that was not completely written
   before electrical current was lost, which abruptly stopped the
   computer.
  */
 {
-  return exists( filename )  &&  0 < getSize( filename );
+  return (existing_filename_set.isNull  ?  exists( filename )  :  (null != (filename in existing_filename_set)))
+    &&  0 < getSize( filename );
 }
 
 

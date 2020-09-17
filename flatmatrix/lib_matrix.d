@@ -155,8 +155,6 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
                        , ref Buffer_inv_inplaceT!T buffer
                        ) pure nothrow @trusted
 {
-  
-
   immutable I  = m.nrow;
   immutable J  = m.ncol;
   immutable IJ = I*J;
@@ -170,7 +168,6 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
 
   try
     {
-      
       // Implementation note: for matrix inversion it is faster to work in
       // 2-D the whole time, probably because of faster row swaps.
   
@@ -277,6 +274,7 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
              )
           inv[ ind..ind+I ] = B[ i ][];
       }
+
     }
   catch( RangeError e )
     {

@@ -48,21 +48,23 @@ void mean_inplace_nogc( T )( in ref MatrixT!T m
 }
 
 
-void mean_cov_inplace_dim( bool unbiased = true, T )
+void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
-    , ref MatrixT!T m_cov )
+    , ref MatrixT!T m_cov
+    )
 pure nothrow @safe
 {
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
-  mean_cov_inplace_nogc!( unbiased, T )( m, m_mean, m_cov );
+  mean_cov_inplace_nogc!( unbiased, diag_only, T )( m, m_mean, m_cov );
 }
 
-void mean_cov_inplace_nogc( bool unbiased = true, T )
+void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
-    , ref MatrixT!T m_cov )
+    , ref MatrixT!T m_cov
+    )
 pure nothrow @safe @nogc
 {
   debug
@@ -100,13 +102,18 @@ pure nothrow @safe @nogc
           
           mean_data[ i_mean ] += vi;
 
-          {
-            size_t jm = im;
-            foreach (k; i_mean..rd)
-              cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
-
-            debug assert( jm == next_im );
-          }
+          static if (diag_only)
+            {
+              cov_data[ off_cov + i_mean ] += vi * m_data[ im ];
+            }
+          else
+            {
+              size_t jm = im;
+              foreach (k; i_mean..rd)
+                cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
+              
+              debug assert( jm == next_im );
+            }
           
           ++im;
           ++i_mean;
@@ -143,10 +150,18 @@ pure nothrow @safe @nogc
             (cov_data[ offset ]
              - nv_dbl *  mean_data[ i ] * mean_data[ j ]);
           
-          if (i < j)
-            cov_data[ j * rd + i ] = x;
-          
-          ++offset;
+          static if (diag_only)
+            {
+              offset += rd-i;
+              break;
+            }
+          else
+            {
+              if (i < j)
+                cov_data[ j * rd + i ] = x;
+              
+              ++offset;
+            }
         }
     }
   debug assert( offset == rd*rd );
@@ -154,7 +169,7 @@ pure nothrow @safe @nogc
 
 
 
-void mean_cov_inplace_dim( bool unbiased = true, T )
+void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, T )
   ( in ref MatrixT!T m
     , in size_t[] subset
     , ref MatrixT!T m_mean
@@ -163,10 +178,10 @@ pure nothrow @safe
 {
   m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
   m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
-  mean_cov_inplace_nogc!( unbiased, T )( m, subset, m_mean, m_cov );
+  mean_cov_inplace_nogc!( unbiased, diag_only, T )( m, subset, m_mean, m_cov );
 }
 
-void mean_cov_inplace_nogc( bool unbiased = true, T )
+void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, T )
   ( in ref MatrixT!T m
     , in size_t[] subset
     , ref MatrixT!T m_mean
@@ -212,6 +227,11 @@ pure nothrow @safe @nogc
           
           mean_data[ i_mean ] += vi;
 
+          static if (diag_only)
+            {
+              cov_data[ off_cov + i_mean ] += vi * m_data[ im ];
+            }
+          else
           {
             size_t jm = im;
             foreach (k; i_mean..rd)
@@ -255,10 +275,18 @@ pure nothrow @safe @nogc
             (cov_data[ offset ]
              - nv_dbl *  mean_data[ i ] * mean_data[ j ]);
           
-          if (i < j)
-            cov_data[ j * rd + i ] = x;
-          
-          ++offset;
+          static if (diag_only)
+            {
+              offset += rd-i;
+              break;
+            }
+          else
+            {
+              if (i < j)
+                cov_data[ j * rd + i ] = x;
+              
+              ++offset;
+            }
         }
     }
   debug assert( offset == rd*rd );
@@ -418,6 +446,47 @@ sprintf("%.12g ",cov(m))
       }
     
     assert( approxEqual( m_cov .data,  cov_truth, 1e-10, 1e-10 ) );
+
+
+    {
+      // diag_only variant
+
+    Matrix m_mean2, m_cov2;
+
+    mean_cov_inplace_dim!(/*unbiased:*/true, /*diag_only:*/true)( m, m_mean2, m_cov2 );
+
+    auto mean_truth2 = mean_truth;
+    
+    immutable double[] cov_truth2 = assumeUnique
+      ( () {
+
+        auto tmp = new double[ cov_truth.length ];
+        tmp[] = 0.0;
+
+        immutable rd = m.restdim;
+        for (size_t i = 0; i < tmp.length; i += rd+1)
+          tmp[ i ] = cov_truth[ i ];
+
+        return tmp;
+      } () );
+
+    if (verbose)
+      {
+        writeln( "m_mean2.data ", m_mean2.data );
+        writeln( "mean_truth2: ", mean_truth2 );
+      }
+    
+    assert( approxEqual( m_mean2.data, mean_truth2, 1e-10, 1e-10 ) );
+
+    if (verbose)
+      {
+        writeln( "m_cov2.data: ", m_cov2.data );
+        writeln( "cov_truth2:  ", cov_truth2);
+      }
+    
+    assert( approxEqual( m_cov2 .data,  cov_truth2, 1e-10, 1e-10 ) );
+    
+    }
   }
 
   
@@ -489,6 +558,46 @@ sprintf("%.12g ",cov(m))
       }
     
     assert( approxEqual( m_cov .data,  cov_truth, 1e-10, 1e-10 ) );
+
+    {
+      // diag_only variant
+
+    Matrix m_mean2, m_cov2;
+
+    mean_cov_inplace_dim!(/*unbiased:*/true, /*diag_only:*/true)( m, subset, m_mean2, m_cov2 );
+
+    auto mean_truth2 = mean_truth;
+    
+    immutable double[] cov_truth2 = assumeUnique
+      ( () {
+
+        auto tmp = new double[ cov_truth.length ];
+        tmp[] = 0.0;
+
+        immutable rd = m.restdim;
+        for (size_t i = 0; i < tmp.length; i += rd+1)
+          tmp[ i ] = cov_truth[ i ];
+
+        return tmp;
+      } () );
+
+    if (verbose)
+      {
+        writeln( "m_mean2.data ", m_mean2.data );
+        writeln( "mean_truth2: ", mean_truth2 );
+      }
+    
+    assert( approxEqual( m_mean2.data, mean_truth2, 1e-10, 1e-10 ) );
+
+    if (verbose)
+      {
+        writeln( "m_cov2.data: ", m_cov2.data );
+        writeln( "cov_truth2:  ", cov_truth2);
+      }
+    
+    assert( approxEqual( m_cov2 .data,  cov_truth2, 1e-10, 1e-10 ) );
+    
+    }
   }
 
   
