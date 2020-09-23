@@ -42,12 +42,12 @@ struct GmmT( T )
   private immutable T LOG_TWO_PI =
     cast( T )( log( 2 ) + log( PI ) );
 
-  private Matrix m_x, m_xmm, m_xmmT
+  private MatrixT!T m_x, m_xmm, m_xmmT
     , m_invcov_t_xmm, m_xmm_t_invcov_xmm;
 
   
-  void ll_inplace_dim( in ref Matrix m_feature
-                       , /*output:*/ref Matrix m_ll )
+  void ll_inplace_dim( in ref MatrixT!T m_feature
+                       , /*output:*/ref MatrixT!T m_ll )
   pure @safe
     /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
 
@@ -66,8 +66,8 @@ struct GmmT( T )
   }
 
   
-  void ll_inplace_nogc( in ref Matrix m_feature
-                        , /*output:*/ref Matrix m_ll )
+  void ll_inplace_nogc( in ref MatrixT!T m_feature
+                        , /*output:*/ref MatrixT!T m_ll )
   pure @trusted @nogc
     /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
 
@@ -137,7 +137,7 @@ struct GmmT( T )
     debug assert( i_out == ll_data.length );
   }
 
-  void setSingle( in ref Matrix m_feature, in bool diag_only = false )
+  void setSingle( in ref MatrixT!T m_feature, in bool diag_only = false )
   nothrow @safe
   {
     // Single group
@@ -148,10 +148,12 @@ struct GmmT( T )
 
   private double[] _nonzero_var_arr;
   private size_t[] _zero_j_arr;
-  private auto _b_inv_inplace = new Buffer_inv_inplaceT!T;
-  private auto _b_det = new Buffer_detT!T;
+
+  private bool                  _b_allocated = false;
+  private Buffer_inv_inplaceT!T _b_inv_inplace;
+  private Buffer_detT!T         _b_det;
   
-  void setOfGroupArr( in ref Matrix m_feature
+  void setOfGroupArr( in ref MatrixT!T m_feature
                       , in size_t[][] group_arr
                       , in bool diag_only = false
                       )
@@ -163,6 +165,15 @@ struct GmmT( T )
 
     _resize();
 
+    if (!_b_allocated)
+      {
+	// One separate buffer per thread that is why we allocate it
+	// here, NOT as an init value above in the member definition.
+	_b_inv_inplace = new typeof(_b_inv_inplace);
+	_b_det         = new typeof(_b_det);
+	_b_allocated   = true;
+      }
+    
     is_finite = true;
     is_finite_arr[] = true;
 
