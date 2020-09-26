@@ -88,8 +88,6 @@ T e_w_logsum_nogc( T )( in T[] a_arr, in T[] logw_arr
    (`a_i>0.0`), one for negative values (`a_i<0.0`);
 */
 {
-  
-
   immutable n = a_arr.length;
   
   debug assert( n == logw_arr.length );

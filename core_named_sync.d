@@ -58,6 +58,15 @@ private void remove_user( in string name )
 };
 
 string NAMED_SYNC_DO( in string name, in string what )
+/*
+  Spend as little time as possible in the a global `synchronized`
+  lock to fetch/release the `name`-specific lock. 
+
+  The rest of the time, do `what`, synchronized by the
+  `name`-specific lock.
+
+  This way, threads should block each other as little as possible.
+*/
 {
   return `{
     auto __named_silo__ = add_user( ` ~ name ~ ` );

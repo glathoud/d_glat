@@ -2,6 +2,9 @@
 
 Tools for the D language. All distributed under the Boost License, see file [LICENSE](LICENSE).
 
+All classes and structs are thread-safe.
+
+
  * [core\_assoc\_array.d](core_assoc_array.d): convenience tool to
    get/initialize associative arrays having more than one dimension.
    ```D
@@ -84,11 +87,6 @@ Tools for the D language. All distributed under the Boost License, see file [LIC
    ```D
    SExpr parse_sexpr( alias maybe_check_fun = false )( in string a );
    SExpr parse_sexpr( alias maybe_check_fun = false )( in char[] a );
-   ```
-
- * [core\_static.d](core_static.d) For static variables, typically local buffers inside functions.
-   ```D
-   mixin( setup_static_array( `arr`, `double`, `n_elt` ) );
    ```
 
  * [core\_string.d](core_string.d) Regex-free string tools.
