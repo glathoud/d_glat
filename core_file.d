@@ -65,8 +65,17 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
     }
 }
 
+bool exists_non_empty( in string filename )
+{
+  Nullable!(bool[string]) existing_filename_set;
+  existing_filename_set.nullify();
 
-bool exists_non_empty( in string filename, in Nullable!(bool[string]) existing_filename_set = null )
+  return exists_non_empty( filename, existing_filename_set );
+}
+
+
+
+bool exists_non_empty( in string filename, in Nullable!(bool[string]) existing_filename_set )
 /*
   Useful to detect e.g. a file that was not completely written
   before electrical current was lost, which abruptly stopped the
