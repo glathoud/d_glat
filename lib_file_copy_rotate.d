@@ -1,8 +1,11 @@
 /**
- By Guillaume Lathoud
- glat@glat.info
- 
- Distributed under the Boost License, see file ./LICENSE
+   Tool to manage over time safeguard copies of a piece of data, as
+   well as retrieval.
+   
+   By Guillaume Lathoud
+   glat@glat.info
+   
+   Distributed under the Boost License, see file ./LICENSE
 */
 module d_glat.lib_file_copy_rotate;
 
@@ -17,15 +20,32 @@ import std.array : array;
 import std.datetime;
 import std.datetime.systime;
 import std.file;
-import std.path : baseName;
+import std.path : baseName, buildPath;
 import std.range : enumerate;
 import std.string : endsWith;
 
+
+immutable DFLT_PREFIX = ".save";
+
+string get_fipr_of_filename_and_prefix( in string filename, in string prefix ) // xxx pure nothrow @safe
+{
+  debug
+    {
+      assert( 0 < filename.length );
+      assert( 0 < prefix.length );
+    }
+
+  // Put them in a separate directory so that the `dirSA` calls
+  // won't trigger some subtle multithreading errors due to the
+  // `dirEntries` & `DirEntry` implementations in `std.file`.
+  return buildPath( filename~prefix, baseName( filename )~prefix~'-' );
+}
+
 string[] file_copy_fetch
-(string prefix = ".save-")
+(string prefix = DFLT_PREFIX)
   ( in string filename )
 {
-  immutable fipr = filename~prefix;
+  immutable fipr = get_fipr_of_filename_and_prefix( filename, prefix );
 
   return dirSA( fipr~'*' ).sort.array;
 }
@@ -34,7 +54,7 @@ bool file_copy_rotate
 ( string   units = "weeks"
   , size_t[] max_interval_arr = [1,2,4,8,16,32]
   , bool     compress = true
-  , string   prefix = ".save-" )
+  , string   prefix = DFLT_PREFIX )
 ( in string  filename )
 /*
   Manages a series of copies of `filename` to ensure a maximum time
@@ -47,10 +67,7 @@ bool file_copy_rotate
   delete), `false` otherwise.
 */
 {
-  assert( 0 < filename.length );
-  assert( 0 < prefix.length );
-
-  immutable fipr = filename~prefix;
+  immutable fipr = get_fipr_of_filename_and_prefix( filename, prefix );
 
   bool ret_modified = false;
 
@@ -71,17 +88,19 @@ bool file_copy_rotate
       ret_modified = true;
 
       immutable new_fn_core = fipr~(dt_now.toISOExtString);
+
       if (compress)
         {
           mixin(_wr_here);printMemUsage();
           
           immutable new_filename = new_fn_core~".gz";
-
+          ensure_file_writable_or_exit( new_filename, /*ensure_dir:*/true );
           std.file.write( new_filename, gzip( cast(ubyte[])( std.file.read( filename ))) );
         }
       else
         {
           immutable new_filename = new_fn_core;
+          ensure_file_writable_or_exit( new_filename, /*ensure_dir:*/true );
           std.file.copy( filename, new_filename );
         }
 
@@ -177,6 +196,7 @@ echo -n "x" >> xxx.txt; rdmd -i -debug -g -gs -gf -link-defaultlib-debug --eval 
 
 # Then have a look at:
 
-head xxx.txt*
+head xxx.txt
+find xxx.txt.save -type f -exec echo \; -exec echo {} \; -exec gunzip -c {} \; -exec echo \;
 
  */
