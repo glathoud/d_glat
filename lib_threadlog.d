@@ -16,7 +16,13 @@ string THREADLOG()
   
 string xxx_threadlog_append( in string name ) pure
 {
-  return `append( THREADLOG, "\n`~name~`:\n" );
-  append( THREADLOG, to!string( `~name~`) );
-  `;
+  return xxx_threadlog_append_code( `"`~name~`:"` )
+    ~ xxx_threadlog_append_code( `to!string( `~name~` )~"\n"` )
+    ;
 }
+
+string xxx_threadlog_append_code( in string code ) pure
+{
+  return `append( THREADLOG, (__FILE__ ~ "@line:" ~ to!string( __LINE__ )~": ") ~ (`~code~`) ~ "\n" ); `;
+}
+
