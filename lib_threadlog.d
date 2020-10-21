@@ -23,6 +23,6 @@ string xxx_threadlog_append( in string name ) pure
 
 string xxx_threadlog_append_code( in string code ) pure
 {
-  return `append( THREADLOG, (__FILE__ ~ "@line:" ~ to!string( __LINE__ )~": ") ~ (`~code~`) ~ "\n" ); `;
+  return `std.file.append( THREADLOG, (__FILE__ ~ "@line:" ~ std.conv.to!string( __LINE__ )~": ") ~ (`~code~`) ~ "\n" ); `;
 }
 
