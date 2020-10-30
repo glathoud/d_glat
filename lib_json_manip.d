@@ -102,7 +102,7 @@ string json_get_hash( in ref JSONValue j )
 {
   auto digest = makeDigest!SHA1;
   void sink( in string s ) { digest.put( cast(ubyte[])( s ) ); }
-  json_walk_sorted_hash_material( j, &sink );
+  json_walk_sorted( j, &sink );
 
   immutable ret = format( "%(%02x%)", digest.finish );
   return ret;
@@ -129,11 +129,11 @@ string json_get_sorted_hash_material( in ref JSONValue j )
 {
   auto app = appender!(char[]);
   void sink( in string s ) { app.put( s ); }
-  json_walk_sorted_hash_material( j, &sink );
+  json_walk_sorted( j, &sink );
   return app.data.idup;
 }
 
-void json_walk_sorted_hash_material( in ref JSONValue j, in void delegate (in string ) sink )
+void json_walk_sorted( in ref JSONValue j, in void delegate (in string ) sink )
 {
   switch (j.type)
     {
@@ -146,7 +146,7 @@ void json_walk_sorted_hash_material( in ref JSONValue j, in void delegate (in st
 
       foreach( i, j_one; j_array )
         {
-          json_walk_sorted_hash_material( j_one, sink );
+          json_walk_sorted( j_one, sink );
           if (i < i_last)
             sink( JSON_HASH_MATERIAL_SEP );
         }
@@ -168,7 +168,7 @@ void json_walk_sorted_hash_material( in ref JSONValue j, in void delegate (in st
           sink( "\"" );
           sink( k );
           sink( "\":" );
-          json_walk_sorted_hash_material( j_object[ k ], sink );
+          json_walk_sorted( j_object[ k ], sink );
           if (i < i_last)
             sink( JSON_HASH_MATERIAL_SEP );
 
