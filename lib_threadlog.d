@@ -13,6 +13,9 @@ import std.stdio;
   These tools write logging into several `THREADLOG` files, one file
   per thread.
 
+  Also useful to debug performance issue: faking some parts using
+  ./core_stress.d
+
   The Boost license applies to this file, see ./LICENSE
 
   Guillaume Lathoud, 2020

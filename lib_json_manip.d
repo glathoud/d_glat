@@ -10,6 +10,7 @@ Boost license, as described in the file ./LICENSE
 public import d_glat.core_json;
 public import std.json;
 
+import d_glat.core_cast;
 import d_glat.core_sexpr;
 import d_glat.lib_json_manip;
 import std.algorithm;
@@ -54,8 +55,23 @@ private void json_ascii_inplace_iter( in Jsonplace place, ref JSONValue jv2 )
 
 JSONValue json_deep_copy( in ref JSONValue j )
 {
-  
-  return j.toString.parseJSON;
+  final switch (j.type)
+    {
+    case JSON_TYPE.STRING: return JSONValue( j.str ); break;
+    case JSON_TYPE.ARRAY: return JSONValue( j.array.map!json_deep_copy.array ); break;
+    case JSON_TYPE.OBJECT:
+      JSONValue ret = parseJSON( "{}" );
+      foreach (k,v; j.object)
+        ret.object[ k ] = v.json_deep_copy;
+      return ret;
+      break;
+    case JSON_TYPE.NULL: return JSONValue(null);break;
+    case JSON_TYPE.INTEGER: return JSONValue(j.integer);break;
+    case JSON_TYPE.UINTEGER: return JSONValue(j.uinteger);break;
+    case JSON_TYPE.FLOAT: return JSONValue(j.floating);break;
+    case JSON_TYPE.TRUE: return JSONValue(true);break;
+    case JSON_TYPE.FALSE: return JSONValue(false);break;
+    }
 }
 
 JSONValue json_flatten_array( in ref JSONValue j )
@@ -84,16 +100,12 @@ private void _json_flatten_push
 string json_get_hash( in ref JSONValue j )
 // 40-byte hash of sorted `j` (sorted for unicity).
 {
-  string sorted_str_json;
-  return json_get_hash( j, sorted_str_json );
-}
+  auto digest = makeDigest!SHA1;
+  void sink( in string s ) { digest.put( cast(ubyte[])( s ) ); }
+  json_walk_sorted_hash_material( j, &sink );
 
-string json_get_hash( in ref JSONValue j
-                      , out string sorted_str_json )
-// 40-byte hash of sorted `j` (sorted for unicity).
-{
-  sorted_str_json = json_get_sorted_hash_material( j );
-  return format( "%(%02x%)", sha1Of( sorted_str_json ) );
+  immutable ret = format( "%(%02x%)", digest.finish );
+  return ret;
 }
 
 
@@ -115,41 +127,118 @@ JSONValue json_get_replaced_many_places_with_placeholder_string
 private immutable string JSON_HASH_MATERIAL_SEP = "__.#.__";
 string json_get_sorted_hash_material( in ref JSONValue j )
 {
+  auto app = appender!(char[]);
+  void sink( in string s ) { app.put( s ); }
+  json_walk_sorted_hash_material( j, &sink );
+  return app.data.idup;
+}
+
+void json_walk_sorted_hash_material( in ref JSONValue j, in void delegate (in string ) sink )
+{
   switch (j.type)
     {
     case JSON_TYPE.ARRAY:
-      
-      return "__.[["
-        ~ (j.array.map!( json_get_sorted_hash_material )
-           .join( JSON_HASH_MATERIAL_SEP )
-           )
-        ~ "]].__";
 
+      sink( "__.[[" );
+
+      auto     j_array = j.array;
+      immutable i_last = j_array.length - 1;
+
+      foreach( i, j_one; j_array )
+        {
+          json_walk_sorted_hash_material( j_one, sink );
+          if (i < i_last)
+            sink( JSON_HASH_MATERIAL_SEP );
+        }
+
+      sink( "]].__" );
+      break;
       
     case JSON_TYPE.OBJECT:
 
-      return "__.{{"
-        ~ (j.object.keys.sort()
-           .map!( k => json_get_sorted_hash_material
-                  ( j.object[ k ] )
-                  )
-           .join( JSON_HASH_MATERIAL_SEP )
-           )
-        ~ "}}.__";
+      sink( "__.{{" );
+
+      auto j_object = j.object;
+      auto     keys = j_object.keys.sort(); // unicity
+      immutable i_last = keys.length - 1;
+
+      size_t i = 0;
+      foreach (k; keys)
+        {
+          sink( "\"" );
+          sink( k );
+          sink( "\":" );
+          json_walk_sorted_hash_material( j_object[ k ], sink );
+          if (i < i_last)
+            sink( JSON_HASH_MATERIAL_SEP );
+
+          ++i;
+        }
+
+      sink( "}}.__" );
+      break;
       
-      
-    default: return j.toString;
+    default:
+      sink( j.toString );
     }
 }
 
 
 bool json_equals( in JSONValue j0, in JSONValue j1 )
 {
-  
-  return json_get_sorted_hash_material( j0 ) == json_get_sorted_hash_material( j1 );
+  if (j0.type != j1.type)
+    return false;
+
+  final switch (j0.type)
+    {
+    case JSON_TYPE.STRING: return j0.str == j1.str;
+      break;
+
+    case JSON_TYPE.ARRAY:
+
+      if (j0.array.length != j1.array.length)
+        return false;
+
+      foreach (i,v0; j0.array)
+        {
+          if (!json_equals( v0, j1.array[ i ] ))
+            return false;
+        }
+
+      return true;
+      break;
+      
+    case JSON_TYPE.OBJECT:
+
+      foreach (k; j1.object.keys)
+        {
+          if (k !in j0.object)
+            return false;
+        }
+
+      foreach (k,v0; j0.object)
+        {
+          if (auto pv1 = k in j1.object)
+            {
+              if (!json_equals( v0, *pv1 ))
+                return false;
+            }
+          else
+            {
+              return false;
+            }
+        }
+      
+      return true;
+      break;
+
+    case JSON_TYPE.NULL, JSON_TYPE.TRUE, JSON_TYPE.FALSE: return true; break;
+      
+    case JSON_TYPE.INTEGER:  return j0.integer  == j1.integer;  break;
+    case JSON_TYPE.UINTEGER: return j0.uinteger == j1.uinteger; break;
+    case JSON_TYPE.FLOAT:    return j0.floating == j1.floating; break;
+    }
 }
-
-
 
 
 
@@ -179,7 +268,7 @@ JSONValue json_solve_calc( in ref JSONValue o )
           return modified;
         });
     }
-  
+      
   return ret;
 }
 
@@ -366,26 +455,35 @@ private bool _json_walk_iter_wrap( alias iter )
 
 bool json_walk_until( alias test )( ref JSONValue j )
 {
-  auto top_place = cast( Jsonplace )( [] );
+  auto top_place = appender!Jsonplace();
   
   return _json_walk_until_sub!( test )( top_place, j );
 }
 
 private bool _json_walk_until_sub( alias test )
-  ( in Jsonplace place, ref JSONValue j )
+  ( ref Appender!Jsonplace place_app, ref JSONValue j )
+// If your test function also wants to store the place information:
+// use `place.idup`
+// 
+// This way we do not have to idup it here within the generic walk
+// implementaton => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
-  bool ret = test( place, j );
-
+  bool ret = test( place_app.data, j ); 
+  
   if (!ret)
     {
       if (j.type == JSON_TYPE.OBJECT)
         {
           foreach ( k2, ref v2; j.object )
             {
-              Jsonplace place2 = cast( Jsonplace )( place ~ k2 );
-              ret = ret
-                || _json_walk_until_sub!( test )( place2, v2 )
-                ;
+              if (!ret)
+                {
+                  place_app.put( k2 );
+                  ret = _json_walk_until_sub!( test )( place_app, v2 );
+                  place_app.shrinkTo( place_app.data.length - 1 );
+                }
+
               if (ret)
                 break;
             }
@@ -394,12 +492,13 @@ private bool _json_walk_until_sub( alias test )
         {
           foreach ( k2, ref v2; j.array )
             {
-              Jsonplace place2 = cast( Jsonplace )
-                ( place ~ to!string( k2 ) );
+              if (!ret)
+                {
+                  place_app.put( to!string( k2 ) );
+                  ret = _json_walk_until_sub!( test )( place_app, v2 );
+                  place_app.shrinkTo( place_app.data.length - 1 );
+                }
               
-              ret = ret
-                || _json_walk_until_sub!( test )( place2, v2 )
-                ;
               if (ret)
                 break;
             }          
