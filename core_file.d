@@ -65,25 +65,45 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
     }
 }
 
+struct MaybeExistingFilenameSet
+{
+  bool           available;
+  size_t[string] size_of_filename;
+};
+
+immutable EmptyExistingFilenameSet = MaybeExistingFilenameSet( false );
+
+
 bool exists_non_empty( in string filename )
 {
-  Nullable!(bool[string]) existing_filename_set;
-  existing_filename_set.nullify();
-
-  return exists_non_empty( filename, existing_filename_set );
+  return exists_non_empty( filename
+                           , /*efs_knows_all: whatever, efs empty anway*/false
+                           , EmptyExistingFilenameSet
+                           );
 }
 
-
-
-bool exists_non_empty( in string filename, in Nullable!(bool[string]) existing_filename_set )
+bool exists_non_empty( in string filename
+                       , in bool efs_knows_all, in MaybeExistingFilenameSet existing_filename_set )
 /*
   Useful to detect e.g. a file that was not completely written
   before electrical current was lost, which abruptly stopped the
   computer.
  */
 {
-  return (existing_filename_set.isNull  ?  exists( filename )  :  (null != (filename in existing_filename_set)))
-    &&  0 < getSize( filename );
+  // If provided, check the assoc array
+  
+  if (existing_filename_set.available)
+    {
+      if (auto p = filename in existing_filename_set.size_of_filename)
+        return 0 < *p; // *p supposed to be == getSize( filename )
+      
+      if (efs_knows_all)
+        return false;
+    }
+
+  // Fallback: disk access
+  
+  return exists( filename )  &&  0 < getSize( filename );
 }
 
 
