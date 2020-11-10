@@ -378,39 +378,66 @@ double json_solve_calc_one( in ref JSONValue o
 
 
 void json_walkreadonly( alias iter )( in ref JSONValue j )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
   json_walkreadonly_until!( _json_walkreadonly_iter_wrap!( iter ) )( j );
 }
 
 private bool _json_walkreadonly_iter_wrap( alias iter )
   ( in Jsonplace place, in ref JSONValue v )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
   iter( place, v );
   return false;
 }
 
 bool json_walkreadonly_until( alias test )( in ref JSONValue j )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
-  auto top_place = cast( Jsonplace )( [] );
+  auto top_place = appender!Jsonplace();
   
   return _json_walkreadonly_until_sub!( test )( top_place, j );
 }
 
 private bool _json_walkreadonly_until_sub( alias test )
-  ( in Jsonplace place, in ref JSONValue j )
+  ( ref Appender!Jsonplace place_app, in ref JSONValue j )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
-  bool ret = test( place, j );
-
+  bool ret = test( place_app.data, j ); 
+  
   if (!ret)
     {
       if (j.type == JSON_TYPE.OBJECT)
         {
           foreach ( k2, ref v2; j.object )
             {
-              Jsonplace place2 = cast( Jsonplace )( place ~ k2 );
-              ret = ret
-                || _json_walkreadonly_until_sub!( test )( place2, v2 )
-                ;
+              if (!ret)
+                {
+                  place_app.put( k2 );
+                  ret = _json_walkreadonly_until_sub!( test )( place_app, v2 );
+                  place_app.shrinkTo( place_app.data.length - 1 );
+                }
+
               if (ret)
                 break;
             }
@@ -419,12 +446,13 @@ private bool _json_walkreadonly_until_sub( alias test )
         {
           foreach ( k2, ref v2; j.array )
             {
-              Jsonplace place2 = cast( Jsonplace )
-                ( place ~ to!string( k2 ) );
+              if (!ret)
+                {
+                  place_app.put( to!string( k2 ) );
+                  ret = _json_walkreadonly_until_sub!( test )( place_app, v2 );
+                  place_app.shrinkTo( place_app.data.length - 1 );
+                }
               
-              ret = ret
-                || _json_walkreadonly_until_sub!( test )( place2, v2 )
-                ;
               if (ret)
                 break;
             }          
@@ -442,18 +470,36 @@ private bool _json_walkreadonly_until_sub( alias test )
 
 
 void json_walk( alias iter )( ref JSONValue j )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
   json_walk_until!( _json_walk_iter_wrap!( iter ) )( j );
 }
 
 private bool _json_walk_iter_wrap( alias iter )
   ( in Jsonplace place, ref JSONValue v )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
   iter( place, v );
   return false;
 }
 
 bool json_walk_until( alias test )( ref JSONValue j )
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
+// 
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
+// especially faster in a multithreading case, because much less GC.
 {
   auto top_place = appender!Jsonplace();
   
@@ -462,11 +508,11 @@ bool json_walk_until( alias test )( ref JSONValue j )
 
 private bool _json_walk_until_sub( alias test )
   ( ref Appender!Jsonplace place_app, ref JSONValue j )
-// If your test function also wants to store the place information:
-// use `place.idup`
+// If your test function test( Jsonplace place, ref JSONValue jv )
+// also wants to store the place information: use `place.(i)dup`
 // 
-// This way we do not have to idup it here within the generic walk
-// implementaton => in most cases much faster + less memory/GC =>
+// This way we do not have to (i)dup it here within the generic walk
+// implementation => in most cases much faster + less memory/GC =>
 // especially faster in a multithreading case, because much less GC.
 {
   bool ret = test( place_app.data, j ); 
