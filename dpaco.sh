@@ -323,7 +323,7 @@ else
     echo "Done compiling each file separately."
 fi
 
-O_LIST="$(echo $(find ${OBJDIR} -name '*.o'))"
+O_LIST="$(echo $(find -L ${OBJDIR} -name '*.o'))"
 
 O_LATEST="$(ls -rt ${O_LIST[@]} | tail -1)"
 
