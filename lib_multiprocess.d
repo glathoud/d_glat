@@ -8,6 +8,7 @@ import std.algorithm : all, filter, map;
 import std.conv;
 import std.format;
 import std.range : appender, array, enumerate;
+import std.stdio;
 import std.traits;
 
 /*
@@ -130,7 +131,7 @@ auto multiprocess_wait( Pid[] pid_arr )
         }
       else
         {
-          Thread.sleep(dur!"msecs"( 100 ));
+          Thread.sleep(dur!"msecs"( 13 ));
         }
     }
 
