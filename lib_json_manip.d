@@ -57,20 +57,20 @@ JSONValue json_deep_copy( in ref JSONValue j )
 {
   final switch (j.type)
     {
-    case JSON_TYPE.STRING: return JSONValue( j.str ); break;
-    case JSON_TYPE.ARRAY: return JSONValue( j.array.map!json_deep_copy.array ); break;
+    case JSON_TYPE.STRING: return JSONValue( j.str ); 
+    case JSON_TYPE.ARRAY: return JSONValue( j.array.map!json_deep_copy.array ); 
     case JSON_TYPE.OBJECT:
       JSONValue ret = parseJSON( "{}" );
       foreach (k,v; j.object)
         ret.object[ k ] = v.json_deep_copy;
       return ret;
-      break;
-    case JSON_TYPE.NULL: return JSONValue(null);break;
-    case JSON_TYPE.INTEGER: return JSONValue(j.integer);break;
-    case JSON_TYPE.UINTEGER: return JSONValue(j.uinteger);break;
-    case JSON_TYPE.FLOAT: return JSONValue(j.floating);break;
-    case JSON_TYPE.TRUE: return JSONValue(true);break;
-    case JSON_TYPE.FALSE: return JSONValue(false);break;
+      
+    case JSON_TYPE.NULL: return JSONValue(null);
+    case JSON_TYPE.INTEGER: return JSONValue(j.integer);
+    case JSON_TYPE.UINTEGER: return JSONValue(j.uinteger);
+    case JSON_TYPE.FLOAT: return JSONValue(j.floating);
+    case JSON_TYPE.TRUE: return JSONValue(true);
+    case JSON_TYPE.FALSE: return JSONValue(false);
     }
 }
 
@@ -192,7 +192,6 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
   final switch (j0.type)
     {
     case JSON_TYPE.STRING: return j0.str == j1.str;
-      break;
 
     case JSON_TYPE.ARRAY:
 
@@ -206,7 +205,6 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
         }
 
       return true;
-      break;
       
     case JSON_TYPE.OBJECT:
 
@@ -230,13 +228,12 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
         }
       
       return true;
-      break;
 
-    case JSON_TYPE.NULL, JSON_TYPE.TRUE, JSON_TYPE.FALSE: return true; break;
+    case JSON_TYPE.NULL, JSON_TYPE.TRUE, JSON_TYPE.FALSE: return true;
       
-    case JSON_TYPE.INTEGER:  return j0.integer  == j1.integer;  break;
-    case JSON_TYPE.UINTEGER: return j0.uinteger == j1.uinteger; break;
-    case JSON_TYPE.FLOAT:    return j0.floating == j1.floating; break;
+    case JSON_TYPE.INTEGER:  return j0.integer  == j1.integer;
+    case JSON_TYPE.UINTEGER: return j0.uinteger == j1.uinteger;
+    case JSON_TYPE.FLOAT:    return j0.floating == j1.floating;
     }
 }
 
