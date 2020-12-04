@@ -223,9 +223,7 @@ class JsonbinT( T )
     return ret;
   }
 
-  void toString
-    (scope void delegate(const(char)[]) sink
-     ) const
+  void toString(scope void delegate(const(char)[]) sink) const
   {
     MaybeMSTT!T maybe_mstt;
     _toString( sink, maybe_mstt );

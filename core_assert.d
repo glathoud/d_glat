@@ -9,7 +9,7 @@ string alwaysAssertStderr( in string testcode, in string msgcode_0="" )
 // e.g:  mixin(alwaysAssertStderr(`a<b`, `"a<b not verified for a:"~to!string(a)~" and b:"~to!string(b)`))
 {
   immutable msgcode = 0 < msgcode_0.length  ?  msgcode_0  :  '"'~testcode~'"';
-  return `if (!(`~testcode~`)) { immutable __outmsg = `~msgcode~`; stderr.writeln( __outmsg ); assert( false, __outmsg ); }`;
+  return `if (!(`~testcode~`)) { immutable __outmsg = `~msgcode~`; stderr.writeln( __outmsg ); stderr.flush; assert( false, __outmsg ); }`;
 }
 
 

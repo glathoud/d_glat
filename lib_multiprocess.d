@@ -4,9 +4,10 @@ public import std.process;
 
 import core.thread;
 import d_glat.core_assert;
-import std.algorithm : all, filter, map;
+import std.algorithm : any, all, filter, map;
 import std.conv;
 import std.format;
+import std.path : baseName;
 import std.range : appender, array, enumerate;
 import std.stdio;
 import std.traits;
@@ -32,20 +33,22 @@ import std.traits;
   2020
  */
 
-void multiprocess_start_and_wait_success_or_exit(alias spawner/*delegate | string | string[]*/)
+void multiprocess_start_and_wait_success_or_exit
+(alias spawner/*delegate | string | string[]*/, bool fail_early = true)
   ( in size_t n_processes, in string error_msg_prefix )
 // Convenience wrapper
 {
   auto pid_arr = multiprocess_start!spawner( n_processes );
-  multiprocess_wait_success_or_exit( pid_arr, error_msg_prefix );
+  multiprocess_wait_success_or_exit!fail_early( pid_arr, error_msg_prefix );
 }
 
-auto multiprocess_start_and_wait(alias spawner/*delegate | string | string[]*/)
+auto multiprocess_start_and_wait
+(alias spawner/*delegate | string | string[]*/, bool fail_early = true)
   ( in size_t n_processes )
 // Convenience wrapper
 {
   auto pid_arr = multiprocess_start!spawner( n_processes );
-  return multiprocess_wait( pid_arr );
+  return multiprocess_wait!fail_early( pid_arr );
 }
 
 
@@ -104,25 +107,56 @@ auto multiprocess_start(alias spawner/*delegate | string | string[]*/)( in size_
 }
 
 
-void multiprocess_wait_success_or_exit( Pid[] pid_arr, in string error_msg_prefix )
+void multiprocess_wait_success_or_exit(bool fail_early = true)
+  ( Pid[] pid_arr, in string error_msg_prefix )
 {
-  auto failed_arr = multiprocess_wait( pid_arr );
-
+  auto failed_arr = multiprocess_wait!fail_early( pid_arr );
+  
   if (0 < failed_arr.length)
     {
-      immutable msg = error_msg_prefix~' '~to!string( failed_arr );
+      writeln("multiprocess_wait_success_or_exit: failed_arr.length: ", failed_arr.length); stdout.flush; // xxx
+  
+      immutable msg = error_msg_prefix~' '~to!string( failed_arr.map!(x => format("index:%d, pid:%s, output:%s",x.index,pid_arr[ x.index ].processID, x.value)) );
 
+      stderr.writeln( baseName(__FILE__)~": "~msg ); stderr.flush;
+
+      // one fails => stop all remaining processes
+      foreach (ind,pid; pid_arr)
+        {
+          if (!failed_arr.any!(x => x.index == ind))
+            {
+              stderr.writeln( "multiprocess_wait_success_or_exit: about to kill -9 pid: ", pid.processID ); stderr.flush;
+              kill( pid, 9 );
+            }
+        }
+
+      stderr.writeln( "multiprocess_wait_success_or_exit: about to voluntarily crash" ); stderr.flush;
       mixin(alwaysAssertStderr(`false`,`msg`));
     }
 }
 
-auto multiprocess_wait( Pid[] pid_arr )
+auto multiprocess_wait(bool fail_early = true)( Pid[] pid_arr )
 // Returns an array of `(index,value)` of the Pids that failed, if any.
 {
   while (true)
     {
       auto twr = pid_arr.map!tryWait.enumerate;
 
+      //writeln("xxx lib_multiprocess: fail_early: ", fail_early);
+      
+      static if (fail_early)
+        {{
+          auto failed_arr = twr.filter!"a.value.terminated  &&  a.value.status != 0".array;
+
+          if (0 < failed_arr.length)
+            {
+              writeln("xxx lib_multiprocess (fail_early) failed_arr.length: ", failed_arr.length );
+              writeln("xxx lib_multiprocess (fail_early) failed_arr: ", failed_arr);
+              
+              return failed_arr;
+            }
+          }}
+      
       if (twr.all!"a.value.terminated")
         {
           auto failed_arr = twr.filter!"a.value.status != 0".array;
