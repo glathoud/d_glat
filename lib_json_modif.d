@@ -3,9 +3,10 @@ module d_glat.lib_json_modif;
 public import d_glat.core_json;
 public import d_glat.lib_json_manip;
 
+import d_glat.core_assoc_array;
 import d_glat.core_assert;
 import std.algorithm : canFind;
-import std.array : appender;
+import std.array : appender, Appender, array, split;
 import std.conv : to;
 import std.exception : assumeUnique;
 import std.string : splitLines;
@@ -21,13 +22,72 @@ import std.string : splitLines;
 
 // -------------------- Representation --------------------
 
-class JsonModifMany
+struct JsonModif
 {
-  JsonModif[] jm_arr;
+  const Jsonplace where;
+  const JSONValue what;
+};
 
-  this() {}
-  this( JsonModif[] jm_arr ) { this.jm_arr = jm_arr; }
+alias JsonModifMany = JsonModifManyPO!false;
 
+class JsonModifManyPO( bool permits_overwrite )
+{
+  // Inner representation
+  
+  private Appender!(JsonModif[]) jm_app;
+
+  static if (!permits_overwrite) private ModifiedSofar moso;
+  
+  // API
+
+  JsonModif[] jm_arr() pure const @safe nothrow
+    {
+      return jm_app.data.dup;
+    } 
+                                                
+  this() { jm_app = appender!(JsonModif[]); }
+  this( in JsonModif[] jm_arr ) { this(); push( jm_arr ); }
+
+  bool isEmpty() const // xxx const pure nothrow @safe
+  {
+    
+    import std.stdio;
+    writeln( "xxx jm_app:", jm_app);
+    stdout.flush;
+    
+    return jm_app.data.length < 1;
+  }
+  
+  void merge( in JsonModifMany other )
+  {
+    push( other.jm_arr );
+  }
+  
+  void push( in JsonModif[] jm_arr )
+  {
+    foreach (jm; jm_arr)
+      push( jm );
+  }
+
+  void push( in JsonModif jm )
+  {
+    push( jm.where, jm.what );
+  }
+
+  void push( in string dot_where, in JSONValue what )
+  {
+    push( dot_where.split( '.' ).array, what );
+  }
+  
+  void push( in Jsonplace where, in JSONValue what )
+  {
+    static if (!permits_overwrite) moso.check_not_yet_and_set( where );
+
+    jm_app.put( JsonModif( where, what ) );
+  }
+
+  // Serialization
+  
   override string toString() const
   {
     auto c_app = appender!(char[]);
@@ -51,19 +111,13 @@ class JsonModifMany
   }
 }
 
-struct JsonModif
-{
-  Jsonplace where;
-  JSONValue what;
-};
-
-static auto jmm_fromString( in string s )
+static auto jmm_fromString(bool permits_overwrite = false)( in string s )
 {
   auto line_arr = s.splitLines;
   immutable n = line_arr.length;
   mixin(alwaysAssertStderr(`0 == n%3`));
       
-  auto jm_app = appender!(JsonModif[]);
+  auto jmm = new JsonModifManyPO!permits_overwrite;
     
   for (size_t i = 0; i < n;)
     {
@@ -77,39 +131,143 @@ static auto jmm_fromString( in string s )
       auto what  = parseJSON( what_str );
 
       // store
-      JsonModif jm = {
-      where : where
-      , what : what
-      };
-
-      jm_app.put( jm );
+      jmm.push( where, what );
     }
 
-  // build
-  return new JsonModifMany( jm_app.data );
+  return jmm;
 }
 
 // -------------------- Application --------------------
 
-JSONValue json_modify( in JSONValue j, in JsonModifMany jmm, bool forbid_overwrites = true )
+JSONValue json_modify(bool permits_overwrite)( in JsonModifManyPO!permits_overwrite jmm, in JSONValue j )
 {
   auto ret = json_deep_copy( j );
-  json_modify_inplace( ret, jmm, forbid_overwrites );
+  json_modify_inplace!permits_overwrite( jmm, ret );
   return ret;
 }
 
-private struct Modified
+  
+void json_modify_inplace(bool permits_overwrite)( in JsonModifManyPO!permits_overwrite jmm, ref JSONValue j )
 {
-  Modified[string] subset;
+  foreach (jm; jmm.jm_arr)
+    {
+      import std.stdio;
+      writeln("xxx j:", j.toString);
+      writeln("xxx jm.where:", jm.where);
+      writeln("xxx jm.what:", jm.what);
+      json_set_place( j, jm.where, jm.what );
+    }
 }
 
+// -------------------- private core --------------------
 
-void json_modify_inplace( ref JSONValue j, in JsonModifMany jmm, bool forbid_overwrites = true )
+private struct ModifiedSofar
 {
-
-
-
+  ModifiedSofar[string] subset;
+  
+  void check_not_yet_and_set( in Jsonplace where )
+  {
+    immutable w0 = where[ 0 ];
     
-}
+    if (1 < where.length)
+      {
+        auto sub_moso = subset.aa_getInit( w0 );
+        sub_moso.check_not_yet_and_set( where[ 1..$ ] );
+        return;
+      }
 
+    mixin(alwaysAssertStderr(`w0 !in subset`));
+
+    subset[ w0 ] = ModifiedSofar(); // leaf
+  }
+};
+
+
+unittest
+{
+  import std.path;
+  import std.stdio;
+
+  import d_glat.core_array;
+  import d_oa_common.core_unittest;
+  
+  writeln;
+  writeln( "unittest starts: ", baseName( __FILE__ ) );
+
+  immutable verbose = true;
+
+  immutable string _ici = `__FILE__ ~ "@line:" ~ to!string( __LINE__ )`;
+
+  import core.exception : AssertError;
+    
+  {
+    // Wtf#0
+
+    auto j = parseJSON( `{"a":456}` );
+    json_set_place( j, "a", parseJSON( `{"abc":123}`) );
+
+    if (verbose) writeln( mixin(_ici), ": j: ", j.toString );
+
+    assert( json_equals( j, `{"a":{"abc":123}}` ) );
+  }
+
+  {
+    // Wtf#0
+
+    auto j = parseJSON( `{}` );
+    json_set_place( j, "a", parseJSON( `{"abc":123}`) );
+
+    if (verbose) writeln( mixin(_ici), ": j: ", j.toString );
+
+    assert( json_equals( j, `{"a":{"abc":123}}` ) );
+  }
+
+  
+  {
+    auto jmm = new JsonModifMany;
+    jmm.push( ["a","b","c"], parseJSON( `{"xyz":123}` ) );
+    jmm.push( "a.b.d", parseJSON( `{"tuv":456}` ) );
+    jmm.push( "e.f.g", parseJSON( `{"rst":789}`) );
+
+    auto j  = parseJSON( `{}` );
+    auto j2 = json_modify( jmm, j );
+    immutable jstr_expected = `{"a":{"b":{"c":{"xyz":123},"d":{"tuv":456}}},"e":{"f":{"g":{"rst":789}}}}`;
+
+    if (verbose) writeln( mixin(_ici), ": j: ", j.toString );
+    if (verbose) writeln( mixin(_ici), ": j2: ", j2.toString );
+    
+    assert( json_equals( j, parseJSON( `{}` ) ) ); // `j` not modified
+    assert( json_equals( j2, parseJSON( jstr_expected ) ) ); // `j2` the copied, modified version of `j` 
+    
+    json_modify_inplace( jmm, j );
+    assert( json_equals( j, parseJSON( jstr_expected ) ) ); // `j` modified
+    assert( json_equals( j2, parseJSON( jstr_expected ) ) ); // `j2` remained the same
+  }
+
+  {
+    auto jmm = new JsonModifMany;
+    jmm.push( ["a","b","c"], parseJSON( `{"xyz":123}` ) );
+    jmm.push( "a.b.d", parseJSON( `{"tuv":456}` ) );
+    assertThrown!(core.exception.AssertError)( jmm.push( "a.b", parseJSON( `{"some":"overwrite"}` ) ) );
+  }
+
+  {
+    auto jmm = new JsonModifManyPO!(/*permit_overwrite:*/true);
+    jmm.push( ["a","b","c"], parseJSON( `{"xyz":123}` ) );
+    jmm.push( "a.b.d", parseJSON( `{"tuv":456}` ) );
+    jmm.push( "a.b", parseJSON( `{"some":"overwrite"}` ) );
+
+    auto j = parseJSON( `{"x":{"y":"z"}}` );
+    json_modify_inplace( jmm, j );
+
+    if (verbose) writeln( mixin(_ici), ": j:", j );
+    
+    assert( json_equals( j, `{"x":{"y":"z"},"a":{"b":{"some":"overwrite"}}}` ) );
+  }
+
+  
+  writeln;
+  writeln( "unittest passed: ", baseName( __FILE__ ) );
+  
+}
 

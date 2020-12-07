@@ -9,7 +9,7 @@ module d_glat.core_json;
 
 import d_glat.core_assert;
 import d_glat.core_string : string_is_num09;
-import std.array : appender;
+import std.array : appender, array, split;
 import std.conv : to;
 import std.exception : enforce;
 import std.json;
@@ -264,14 +264,14 @@ pure @trusted
 }
 
 void json_set_place
-( /*ref xxx commented out because of issue with -O */ JSONValue j, in string place_str, in JSONValue v )
+( ref JSONValue j, in string place_str, in JSONValue v )
 {
-  json_set_place( j, [ place_str ], v );
+  json_set_place( j, place_str.split( "." ).array, v );
 }
 
 
 void json_set_place
-( /*ref xxx commented out because of issue with -O */ JSONValue j, in Jsonplace place, in JSONValue v )
+( ref JSONValue j, in Jsonplace place, in JSONValue v )
 {
   auto plen = place.length;
   assert( 0 < plen );
@@ -280,23 +280,27 @@ void json_set_place
 
   string    place_0 = place[ 0 ];
 
-  JSONValue j_deeper;
-  
   if (j.type == JSON_TYPE.OBJECT)
     {
       if (is_leaf)
+        {
           j.object[ place_0 ] = v;
-
+        }
       else
-          j_deeper = j.object[ place_0 ];
+        {
+          if (place_0 !in j.object)
+            j.object[ place_0 ] = _build_json_object( place[1..$], v );
+          else
+            json_set_place( j.object[ place_0 ], place[ 1..$ ], v );
+        }
     }
   else if (j.type == JSON_TYPE.ARRAY)
     {
       if (is_leaf)
-          j.array[ to!size_t( place_0 ) ] = v;
+        j.array[ to!size_t( place_0 ) ] = _build_json_object( place[ 1..$ ], v );
 
       else
-          j_deeper = j.array[ to!size_t( place_0 ) ];
+        json_set_place( (j.array[ to!size_t( place_0 ) ]), place[ 1..$ ], v );
     }
   else
     {
@@ -304,9 +308,20 @@ void json_set_place
       stderr.writeln( "v: ", v );
       stderr.writeln( "place: ", place );
       stderr.writeln( "j: ", j.toPrettyString );
+      stderr.flush;
       enforce( false, "json_set_place: structure mismatch bug" );
     }
-  
-  if (!is_leaf)
-      json_set_place( j_deeper, place[ 1..$ ], v );
 }
+
+private JSONValue _build_json_object( in Jsonplace place, JSONValue v )
+{
+  if (place.length < 1)
+    return v;
+
+  auto ret = parseJSON( `{}` );
+  ret.object[ place[ 0 ] ] = _build_json_object( place[ 1..$ ], v );
+  return ret;
+}
+
+
+

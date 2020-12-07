@@ -184,6 +184,25 @@ void json_walk_sorted( in ref JSONValue j, in void delegate (in string ) sink )
 }
 
 
+bool json_equals( in JSONValue j0, in string jstr1 )
+// Not very efficient but useful for unittests
+{
+  return json_equals( j0, parseJSON( jstr1 ) );
+}
+
+bool json_equals( in string jstr0, in JSONValue j1 )
+// Not very efficient but useful for unittests
+{
+  return json_equals( parseJSON( jstr0 ), j1 );
+}
+
+bool json_equals( in string jstr0, in string jstr1 )
+// Not very efficient but useful for unittests
+{
+  return json_equals( parseJSON( jstr0 ), parseJSON( jstr1 ) );
+}
+
+
 bool json_equals( in JSONValue j0, in JSONValue j1 )
 {
   if (j0.type != j1.type)
