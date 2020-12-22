@@ -48,17 +48,12 @@ class JsonModifManyPO( bool permits_overwrite )
   this() { jm_app = appender!(JsonModif[]); }
   this( in JsonModif[] jm_arr ) { this(); push( jm_arr ); }
 
-  bool isEmpty() const // xxx const pure nothrow @safe
+  bool isEmpty() const pure nothrow @safe
   {
-    
-    import std.stdio;
-    writeln( "xxx jm_app:", jm_app);
-    stdout.flush;
-    
     return jm_app.data.length < 1;
   }
   
-  void merge( in JsonModifMany other )
+  void push( in JsonModifManyPO!permits_overwrite other )
   {
     push( other.jm_arr );
   }
@@ -74,16 +69,23 @@ class JsonModifManyPO( bool permits_overwrite )
     push( jm.where, jm.what );
   }
 
-  void push( in string dot_where, in JSONValue what )
+  void push(T)( in string dot_where, in T what )
   {
-    push( dot_where.split( '.' ).array, what );
+      push( dot_where.split( '.' ).array, what );
   }
   
-  void push( in Jsonplace where, in JSONValue what )
+  void push(T)( in Jsonplace where, in T what )
   {
-    static if (!permits_overwrite) moso.check_not_yet_and_set( where );
-
-    jm_app.put( JsonModif( where, what ) );
+    static if (!is(T == JSONValue))
+      {
+      push( where, JSONValue( what ) ); // Convenience wrapper
+      }
+    else
+      {
+        static if (!permits_overwrite) moso.check_not_yet_and_set( where );
+        
+        jm_app.put( JsonModif( where, what ) );
+      }
   }
 
   // Serialization
@@ -100,7 +102,7 @@ class JsonModifManyPO( bool permits_overwrite )
     foreach (jm; jm_arr)
       {
         auto where_str = to!string( jm.where );
-        auto what_str  = jm.what.toString;
+        auto what_str  = jm.what.toString( JSONOptions.specialFloatLiterals );
 
         mixin(alwaysAssertStderr(`!where_str.canFind('\n')`));
         mixin(alwaysAssertStderr(`!what_str.canFind('\n')`));
@@ -128,7 +130,7 @@ static auto jmm_fromString(bool permits_overwrite = false)( in string s )
 
       // parse
       auto where = to!Jsonplace( where_str );
-      auto what  = parseJSON( what_str );
+      auto what  = parseJSON( what_str, -1, JSONOptions.specialFloatLiterals );
 
       // store
       jmm.push( where, what );
@@ -151,10 +153,16 @@ void json_modify_inplace(bool permits_overwrite)( in JsonModifManyPO!permits_ove
 {
   foreach (jm; jmm.jm_arr)
     {
-      import std.stdio;
-      writeln("xxx j:", j.toString);
-      writeln("xxx jm.where:", jm.where);
-      writeln("xxx jm.what:", jm.what);
+      static if (false)
+        {
+          debug
+            {
+              import std.stdio;
+              writeln("xxx j:", j.toString( JSONOptions.specialFloatLiterals ) );
+              writeln("xxx jm.where:", jm.where);
+              writeln("xxx jm.what:", jm.what.toString( JSONOptions.specialFloatLiterals ));
+            }
+        }
       json_set_place( j, jm.where, jm.what );
     }
 }
@@ -176,6 +184,13 @@ private struct ModifiedSofar
         return;
       }
 
+    if (w0 in subset)
+      {
+        stderr.writeln( "lib_json_modif: error: w0: ", w0 );
+        stderr.writeln( "lib_json_modif: error: subset: ", subset );
+        stderr.flush;
+      }
+    
     mixin(alwaysAssertStderr(`w0 !in subset`));
 
     subset[ w0 ] = ModifiedSofar(); // leaf
@@ -194,7 +209,7 @@ unittest
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
-  immutable verbose = true;
+  immutable verbose = false;
 
   immutable string _ici = `__FILE__ ~ "@line:" ~ to!string( __LINE__ )`;
 
