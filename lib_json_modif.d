@@ -48,6 +48,11 @@ class JsonModifManyPO( bool permits_overwrite )
   this() { jm_app = appender!(JsonModif[]); }
   this( in JsonModif[] jm_arr ) { this(); push( jm_arr ); }
 
+  void clear() pure nothrow @safe
+  {
+    jm_app.clear;
+  }
+  
   bool isEmpty() const pure nothrow @safe
   {
     return jm_app.data.length < 1;
