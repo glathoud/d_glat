@@ -14,6 +14,8 @@ import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
 import std.stdio : stderr, writefln, writeln;
 import std.typecons : Nullable;
 
+immutable BASENAME_MAXLENGTH = 254;  // 255 generally works with linux filesystems, but then many bash commands still don't work ("filename too long", they say), hence: 254
+
 bool ensure_dir_exists( in string dir_name )
 // Return `true` if the dir already existed, otherwise, create it
 // and return `false`.

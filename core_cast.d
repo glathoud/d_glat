@@ -19,5 +19,5 @@ string _cimmut( string varname )() pure nothrow @safe
    auto imm_q = cast(immutable(typeof(q)))( q );
  */
 {
-  return `(cast(immutable(typeof(`~varname~`)))( `~varname~` ))`;
+  return `(cast(immutable(typeof( (`~varname~`) )))( `~varname~` ))`;
 }
