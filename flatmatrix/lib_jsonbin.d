@@ -661,6 +661,12 @@ void jsonbin_read_chars_meta( T )
   enforce( s_arr.length == 2 );
     
   immutable s_T   = s_arr[ 0 ].idup;
+  if (s_T != T.stringof)
+    {
+      writeln( "jsonbin_read_chars_meta: s_T:        ", s_T );
+      writeln( "jsonbin_read_chars_meta: T.stringof: ", T.stringof );
+    }
+
   enforce( s_T == T.stringof, s_T );
     
   immutable s_dim = s_arr[ 1 ].idup;

@@ -27,7 +27,7 @@ import std.string : endsWith;
 
 immutable DFLT_PREFIX = ".save";
 
-string get_fipr_of_filename_and_prefix( in string filename, in string prefix ) // xxx pure nothrow @safe
+string get_fipr_of_filename_and_prefix( in string filename, in string prefix ) pure nothrow @safe
 {
   debug
     {
@@ -40,6 +40,32 @@ string get_fipr_of_filename_and_prefix( in string filename, in string prefix ) /
   // `dirEntries` & `DirEntry` implementations in `std.file`.
   return buildPath( filename~prefix, baseName( filename )~prefix~'-' );
 }
+
+auto fcr_read(alias read_one)( in string filename, in bool verbose = false )
+// Output should be a Nullable!(<whatever>)
+{
+  auto ret = read_one( filename );
+
+  if (verbose)
+      writeln("fcr_read#0: ret.isNull: ", ret.isNull, ", filename: ", filename );
+  
+  if (ret.isNull)
+    {
+      foreach_reverse( k,safety_fn; file_copy_fetch( filename ))
+        {
+          ret = read_one( safety_fn );
+
+          if (verbose)
+            writeln("fcr_read#1 k:", k, ", ret.isNull: ", ret.isNull, ", safety_fn: ", safety_fn );
+
+          if (!ret.isNull)
+            break;
+        }
+    }
+
+  return ret;
+}
+
 
 string[] file_copy_fetch
 (string prefix = DFLT_PREFIX)
