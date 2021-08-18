@@ -9,10 +9,12 @@ module d_glat.core_json;
 
 import d_glat.core_assert;
 import d_glat.core_string : string_is_num09;
+import std.algorithm : all, any, each, map;
 import std.array : appender, array, split;
 import std.conv : to;
 import std.exception : enforce;
 import std.json;
+import std.range : join, zip;
 import std.typecons : Nullable;
 import std.stdio : stderr,writeln;
 
@@ -213,6 +215,103 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
     }
   
   return j_ret;
+}
+
+
+Nullable!JSONValue json_get_places( in ref JSONValue j, in string[] array_of_place_str )
+{
+  return json_get_places( j, array_of_place_str.map!"[a]".array );
+}
+
+Nullable!JSONValue json_get_places( in ref JSONValue j, in Jsonplace[] array_of_place )
+/* Select the parts of `j` at each of `array_of_place`.
+ 
+ If some match, return that subset, keeping the same structure as in `j`.
+
+ If none match, returns a "nulled" object (`ret.isNull == true`)
+*/
+{
+  auto arr = array_of_place.map!( place => json_get_place( j, place ) );
+
+  Nullable!JSONValue ret;
+  if (arr.all!"a.isNull")
+    return ret; // "nulled"
+
+  auto tmp = json_object();
+  
+  zip( array_of_place, arr ).each!( (x){
+      if (!x[ 1 ].isNull)
+	json_set_place( tmp, x[ 0 ], x[ 1 ] );
+    } );
+
+  ret = tmp; // not "nulled"
+  return ret;
+}
+
+unittest
+{
+  import std.stdio;
+  
+  writeln( "unittest begins: "~__FILE__~": json_get_places" );
+
+  immutable verbose = false;
+  
+  {
+    immutable j_a_str = `"a":{"b":"c"}`;
+    immutable j_d_str = `"d":{"e":{"f":"g"}}`;
+    immutable j_h_str = `"h":{"i":{"j":{"k":"l"}},"i2":{"j2":{"k2":"l2"}}}`;
+    immutable j_m_str = `"m":"n"`;
+    
+    immutable j_str = "{"~([j_a_str,j_d_str,j_h_str,j_m_str].join(","))~"}";
+    JSONValue j  = parseJSON( j_str );
+
+    if (verbose)
+	writeln( "j:", j.toString );
+
+    {
+      auto      j2 = json_get_places( j, [ "a", "h" ] );
+      assert( !j2.isNull );
+
+      auto      j2b = json_get_places( j, [ ["a"], ["h"] ] );
+      assert( !j2b.isNull );
+
+      if (verbose)
+	{
+	  writeln( "j2:", j2.toString );
+	  writeln( "j2b:", j2b.toString );
+	}
+    
+      assert( j.toString  == parseJSON( j_str ).toString ); // unchanged
+    
+      immutable j2_str = parseJSON( "{"~([j_a_str,j_h_str].join(","))~"}" ).toString;
+      assert( j2.toString == j2_str );
+      assert( j2b.toString == j2_str );
+    }
+
+    {
+      auto j3 = json_get_places( j, [ ["a"], ["h","i"] ] );
+      assert( !j3.isNull );
+
+      if (verbose)
+	writeln( "j3:", j3.toString );
+
+      assert( j.toString  == parseJSON( j_str ).toString ); // unchanged
+    
+      immutable j3_str = parseJSON( "{"~([j_a_str,`"h":{"i":{"j":{"k":"l"}}}`].join(","))~"}" ).toString;
+      assert( j3.toString == j3_str );
+    }
+
+    {
+      auto j4 = json_get_places( j, [ ["z"], ["y","x"] ] );
+      assert( j4.isNull );
+
+      if (verbose)
+	writeln( "j4:", j4 );
+    }
+
+  }
+
+  writeln( "unittest passed: "~__FILE__~": json_get_places" );
 }
 
 
