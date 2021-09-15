@@ -206,8 +206,19 @@ bool json_equals( in string jstr0, in string jstr1 )
 bool json_equals( in JSONValue j0, in JSONValue j1 )
 {
   if (j0.type != j1.type)
-    return false;
-
+    {
+      if ((j0.type == JSON_TYPE.INTEGER  &&  j1.type == JSON_TYPE.FLOAT
+           ||  j1.type == JSON_TYPE.INTEGER  &&  j0.type == JSON_TYPE.FLOAT
+           )
+          &&  json_get_double( j0 ) == json_get_double( j1 )
+          )
+        {
+          return true; // Deal with some parsing instabilities
+        }
+      
+      return false;
+    }
+  
   final switch (j0.type)
     {
     case JSON_TYPE.STRING: return j0.str == j1.str;
