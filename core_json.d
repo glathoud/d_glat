@@ -229,6 +229,9 @@ Nullable!JSONValue json_get_places( in ref JSONValue j, in Jsonplace[] array_of_
  If some match, return that subset, keeping the same structure as in `j`.
 
  If none match, returns a "nulled" object (`ret.isNull == true`)
+
+ For a variant that always returns a non-null object, and always deep-copies,
+ see json_get_opt_copy in ./lib_json_manip.d
 */
 {
   auto arr = array_of_place.map!( place => json_get_place( j, place ) );

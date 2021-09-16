@@ -20,6 +20,7 @@ import std.digest.sha;
 import std.exception;
 import std.format : format;
 import std.stdio;
+import std.traits : isSomeString;
 import std.typecons;
 
 immutable string JSON_P_CALC = "(calc)";
@@ -107,6 +108,75 @@ string json_get_hash( in ref JSONValue j )
   immutable ret = format( "%(%02x%)", digest.finish );
   return ret;
 }
+
+
+T json_get_opt_copy(T/*string | JSONValue*/)( in T j_in_0, in string[] place_str_arr )
+{
+  return json_get_opt_copy!T( j_in_0, place_str_arr.map!"[a]".array );
+}
+
+T json_get_opt_copy(T/*string | JSONValue*/)( in T j_in_0, in Jsonplace[] place_arr )
+// Returns a subset reduced to `place_arr` (if available - no error if not available).
+// For each match, a json_deep_copy is done
+//
+// Differences with json_get_places (./core_json.d):
+// 
+// (1) always returns an object or array, even if there is no match at all
+// 
+// (2) deep-copy all matches
+{
+  static immutable is_string = isSomeString!T;
+
+  static if (is_string)
+    JSONValue j_in = parseJSON( j_in_0 );
+  else
+    JSONValue j_in = j_in_0;
+
+  
+  JSONValue j_ret = j_in.type == JSON_TYPE.OBJECT  ?  json_object()
+    :  j_in.type == JSON_TYPE.ARRAY ?  json_array()
+    :  parseJSON("null"); // should fail
+  
+  foreach (place; place_arr)
+    {
+      auto j_maybe = json_get_place( j_in, place );
+      if (!j_maybe.isNull)
+	json_set_place( j_ret, place, json_deep_copy( j_maybe ) );
+    }
+
+  
+  static if (is_string)
+    return j_ret.toString;
+  else
+    return j_ret;
+}
+
+unittest
+{
+  import std.stdio;
+  
+  writeln( "unittest starts: "~__FILE__~": json_get_opt_copy" );
+
+  {
+    auto o0 = parseJSON( `{"a":123,"b":{"c":456,"d":789},"e":101}` );
+    
+    auto o1 = json_get_opt_copy( o0, [ ["a"], ["b","d"] ] );
+    
+    assert( json_equals( o1, parseJSON(`{"a":123,"b":{"d":789}}` ) ) );
+  }
+
+  {
+    auto o0 = parseJSON( `{"a":123,"b":{"c":456,"d":789},"e":101}` );
+    
+    auto o1 = json_get_opt_copy( o0, [ "a", "b" ] );
+    
+    assert( json_equals( o1, parseJSON(`{"a":123,"b":{"c":456,"d":789}}` ) ) );
+  }
+
+  writeln( "unittest passed: "~__FILE__~": json_get_opt_copy" );
+}
+
+
 
 
 JSONValue json_get_replaced_many_places_with_placeholder_string
