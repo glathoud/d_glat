@@ -138,6 +138,28 @@ string resolve_symlink( in string maybe_symlink )
 
 
 
+size_t getAvailableDiskSpace( in string path )
+// Impl note: until we update D to 2.081+ ...
+// after update just public import std.file : getAvailableDiskSpace
+{
+  immutable dir = dirName( path );
+  immutable cmd = `df -B 1 --output=avail "`~dir~`"`;
+  auto tmp = executeShell( cmd );
+  if (tmp.status != 0)
+    {
+      immutable msg = `get_free_diskspace_at_path failed on path: "`~path~`". cmd:"`~cmd~`" returned `
+        ~`status:`~to!string(tmp.status)~` and output:`~to!string(tmp.output);
+
+      stdout.writeln( msg ); stdout.flush;
+      stderr.writeln( msg ); stderr.flush;
+      assert( false, msg );
+    }
+
+return to!size_t( tmp.output.splitLines[1].strip );
+}
+
+
+
 ubyte[] ubytedata_of_little_endian_ushortdata( in ushort[] ushortdata )
 {
   ulong n = ushortdata.length;
