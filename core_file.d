@@ -7,11 +7,13 @@
 module d_glat.core_file;
 
 import core.stdc.stdlib : exit;
-import std.conv : octal;
+import std.conv : octal, to;
 import std.datetime.systime : SysTime;
 import std.file : exists, getAttributes, getTimes, getSize, isDir, isFile, mkdirRecurse, isSymlink, readLink;
 import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
-import std.stdio : stderr, writefln, writeln;
+import std.process : executeShell;
+import std.stdio : stdout, stderr, writefln, writeln;
+import std.string : splitLines, strip;
 import std.typecons : Nullable;
 
 immutable BASENAME_MAXLENGTH = 254;  // 255 generally works with linux filesystems, but then many bash commands still don't work ("filename too long", they say), hence: 254
