@@ -10,8 +10,9 @@ import core.stdc.stdlib : exit;
 import std.conv : octal, to;
 import std.datetime.systime : SysTime;
 import std.file : exists, getAttributes, getTimes, getSize, isDir, isFile, mkdirRecurse, isSymlink, readLink;
-import std.path : baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
+import std.path : absolutePath, baseName, buildPath, buildNormalizedPath, dirName, isAbsolute;
 import std.process : executeShell;
+import std.regex : regex, splitter;
 import std.stdio : stdout, stderr, writefln, writeln;
 import std.string : splitLines, strip;
 import std.typecons : Nullable;
@@ -141,15 +142,17 @@ string resolve_symlink( in string maybe_symlink )
 
 
 size_t getAvailableDiskSpace( in string path )
+// Does what it says at `dirName( path )` and returns a number of bytes.
+//
 // Impl note: until we update D to 2.081+ ...
 // after update just public import std.file : getAvailableDiskSpace
 {
-  immutable dir = dirName( path );
+  immutable dir = absolutePath( dirName( path ) );
   immutable cmd = `df -B 1 --output=avail "`~dir~`"`;
   auto tmp = executeShell( cmd );
   if (tmp.status != 0)
     {
-      immutable msg = `get_free_diskspace_at_path failed on path: "`~path~`". cmd:"`~cmd~`" returned `
+      immutable msg = `getAvailableDiskSpace failed on path: "`~path~`". cmd:"`~cmd~`" returned `
         ~`status:`~to!string(tmp.status)~` and output:`~to!string(tmp.output);
 
       stdout.writeln( msg ); stdout.flush;
@@ -160,7 +163,24 @@ size_t getAvailableDiskSpace( in string path )
 return to!size_t( tmp.output.splitLines[1].strip );
 }
 
+size_t getUsedDiskSpace( in string path )
+// Does what it says at `dirName( path )` and returns a number of bytes.
+{
+  immutable dir = absolutePath( dirName( path ) );
+  immutable cmd = `du -b --max-depth=0 "`~dir~`"`;
+  auto tmp = executeShell( cmd );
+  if (tmp.status != 0)
+    {
+      immutable msg = `getUsedDiskSpace failed on path: "`~path~`". cmd:"`~cmd~`" returned `
+        ~`status:`~to!string(tmp.status)~` and output:`~to!string(tmp.output);
 
+      stdout.writeln( msg ); stdout.flush;
+      stderr.writeln( msg ); stderr.flush;
+      assert( false, msg );
+    }
+
+  return to!size_t( tmp.output.splitter( regex( `\s` ) ).front.strip ); 
+}
 
 ubyte[] ubytedata_of_little_endian_ushortdata( in ushort[] ushortdata )
 {
