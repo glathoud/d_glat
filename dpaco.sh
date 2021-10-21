@@ -175,7 +175,7 @@ echo "OBJDIR: $OBJDIR"
 
 if [ "$FORCE" ]
 then
-    rm -rf "${OBJDIR}" "${OUTBIN}" 2>>/dev/null
+    rm -rf "${OBJDIR}" "${OUTBIN}" 2>/dev/null
 fi
 
 if [ ! -d "${OBJDIR}" ]
@@ -327,10 +327,16 @@ O_LIST="$(echo $(find -L ${OBJDIR} -name '*.o'))"
 
 O_LATEST="$(ls -rt ${O_LIST[@]} | tail -1)"
 
-if [ -f "$OUTBIN" ]  &&  [ "$OUTBIN" -ot "$O_LATEST" ]
+set -v
+
+if [ -f "$OUTBIN" ]  &&  [ -f "$O_LATEST" ]  &&  [ "$OUTBIN" -ot "$O_LATEST" ]
 then
-    rm "$OUTBIN" 2>>/dev/null
+    set -e
+    rm -f "$OUTBIN"  ||  exit 1
+    set +e
 fi
+
+set +v
 
 if ! [ -f "$OUTBIN" ]
 then
