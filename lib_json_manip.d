@@ -475,7 +475,9 @@ double json_solve_calc_one( in ref JSONValue o
 
 
 void json_walkreadonly( alias iter )( in ref JSONValue j )
-// If your test function test( Jsonplace place, ref JSONValue jv )
+// Deep-walk a JSON.
+// 
+// If your function iter( Jsonplace place, ref JSONValue jv )
 // also wants to store the place information: use `place.(i)dup`
 // 
 // This way we do not have to (i)dup it here within the generic walk
@@ -487,7 +489,7 @@ void json_walkreadonly( alias iter )( in ref JSONValue j )
 
 private bool _json_walkreadonly_iter_wrap( alias iter )
   ( in Jsonplace place, in ref JSONValue v )
-// If your test function test( Jsonplace place, ref JSONValue jv )
+// If your function iter( Jsonplace place, ref JSONValue jv )
 // also wants to store the place information: use `place.(i)dup`
 // 
 // This way we do not have to (i)dup it here within the generic walk
@@ -495,23 +497,31 @@ private bool _json_walkreadonly_iter_wrap( alias iter )
 // especially faster in a multithreading case, because much less GC.
 {
   iter( place, v );
-  return false;
+  return false; // never stop, walk the whole JSON
 }
 
-bool json_walkreadonly_until( alias test )( in ref JSONValue j )
-// If your test function test( Jsonplace place, ref JSONValue jv )
-// also wants to store the place information: use `place.(i)dup`
-// 
-// This way we do not have to (i)dup it here within the generic walk
-// implementation => in most cases much faster + less memory/GC =>
-// especially faster in a multithreading case, because much less GC.
+bool json_walkreadonly_until( alias test, bool stop_at_first_match = true )( in ref JSONValue j )
+/*
+  Deep-walk the JSON until reaching a Jsonplace `p` where `true == test( p, v )`,
+  in which case the depth walk stops.
+  
+  Then, (1) if `stop_at_first_match == true` finish here, else (2)
+  continue the breadth walk to finish walking the JSON.
+
+  If your test function test( Jsonplace place, ref JSONValue jv )
+  also wants to store the place information: use `place.(i)dup`
+  
+  This way we do not have to (i)dup it here within the generic walk
+  implementation => in most cases much faster + less memory/GC =>
+  especially faster in a multithreading case, because much less GC.
+*/
 {
   auto top_place = appender!Jsonplace();
   
-  return _json_walkreadonly_until_sub!( test )( top_place, j );
+  return _json_walkreadonly_until_sub!( test, stop_at_first_match )( top_place, j );
 }
 
-private bool _json_walkreadonly_until_sub( alias test )
+private bool _json_walkreadonly_until_sub( alias test, bool stop_at_first_match = true )
   ( ref Appender!Jsonplace place_app, in ref JSONValue j )
 // If your test function test( Jsonplace place, ref JSONValue jv )
 // also wants to store the place information: use `place.(i)dup`
@@ -521,44 +531,200 @@ private bool _json_walkreadonly_until_sub( alias test )
 // especially faster in a multithreading case, because much less GC.
 {
   bool ret = test( place_app.data, j ); 
-  
-  if (!ret)
+
+  if (!ret) // if a match, do not go deeper
     {
       if (j.type == JSON_TYPE.OBJECT)
         {
-          foreach ( k2, ref v2; j.object )
+          foreach ( k2, ref v2; j.object ) // breadth walk at the lower level
             {
-              if (!ret)
+              if (!stop_at_first_match  ||  !ret)
                 {
                   place_app.put( k2 );
-                  ret = _json_walkreadonly_until_sub!( test )( place_app, v2 );
+
+                  if (_json_walkreadonly_until_sub!( test, stop_at_first_match )( place_app, v2 ))
+                    ret = true;
+                  
                   place_app.shrinkTo( place_app.data.length - 1 );
                 }
 
-              if (ret)
+              if (stop_at_first_match  &&  ret)
                 break;
             }
         }
       else if (j.type == JSON_TYPE.ARRAY)
         {
-          foreach ( k2, ref v2; j.array )
+          foreach ( k2, ref v2; j.array ) // breadth walk at the lower level
             {
-              if (!ret)
+              if (!stop_at_first_match  ||  !ret)
                 {
                   place_app.put( to!string( k2 ) );
-                  ret = _json_walkreadonly_until_sub!( test )( place_app, v2 );
+
+                  if (_json_walkreadonly_until_sub!( test, stop_at_first_match )( place_app, v2 ))
+                    ret = true;
+                  
                   place_app.shrinkTo( place_app.data.length - 1 );
                 }
               
-              if (ret)
+              if (stop_at_first_match  &&  ret)
                 break;
             }          
         }
     }
-  
-  return ret;
+
+  static if (stop_at_first_match)
+    return ret;
+  else
+    return false;
 }
 
+unittest
+{
+  import std.stdio;
+  
+  writeln( "unittest starts: "~__FILE__~": json_walkreadonly_until" );
+
+  immutable verbose = false;
+  
+  { // --- searching for "number" matches
+    
+    auto j_str = `{"a":123,"b":{"c":456,"d":789,"e":{"f":101}}}`;
+
+    bool iter_number( Appender!(Jsonplace[]) p_app, Jsonplace p, JSONValue j )
+    {
+      immutable ret = json_equals( j, JSONValue( 456 ) )
+        ||  json_equals( j, JSONValue( 101 ) )
+        ;
+
+      if (verbose)
+        writeln( "iter_number: p,ret: ", p, ret );
+    
+      if (ret)
+        p_app.put( p.dup ); // .(i)dup important, see above comment in `json_walkreadonly_until`
+
+      return ret;
+    }
+
+    { // /*stop_at_first_match:*/true
+
+      auto o  = parseJSON( j_str );
+
+      auto p_app = appender!(Jsonplace[]);
+      json_walkreadonly_until!((p,j) => iter_number( p_app, p, j ), /*stop_at_first_match:*/true)( o );
+      assert( json_equals( o, parseJSON( j_str ) ) ); // check unmodified
+
+      auto p_arr = p_app.data;
+      p_arr.sort;
+
+      if (verbose)
+        writeln( "xxx app_stop.data", p_arr ); stdout.flush;
+      
+      assert( p_arr == [cast(Jsonplace)(["b","c"])]  ||  p_arr == [cast(Jsonplace)(["b","e","f"])] );
+    }
+    
+    { // default: /*stop_at_first_match:*/true
+
+      auto o  = parseJSON( j_str );
+
+      auto p_app = appender!(Jsonplace[]);
+      json_walkreadonly_until!((p,j) => iter_number( p_app, p, j ))( o );
+      assert( json_equals( o, parseJSON( j_str ) ) ); // check unmodified
+
+      auto p_arr = p_app.data;
+      p_arr.sort;
+
+      if (verbose)
+        writeln( "xxx app_stop.data", p_arr ); stdout.flush;
+      
+      assert( p_arr == [cast(Jsonplace)(["b","c"])]  ||  p_arr == [cast(Jsonplace)(["b","e","f"])] );
+    }
+
+    { // /*stop_at_first_match:*/false
+
+      auto o  = parseJSON( j_str );
+
+      auto p_app = appender!(Jsonplace[]);
+      json_walkreadonly_until!((p,j) => iter_number( p_app, p, j ), /*stop_at_first_match:*/false)( o );
+      assert( json_equals( o, parseJSON( j_str ) ) ); // check unmodified
+
+      auto p_arr = p_app.data;
+      p_arr.sort;
+
+      if (verbose)
+        writeln( "xxx app_stop.data", p_arr ); stdout.flush;
+      
+      assert( p_arr == [cast(Jsonplace)(["b","c"]), cast(Jsonplace)(["b","e","f"])] );
+    }
+  }
+
+
+
+  { // --- searching for "object" matches
+    
+    auto j_str = `{"a":123
+                   ,"b":{"x":333,"c":456,"d":{"x":789},"e":{"x":222,"f":101}}
+                   ,"b2":{"x":444,"d2":{"x":777}}}}`;
+
+    bool iter_object( Appender!(Jsonplace[]) p_app, Jsonplace p, JSONValue j )
+    {
+      immutable ret = j.type == JSON_TYPE.OBJECT  &&  j.object.keys.canFind( "x" );
+
+      if (verbose)
+        writeln( "iter_object: p,ret: ", p, ret );
+    
+      if (ret)
+        p_app.put( p.dup ); // .(i)dup important, see above comment in `json_walkreadonly_until`
+
+      return ret;
+    }
+
+    auto o = parseJSON( j_str );
+    
+    { // /*stop_at_first_match:*/true
+      auto p_app = appender!(Jsonplace[]);
+      json_walkreadonly_until!((p,j) => iter_object( p_app, p, j ), /*stop_at_first_match:*/true)( o );
+      assert( json_equals( o, parseJSON( j_str ) ) ); // check unmodified
+
+      auto p_arr = p_app.data;
+      p_arr.sort;
+
+      if (verbose)
+        writeln( "xxx app_stop.data", p_arr ); stdout.flush;
+      
+      assert( p_arr == [cast(Jsonplace)(["b"])]  ||  p_arr == [cast(Jsonplace)(["b2"])] );
+    }
+    
+    { // default: /*stop_at_first_match:*/true
+      auto p_app = appender!(Jsonplace[]);
+      json_walkreadonly_until!((p,j) => iter_object( p_app, p, j ))( o );
+      assert( json_equals( o, parseJSON( j_str ) ) ); // check unmodified
+
+      auto p_arr = p_app.data;
+      p_arr.sort;
+
+      if (verbose)
+        writeln( "xxx app_stop.data", p_arr ); stdout.flush;
+      
+      assert( p_arr == [cast(Jsonplace)(["b"])]  ||  p_arr == [cast(Jsonplace)(["b2"])] );
+    }
+
+    { // /*stop_at_first_match:*/false
+      auto p_app = appender!(Jsonplace[]);
+      json_walkreadonly_until!((p,j) => iter_object( p_app, p, j ), /*stop_at_first_match:*/false)( o );
+      assert( json_equals( o, parseJSON( j_str ) ) ); // check unmodified
+
+      auto p_arr = p_app.data;
+      p_arr.sort;
+
+      if (verbose)
+        writeln( "xxx app_stop.data", p_arr ); stdout.flush;
+      
+      assert( p_arr == [cast(Jsonplace)(["b"]), cast(Jsonplace)(["b2"])] );
+    }
+  }
+  
+  writeln( "unittest passed: "~__FILE__~": json_walkreadonly_until" );
+}
 
 
 
