@@ -83,10 +83,12 @@ class JsonModifManyPO( bool permits_overwrite )
   {
     static if (!is(T == JSONValue))
       {
-      push( where, JSONValue( what ) ); // Convenience wrapper
+        push( where, JSONValue( what ) ); // Convenience wrapper
       }
     else
       {
+        // Core implementation for the above wrappers
+        
         static if (!permits_overwrite) moso.check_not_yet_and_set( where );
         
         jm_app.put( JsonModif( where, what ) );
