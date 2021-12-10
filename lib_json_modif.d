@@ -95,6 +95,12 @@ class JsonModifManyPO( bool permits_overwrite )
       }
   }
 
+  size_t size() const pure @nogc @safe
+  {
+    return jm_app.data.length;
+  }
+
+  
   // Serialization
   
   override string toString() const
