@@ -907,12 +907,12 @@ void sort_inplace( T )( ref MatrixT!T m )
 
   // Extra savings on memory by using a small type (usually `uint`).
   
-  if (n0 <= uint.max)
-    sort_inplace_impl!uint;
-
-  else if (n0 <= ushort.max)
+  if (n0 <= ushort.max)
     sort_inplace_impl!ushort;
       
+  else if (n0 <= uint.max)
+    sort_inplace_impl!uint;
+
   else
     sort_inplace_impl!size_t;
 }
