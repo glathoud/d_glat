@@ -961,6 +961,62 @@ MatrixT!T rep( T )( in size_t[] dim, in T v ) pure nothrow @safe
 }
 
 
+MatrixT!T subset_col(T)( in MatrixT!T A, in size_t[] col_arr ) pure nothrow @safe
+{
+  immutable nrow     = A.nrow;
+  immutable new_ncol = col_arr.length;
+
+  auto B = MatrixT!T( [nrow, new_ncol] );
+
+  subset_col_inplace_nogc!T( A, col_arr, B );
+
+  return B;
+}
+
+void subset_col_inplace_nogc(T)( in ref MatrixT!T A, in size_t[] col_arr
+                                 , ref MatrixT!T B
+                                 ) pure nothrow @safe @nogc
+{
+  immutable nrow     = A.nrow;
+  immutable new_ncol = B.restdim;
+  
+  debug
+    {
+      assert( nrow     == B.nrow );
+      assert( new_ncol == col_arr.length );
+      foreach (i, col; col_arr)
+        assert( col < A.restdim );
+
+      assert( A.data.length == nrow * A.restdim );
+      assert( B.data.length == nrow * new_ncol );
+    }
+
+  if (0 < new_ncol)
+  {
+    auto A_data = A.data;
+    auto B_data = B.data;
+
+    immutable A_ncol = A.restdim;
+    immutable jA_end = A_data.length;
+
+    size_t jA = 0, jB = 0;
+    for (; jA < jA_end; jA += A_ncol)
+      {
+        foreach (col; col_arr)
+          B_data[ jB++ ] = A_data[ jA + col ];
+      }
+
+    debug
+      {
+        assert( jA == jA_end );
+
+        immutable jB_end = B_data.length;
+        assert( jB == jB_end );
+      }
+  }
+}
+
+
 MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @safe
 {
   immutable new_nrow = row_arr.length;

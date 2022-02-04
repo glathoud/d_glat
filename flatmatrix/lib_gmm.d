@@ -28,9 +28,9 @@ alias Gmm = GmmT!double;
 
 struct GmmT( T )
 {
-  size_t n;
+  size_t n; // number of GMMs
   bool   fallback_zero_var = true;
-  size_t dim;
+  size_t dim; // feature space dimension (length of one data vector, i.e. number of scalar values in the vector)
   bool   is_finite;// `true` if all numbers are finite, else `false`
   bool[] is_finite_arr; // same, for each Gaussian separately
   MatrixT!T[] m_mean_arr;
@@ -44,6 +44,19 @@ struct GmmT( T )
 
   private MatrixT!T m_x, m_xmm, m_xmmT
     , m_invcov_t_xmm, m_xmm_t_invcov_xmm;
+
+
+  MatrixT!T ll( in ref MatrixT!T m_feature ) pure @safe
+  {
+    debug assert( dim == m_feature.restdim );
+
+    immutable npoints = m_feature.nrow;
+    auto m_ll = Matrix( [npoints, n] );
+
+    ll_inplace_nogc( m_feature, m_ll );
+
+    return m_ll;
+  }
 
   
   void ll_inplace_dim( in ref MatrixT!T m_feature

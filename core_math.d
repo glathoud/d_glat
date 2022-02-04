@@ -3,6 +3,7 @@ module d_glat.core_math;
 public import std.math;
 
 import d_glat.core_array;
+import d_glat.flatmatrix.lib_stat : MatrixT, mean_cov_inplace_dim;
 import std.algorithm : sort;
 import std.exception : enforce;
 
@@ -202,6 +203,23 @@ http://www.glat.info/ma/2006-CHN-USS-TIME-DOMAIN/my_logsum_fast.pdf
     }
 
   return buffer[ 0 ];
+}
+
+
+T mean(T)( in T[] arr )
+{
+  return arr.reduce!"a+b" / cast(T)( arr.length );
+}
+
+void mean_stddev_inplace(bool unbiased = true, T)( in T[] arr, ref T v_mean, ref T v_stddev )
+{
+  immutable N = arr.length;
+  auto m = MatrixT!T( [N, 1], cast(T[])( arr ) );
+  auto m_mean = MatrixT!T( [1, 1] );
+  auto m_cov  = MatrixT!T( [1, 1] );
+  mean_cov_inplace_dim!(unbiased, /*diag_only:*/true, T)( m, m_mean, m_cov );
+  v_mean   = m_mean.data[ 0 ];
+  v_stddev = sqrt( m_cov .data[ 0 ] );
 }
 
 

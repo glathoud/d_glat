@@ -8,13 +8,58 @@ module d_glat.core_glob;
 
 public import std.file : SpanMode;
 
+import d_glat.core_assert;
 import std.array : appender;
+import std.conv : to;
 import std.file : dirEntries, exists;
 import std.path : baseName, dirName;
 
 shared static GLOB_JPG = "*.[jJ][pP][gG]";
 
-string[] dirSA( string path, string glob, SpanMode spanMode = SpanMode.breadth, bool followSymlink = false )
+
+string dirOneMaybe
+  ( in string fullpathglob, in SpanMode spanMode = SpanMode.shallow, in bool followSymlink = false )
+// Returns "" if file not found, a non-empty string if exactly one
+// file found, throw an exception of more than one file found.
+{
+  return dirOne!/*maybe:*/true( dirName( fullpathglob ), baseName( fullpathglob ), spanMode, followSymlink );
+}
+
+string dirOneMaybe
+( in string path, in string glob, in SpanMode spanMode = SpanMode.shallow, in bool followSymlink = false )
+// Returns "" if file not found, a non-empty string if exactly one
+// file found, throw an exception of more than one file found.
+{
+  return dirOne!/*maybe:*/true( path, glob, spanMode, followSymlink );
+}
+
+  
+
+string dirOne(bool maybe = false)
+  ( in string fullpathglob, in SpanMode spanMode = SpanMode.shallow, in bool followSymlink = false )
+{
+  return dirOne!maybe( dirName( fullpathglob ), baseName( fullpathglob ), spanMode, followSymlink );
+}
+
+
+string dirOne(bool maybe = false)
+  ( in string path, in string glob, in SpanMode spanMode = SpanMode.shallow, in bool followSymlink = false )
+{
+  auto sa = dirSA( path, glob, spanMode, followSymlink );
+
+  mixin(alwaysAssertStderr
+        (maybe  ?  `sa.length <= 1`  :  `sa.length == 1`,
+         `"sa.length must be "~(maybe? "<=one" : "one")~", got: "~to!string( sa.length )~", sa:"~to!string( sa )`
+         ));
+
+  static if (maybe)
+    return 0 < sa.length  ?  sa[ 0 ]  :  "";
+  else
+    return sa[ 0 ];
+}
+
+
+string[] dirSA( in string path, in string glob, in SpanMode spanMode = SpanMode.breadth, in bool followSymlink = false )
 // Extract a dirEntries result, and convert it to an array of strings
 // http://www.digitalmars.com/d/archives/digitalmars/D/bugs/Issue_7138_New_Can_t_call_array_on_dirEntries_34691.html
 // 
@@ -34,7 +79,7 @@ string[] dirSA( string path, string glob, SpanMode spanMode = SpanMode.breadth, 
   return app.data;
 }
 
-string[] dirSA( in string fullpathglob, SpanMode spanMode = SpanMode.breadth, bool followSymlink = false ) 
+string[] dirSA( in string fullpathglob, in SpanMode spanMode = SpanMode.breadth, in bool followSymlink = false ) 
 // shortcut for use cases without depth
 {
   return dirSA( dirName( fullpathglob ), baseName( fullpathglob ), spanMode, followSymlink );
