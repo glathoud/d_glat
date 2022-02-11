@@ -19,6 +19,7 @@ import std.conv;
 import std.digest.sha;
 import std.exception;
 import std.format : format;
+import std.math;
 import std.stdio;
 import std.traits : isSomeString;
 import std.typecons;
@@ -340,10 +341,16 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
 
 
 
-
-
-
 JSONValue json_solve_calc( in ref JSONValue o )
+{
+  bool out_modified = false;
+  return json_solve_calc( o, out_modified );
+}
+
+
+
+
+JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, ref bool out_modified )
 {
   enforce( o.type == JSON_TYPE.OBJECT );
 
@@ -357,15 +364,21 @@ JSONValue json_solve_calc( in ref JSONValue o )
 
           if (place.length > 0  &&  place[ $-1 ] == JSON_P_CALC)
             {
-              auto new_v = json_solve_calc_one( ret, v );
-              json_set_place( ret, place[ 0..($-1)], new_v );
-              modified = true;
+              auto new_v = json_solve_calc_one( ret, v, /*output:*/modified );
+              static if (!accept_incomplete)
+                enforce( modified ); // must succeed in this case
+              
+              if (modified)
+                json_set_place( ret, place[ 0..($-1)], new_v );
             }
 
           return modified;
         });
-    }
       
+      if (modified)
+        out_modified = true;
+    }
+
   return ret;
 }
 
@@ -388,26 +401,48 @@ unittest
 
 
 JSONValue json_solve_calc_one( in ref JSONValue o
-                               , in ref JSONValue v )
+                               , in ref JSONValue v
+                               )
+{
+  bool success = false;
+  auto ret = json_solve_calc_one( o, v, success );
+  enforce( success ); // here, must succeed
+  return ret;
+}
+
+  
+JSONValue json_solve_calc_one( in ref JSONValue o
+                               , in ref JSONValue v
+                               , ref bool success
+                               )
 {
   enforce( o.type == JSON_TYPE.OBJECT ); 
   enforce( v.type == JSON_TYPE.STRING );
   
   auto e = parse_sexpr( v.str );
 
-  double v_dbl = json_solve_calc_one( o, e );
+  bool tmp_success = false;
 
-  JSONValue new_v = JSONValue( v_dbl );
+  double v_dbl = json_solve_calc_one( o, e, tmp_success );
+
+  success = tmp_success;
   
-  enforce( new_v.toString != v.toString
-           , "Forbidden: json_solve_calc_one gave the same output:" ~ new_v.toString~"    from v:"~v.toString
-           );
+  JSONValue new_v;
+  if (success)
+    {
+      new_v = JSONValue( v_dbl );
+
+      enforce( new_v.toString != v.toString
+               , "Forbidden: json_solve_calc_one gave the same output:" ~ new_v.toString~"    from v:"~v.toString
+               );
+    }
 
   return new_v;
 }
 
 double json_solve_calc_one( in ref JSONValue o
                             , in ref SExpr e
+                            , ref bool success
                             )
 {
   enforce( o.type == JSON_TYPE.OBJECT );
@@ -419,13 +454,18 @@ double json_solve_calc_one( in ref JSONValue o
       immutable string s = e.toString;
       if (auto p = s in o.object)
         {
-          return json_get_double( *p );
+          immutable ptyp = p.type;
+          immutable tmp_success_0 = (ptyp == JSON_TYPE.INTEGER  ||  ptyp == JSON_TYPE.FLOAT);
+          success = tmp_success_0;
+          return success  ?  json_get_double( *p )  :  double.nan;
         }
       else
         {
           try
             {
-              return to!double( s );
+              auto ret = to!double( s );
+              success = true;
+              return ret;
             }
           catch (std.conv.ConvException e)
             {
@@ -437,27 +477,59 @@ double json_solve_calc_one( in ref JSONValue o
             }
         }
     }
-
+  
   assert( e.isList );
 
   const li = cast( SList )( e );
+
+  success = true;
   
   double[] operands =
-    li.rest.map!( x => json_solve_calc_one( o, x ) ).array;
+    li.rest.map!( (x) {
+        bool op_success = false;
+        auto ret = json_solve_calc_one( o, x, op_success );
 
-  enforce( 1 < operands.length, li.toString );
+        writeln; writefln( "op [BEFORE] success: %s, op_success: %s", success, op_success );
+        
+        success = success  &&  op_success;
+
+        writeln; writefln( "op [AFTER] success: %s, op_success: %s", success, op_success );
+
+        return ret;
+      }).array;
+
+  immutable nop = operands.length;
+  
+  success = success  &&  0 < nop;
+
+  enforce( 0 < nop, li.toString );
 
   const op = li.first.toString;
-  switch (op)
+
+  switch (nop)
     {
-      case "+": return operands.reduce!"a+b";
-      case "-": return operands.reduce!"a-b";
-      case "*": return operands.reduce!"a*b";
-      case "/": return operands.reduce!"a/b";
-        
+    case 1:
+      switch (op)
+        {
+        case "round": return round( operands[ 0 ] );
+        default: break;
+        }
+      throw new Exception( "Unknown (unary?) operator "~op~" from "~li.toString );
+
+    case 2:
+      switch (op)
+        {
+        case "+": return operands.reduce!"a+b";
+        case "-": return operands.reduce!"a-b";
+        case "*": return operands.reduce!"a*b";
+        case "/": return operands.reduce!"a/b";
+        default: break;
+        }
+      
+      throw new Exception( "Unknown (binary?) operator "~op~" from "~li.toString );
+
     default:
-      throw new Exception
-        ( "Unknown operator "~op~" from "~li.toString );
+      throw new Exception( "Unsupported number of operands "~to!string(nop)~" from "~li.toString );
     }
 }
 
