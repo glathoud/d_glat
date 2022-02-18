@@ -488,13 +488,7 @@ double json_solve_calc_one( in ref JSONValue o
     li.rest.map!( (x) {
         bool op_success = false;
         auto ret = json_solve_calc_one( o, x, op_success );
-
-        writeln; writefln( "op [BEFORE] success: %s, op_success: %s", success, op_success );
-        
         success = success  &&  op_success;
-
-        writeln; writefln( "op [AFTER] success: %s, op_success: %s", success, op_success );
-
         return ret;
       }).array;
 

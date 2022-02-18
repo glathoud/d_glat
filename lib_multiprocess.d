@@ -33,6 +33,86 @@ import std.traits;
   2020
  */
 
+
+void multiprocess_start_and_restart_and_wait_success_or_exit
+(alias spawner_0/*delegate | string | string[]*/, ubyte restart_code = 111, bool fail_early = true)
+  ( in size_t n_processes, in string error_msg_prefix, in bool verbose = true )
+{
+  auto spawner = spawner_function!spawner_0();
+  assert(isCallable!spawner);
+
+  immutable prefix_c = q{__FILE__ ~ "@line:" ~ to!string( __LINE__ ) ~ ":("~error_msg_prefix~")"};
+  
+  auto pid_arr = new Pid[ n_processes ];
+  while (true)
+    {
+      // start/restart as needed
+      foreach (k_part; 0..n_processes)
+        {
+          if (pid_arr[ k_part ] is null)
+            {
+              if (verbose)
+                {
+                  stdout.writeln;
+                  stdout.writeln( mixin(prefix_c)~" about to (re)start k_part:", k_part );
+                  stdout.writeln;
+                  stdout.flush;
+                }
+              
+              pid_arr[ k_part ] = spawner( k_part );
+            }
+        }
+      
+      // sleep a bit
+
+      Thread.sleep(dur!"msecs"( 13 ));
+
+      // check for restart and/or failures
+
+      auto twr = pid_arr.map!tryWait.enumerate;
+      auto failed_arr  = twr.filter!"a.value.terminated  &&  a.value.status != 0".array;
+      auto restart_arr = twr.filter!("a.value.terminated  &&  a.value.status == "~to!string(restart_code)).array;
+
+      static if (fail_early)
+        multiprocess_fail_early( error_msg_prefix, pid_arr, failed_arr );
+
+      foreach (ref x; restart_arr)
+        pid_arr[ x.index ] = null;
+      
+      if (0 < restart_arr.length  ||  !(twr.all!"a.value.terminated"))
+        continue;
+
+      // done
+      
+      if (verbose)
+        {
+          stdout.writeln;
+          stdout.writeln( mixin(prefix_c)~ " failed_arr:  ", to!string( failed_arr ) );
+          stdout.writeln( mixin(prefix_c)~ " restart_arr: ", to!string( restart_arr ) );
+          stdout.writeln( mixin(prefix_c)~ " n_failed: ", failed_arr.length
+                         , ", n_restart: ", restart_arr.length );
+          stdout.writeln;
+          stdout.flush;
+        }
+
+      if (0 < failed_arr.length) // Note: only reached in the `fail_early==false` case
+        {
+          stderr.writeln;
+          stderr.writeln( mixin(prefix_c)~ " failed_arr:  ", to!string( failed_arr ) );
+          stderr.writeln;
+          stderr.flush;
+        }
+      
+      break;
+    }
+}
+
+
+
+
+
+
+
 void multiprocess_start_and_wait_success_or_exit
 (alias spawner/*delegate | string | string[]*/, bool fail_early = true)
   ( in size_t n_processes, in string error_msg_prefix )
@@ -51,8 +131,7 @@ auto multiprocess_start_and_wait
   return multiprocess_wait!fail_early( pid_arr );
 }
 
-
-auto multiprocess_start(alias spawner/*delegate | string | string[]*/)( in size_t n_processes )
+auto multiprocess_start(alias spawner_0/*delegate | string | string[]*/)( in size_t n_processes )
 /* Returns an array of Pid
 
    --- Example of use:
@@ -76,29 +155,37 @@ auto multiprocess_start(alias spawner/*delegate | string | string[]*/)( in size_
    // now read individual outputs  from outfilename_arr
    */
 {
+  auto spawner = spawner_function!spawner_0();
+
+  assert(isCallable!spawner);
+
+  auto pid_app = appender!(Pid[]);
+  foreach (k_part; 0..n_processes)
+    {
+      auto sub_pid = spawner( k_part );
+      
+      pid_app.put( sub_pid );
+    }
+  
+  return pid_app.data;
+}
+
+
+
+auto spawner_function(alias  spawner/*delegate | string | string[]*/)()
+// Returns a function: (in size_t k_part) => Pid
+{
   static if (isCallable!spawner)
     {
-      auto pid_app           = appender!(Pid[]);
-      auto ibou_filename_app = appender!(string[]);
-      
-      foreach (k_part; 0..n_processes)
-        {
-          auto sub_pid = spawner( k_part );
-          
-          pid_app.put( sub_pid );
-        }
-      
-      return pid_app.data;
+      return &spawner;
     }
   else if (typeof(spawner).stringof == "string")
     {
-      return multiprocess_start!([spawner])( n_processes );
+      return spawner_function!([spawner]);
     }
   else if (isArray!(typeof(spawner)))
     {
-      return multiprocess_start!
-        (k_part => spawnProcess( spawner.map!(s => format( s, k_part )).array ))
-        ( n_processes );
+      return &(spawner_function_of_array!spawner);
     }
   else
     {
@@ -106,12 +193,27 @@ auto multiprocess_start(alias spawner/*delegate | string | string[]*/)( in size_
     }
 }
 
+auto spawner_function_of_array(alias array_of_string)()
+// Returns a function: (in size_t k_part) => Pid
+{
+  return &sfoa;
+
+  auto sfoa( in size_t k_part )
+  {
+    return spawnProcess( array_of_string.map!(s => format( s, k_part )).array );
+  }
+}
+
 
 void multiprocess_wait_success_or_exit(bool fail_early = true)
   ( Pid[] pid_arr, in string error_msg_prefix )
 {
   auto failed_arr = multiprocess_wait!fail_early( pid_arr );
-  
+  multiprocess_fail_early( error_msg_prefix, pid_arr, failed_arr );
+}
+
+void multiprocess_fail_early(T)( in string error_msg_prefix, Pid[] pid_arr, in T[] failed_arr )
+ {
   if (0 < failed_arr.length)
     {
       writeln("multiprocess_wait_success_or_exit: failed_arr.length: ", failed_arr.length); stdout.flush; // xxx
@@ -121,7 +223,7 @@ void multiprocess_wait_success_or_exit(bool fail_early = true)
       stderr.writeln( baseName(__FILE__)~": "~msg ); stderr.flush;
 
       // one fails => stop all remaining processes
-      foreach (ind,pid; pid_arr)
+      foreach (ind, ref pid; pid_arr)
         {
           if (!failed_arr.any!(x => x.index == ind))
             {
@@ -170,4 +272,11 @@ auto multiprocess_wait(bool fail_early = true)( Pid[] pid_arr )
     }
 
   assert( false, "never reached" );
+}
+
+unittest
+{
+  import std.stdio;
+
+  writeln("youpi!");
 }

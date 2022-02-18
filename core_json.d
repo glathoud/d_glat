@@ -415,7 +415,7 @@ void json_set_place
     }
 }
 
-private JSONValue _build_json_object( in Jsonplace place, JSONValue v )
+private JSONValue _build_json_object( in Jsonplace place, JSONValue v ) 
 {
   if (place.length < 1)
     return v;
