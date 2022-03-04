@@ -23,6 +23,7 @@ import std.array : array;
 import std.conv : to;
 import std.math;
 import std.range : iota;
+import std.string : split;
 
 alias Gmm = GmmT!double;
 
@@ -150,6 +151,25 @@ struct GmmT( T )
     debug assert( i_out == ll_data.length );
   }
 
+  void reset()
+    nothrow @safe
+  {
+    n = 0;
+    dim = 0;
+    is_finite = false;
+    is_finite_arr = [];
+    m_mean_arr = [];
+    m_cov_arr = [];
+    m_invcov_arr = [];
+    logfactor_arr = [];
+
+    static foreach (NAME; "m_x, m_xmm, m_xmmT, m_invcov_t_xmm, m_xmm_t_invcov_xmm".split( ", " ).array)
+    {{
+        mixin(NAME~`.setDim([1,1]);`);
+      }}
+  }
+
+  
   void setSingle( in ref MatrixT!T m_feature, in bool diag_only = false )
   nothrow @safe
   {
