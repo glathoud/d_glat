@@ -33,9 +33,13 @@ import std.traits;
   2020
  */
 
+immutable ubyte MP_DEFAULT_RESTART_CODE = 111;
 
 void multiprocess_start_and_restart_and_wait_success_or_exit
-(alias spawner_0/*delegate | string | string[]*/, ubyte restart_code = 111, bool fail_early = true)
+(alias spawner_0/*delegate | string | string[]*/
+ , ubyte restart_code = MP_DEFAULT_RESTART_CODE
+ , bool fail_early = true
+ )
   ( in size_t n_processes, in string error_msg_prefix, in bool verbose = true )
 {
   auto spawner = spawner_function!spawner_0();
@@ -70,8 +74,12 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
       // check for restart and/or failures
 
       auto twr = pid_arr.map!tryWait.enumerate;
-      auto failed_arr  = twr.filter!"a.value.terminated  &&  a.value.status != 0".array;
-      auto restart_arr = twr.filter!("a.value.terminated  &&  a.value.status == "~to!string(restart_code)).array;
+      auto failed_arr  =
+        twr.filter!("a.value.terminated  &&  a.value.status != 0  &&  a.value.status != "~to!string(restart_code))
+        .array;
+      auto restart_arr =
+        twr.filter!("a.value.terminated  &&  a.value.status == "~to!string(restart_code))
+        .array;
 
       static if (fail_early)
         multiprocess_fail_early( error_msg_prefix, pid_arr, failed_arr );

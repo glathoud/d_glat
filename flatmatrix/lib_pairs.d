@@ -1,8 +1,8 @@
 module d_glat.flatmatrix.lib_pairs;
 
 /*
-  Compute pairwise differences between point pairs, on each
-  dimension of a matrix.
+  Compute pairwise differences between point pairs (pairs of rows),
+  on each dimension of a matrix.
   
   The Boost license applies, as described in ../LICENSE
 
