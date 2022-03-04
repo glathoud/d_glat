@@ -16,6 +16,32 @@ import std.traits : hasMember;
   glat@glat.info
 */
 
+
+T[] arr_change_order(T)( in size_t[] ind_arr, in T[] arr) pure @safe
+{
+  auto ret = new T[ arr.length ];
+  
+  foreach (out_ind, in_ind; ind_arr)
+    ret[ out_ind ] = arr[ in_ind ];
+  
+  return ret;
+}
+
+void arr_change_order_inplace(T)( in size_t[] ind_arr, ref T[] arr ) pure @safe
+{
+  auto buff = new T[ arr.length ];
+  arr_change_order_inplace_nogc!T( ind_arr, buff, arr );
+}
+
+void arr_change_order_inplace_nogc(T)( in size_t[] ind_arr, ref T[] buff, ref T[] arr )
+  pure @safe @nogc
+{
+  buff[] = arr[];
+  foreach (out_ind, in_ind; ind_arr)
+      arr[ out_ind ] = buff[ in_ind ];
+}
+
+
 T[] ensure_length(T)( size_t desired_length, ref T[] arr )
 pure nothrow @safe
 /*
@@ -103,7 +129,7 @@ size_t[] subset_ind_arr_of_sorted( bool exact = true, T )
   Functional wrapper around `subset_ind_arr_of_sorted_inplace_nogc`
 
   Assume both `all_arr` and `subset_arr` are sorted by increasing
-  value, and return the list of indices such that:
+  value, and return the list of indices `ind_arr` such that:
 
   subset_arr == ind_arr.map!( ind => all_arr[ ind ] ).array
 
@@ -130,7 +156,7 @@ void subset_ind_arr_of_sorted_inplace_nogc( bool exact = true, T )
   pure nothrow @safe @nogc
 /*
   Assume both `all_arr` and `subset_arr` are sorted by increasing
-  value, and return the list of indices such that:
+  value, and return the list of indices `ind_arr` such that:
 
   subset_arr == ind_arr.map!( ind => all_arr[ ind ] ).array
 
@@ -204,6 +230,28 @@ unittest
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
+  {
+    immutable long[] a = [0,10,20,30,40,50,60];
+    auto b = arr_change_order( [4,2,3,1,0,6,5], a );
+    assert( a == [0,10,20,30,40,50,60] );
+    assert( b == [40,20,30,10,0,60,50] );
+  }
+
+  {
+    long[] a = [0,10,20,30,40,50,60];
+    arr_change_order_inplace( [4,2,3,1,0,6,5], a );
+    assert( a == [40,20,30,10,0,60,50] );
+  }
+
+  {
+    long[] a = [0,10,20,30,40,50,60];
+    auto buff = new long[ a.length ];
+    arr_change_order_inplace_nogc( [4,2,3,1,0,6,5], buff, a );
+    assert( a == [40,20,30,10,0,60,50] );
+  }
+
+
+  
   {
     assert( equal_nan!double( [], [] ) );
     assert( equal_nan( [], [] ) );
