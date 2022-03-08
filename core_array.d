@@ -37,8 +37,8 @@ void arr_change_order_inplace_nogc(T)( in size_t[] ind_arr, ref T[] buff, ref T[
   pure @safe @nogc
 {
   buff[] = arr[];
-  foreach (out_ind, in_ind; ind_arr)
-      arr[ out_ind ] = buff[ in_ind ];
+  foreach (out_ind, in_ind; ind_arr) // ind_arr[ out_ind ] == in_ind
+    arr[ out_ind ] = buff[ in_ind ];
 }
 
 
