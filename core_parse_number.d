@@ -6,11 +6,31 @@
 */
 module d_glat.core_parse_number;
 
+import std.conv : to;
 import std.format : formattedRead;
 import std.regex : ctRegex, replaceAll;
 import std.typecons;
 
 alias MaybeDouble = Nullable!double;
+
+bool isParsableDouble( in string s )
+{
+  auto md = parseDouble( s );
+  return !md.isNull;
+}
+
+MaybeDouble parseDouble( in string s )
+{
+  MaybeDouble ret;
+  try {
+    ret = to!double( s );
+  } catch (std.conv.ConvException e ) {
+ }
+
+  return ret;
+}
+
+
 
 MaybeDouble parseGermanDouble( in string s )
 {
@@ -33,4 +53,26 @@ MaybeDouble parseGermanDouble( in string s )
     }
   
   return ret;
+}
+
+
+
+
+unittest
+{
+  import std.stdio;
+  import std.math : abs;
+  import std.path;
+
+  writeln;
+  writeln( "unittest starts: ", baseName( __FILE__ ) );
+
+  immutable verbose = false;
+
+  assert(isParsableDouble( "1234567.4" ));
+  assert(!isParsableDouble( "abcdefgh" ));
+  assert(1e-10 > abs( 1234567.4 - parseDouble( "1234567.4" ) ));
+  assert(1e-10 > abs( 1234567.4 - parseGermanDouble( "1.234.567,4" ) ));
+  
+  writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
