@@ -42,6 +42,10 @@ SExpr parse_sexpr( alias maybe_check_fun = false )( in char[] a )
   return ret;
 }
 
+// shortcuts
+immutable(SAtom) sAtom( in string s ) { return cast(immutable(SAtom))( new SAtom( s ) ); }
+immutable(SList) sList( in SExpr[] a ) { return cast(immutable(SList))( new SList( a ) ); }
+
 void walk_sexpr( alias iter )( in SExpr sexpr )
 {
   iter( sexpr );

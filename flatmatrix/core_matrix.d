@@ -404,16 +404,32 @@ struct MatrixT( T )
   Direct operations (ret = f(a,b), a,b,ret all of the same type)
   in octave/matlab: .+ .- .* ./
 
-  Each line creates a pair of functions:
+  Each line creates a triplet of functions:
   
-  `direct_add(a,b)`,`direct_add_inplace(a,b,ret)`
-  `direct_sub(a,b)`,`direct_sub_inplace(a,b,ret)`
+  `direct_add(a,b)`,`direct_add_inplace(a,b,ret)`,`direct_add_inplace_nogc(a,b,ret)`
+  `direct_sub(a,b)`,`direct_sub_inplace(a,b,ret)`,`direct_sub_inplace_nogc(a,b,ret)`
   etc.
 */
 mixin(_direct_code(`direct_add`,`+`));
 mixin(_direct_code(`direct_sub`,`-`));
 mixin(_direct_code(`direct_mul`,`*`));
 mixin(_direct_code(`direct_div`,`/`));
+
+
+/*
+  Reduce-columns operations (ret = f(a), a,ret all of the same type, but ret has only one column)
+  examples in LISP: (+ 1 2 3) (- 10 3 4 5) etc.
+
+  Each line creates 3 functions:
+  
+  `redcol_add(a,b)`,`redcol_add_inplace(a,b,ret)`,`redcol_add_inplace_nogc(a,b,ret)`
+  `redcol_sub(a,b)`,`redcol_sub_inplace(a,b,ret)`,`redcol_sub_inplace_nogc(a,b,ret)`
+  etc.
+*/
+mixin(_redcol_code(`redcol_add`,`+`));
+mixin(_redcol_code(`redcol_sub`,`-`));
+mixin(_redcol_code(`redcol_mul`,`*`));
+mixin(_redcol_code(`redcol_div`,`/`));
 
 
 MatrixT!T clone( T )( in MatrixT!T X ) pure nothrow @safe
@@ -644,6 +660,15 @@ T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
   return ret;
 }
 
+auto extract_ind_m_inplace( T )( in MatrixT!T X, in size_t ind
+                                 , ref MatrixT!T Y
+                                 ) pure nothrow @safe
+{
+  Y.setDim( [X.nrow, 1] );
+  extract_ind_inplace_nogc!T( X, ind, Y.data );
+}
+
+
 void extract_ind_inplace_nogc( T )
   ( in MatrixT!T X, in size_t ind
     , ref T[] ret ) pure nothrow @safe @nogc
@@ -653,7 +678,6 @@ void extract_ind_inplace_nogc( T )
    See also `set_ind_inplace_nogc`.
 */
 {
-  
   immutable rd = X.restdim;
   debug
     {
@@ -1292,22 +1316,31 @@ void _spit_d( T )
 
 
 string _direct_code( in string fname, in string op ) pure
-// Returns code that declares two functions named `fname` and
-// `fname~"_inplace"`.
+// Returns code that declares 3 functions named `fname`,
+// `fname~"_inplace"` and `fname~"_inplace_nogc"`.
+//
+// e.g. direct multiplication of two matrices (like .* in octave)
+// i.e. element by element.
 {
   return `Matrix `~fname~`( in Matrix A, in Matrix B ) pure nothrow @safe
     {
       Matrix RET = Matrix( A.dim );
-      `~fname~`_inplace( A, B, RET );
+      `~fname~`_inplace_nogc( A, B, RET );
       return RET;
     }
   
   void `~fname~`_inplace( in ref Matrix A, in ref Matrix B
-                          , ref Matrix RET
-                          ) pure nothrow @safe @nogc
+                               , ref Matrix RET
+                               ) pure nothrow @safe
   {
-    
-      
+    RET.setDim( A.dim );
+    `~fname~`_inplace_nogc( A, B, RET );
+  }
+  
+  void `~fname~`_inplace_nogc( in ref Matrix A, in ref Matrix B
+                               , ref Matrix RET
+                               ) pure nothrow @safe @nogc
+  {
     debug
       {
         assert( A.dim == B.dim );
@@ -1320,6 +1353,66 @@ string _direct_code( in string fname, in string op ) pure
 }
 
 
+
+string _redcol_code( in string fname, in string op ) pure
+// Returns code that declares two functions named `fname` and
+// `fname~"_inplace"`.
+//
+// Reduction of columns to a single column, like e.g. in lisp (- 10 2 3 4) => 1
+{
+  return `Matrix `~fname~`( in Matrix A ) pure nothrow @safe
+    {
+      Matrix RET = Matrix( [A.nrow, 1] );
+      `~fname~`_inplace_nogc( A, RET );
+      return RET;
+    }
+  
+  void `~fname~`_inplace( in ref Matrix A
+                               , ref Matrix RET
+                               ) pure nothrow @safe
+  {
+    RET.setDim( [A.nrow, 1] );
+    `~fname~`_inplace_nogc( A, RET );
+  }
+  
+  void `~fname~`_inplace_nogc( in ref Matrix A
+                               , ref Matrix RET
+                               ) pure nothrow @safe @nogc
+  {
+    debug
+      {
+        assert( A.nrow == RET.nrow );
+        assert( 1 == RET.restdim );
+      }
+
+    auto A_data   = A.data;
+    auto RET_data = RET.data;
+    
+    immutable n  = A.nrow;
+    immutable rd = A.restdim;
+
+    if (rd == 1)
+      {
+        // degenerate case
+        RET_data[] = A_data[];
+      }
+    else
+      {
+        // general case
+        for (size_t iA = 0, iR = 0; iR < n; ++iR)
+          {
+            immutable iA_next = iA + rd;
+
+            double    x = A_data[ iA++ ];
+            while (iA < iA_next)
+              x = x `~op~` (A_data[ iA++ ]);
+
+            RET_data[ iR ] = x;
+          }
+      }
+  }
+  `;
+}
 
 
 

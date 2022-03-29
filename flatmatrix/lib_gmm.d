@@ -130,7 +130,7 @@ struct GmmT( T )
 
         foreach (j; 0..n)
           {
-            direct_sub_inplace( m_x, m_mean_arr[ j ], m_xmm );
+            direct_sub_inplace_nogc( m_x, m_mean_arr[ j ], m_xmm );
             
             auto invcov_j = m_invcov_arr[ j ];
 
