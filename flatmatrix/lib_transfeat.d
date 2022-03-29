@@ -129,7 +129,7 @@ struct TransfeatT( T )
 
   this( in SExpr modif, in OneTransOfStringT!T one_trans_of_string ) 
     {
-      this.modif = modif.idup;
+      this.modif = expand_sexpr_cat_pipe( modif );
 
       {
         OneTransOfStringT!T tmp;
@@ -197,7 +197,9 @@ struct TransfeatT( T )
 
         immutable is_cat  = first.toString == META_CAT;
         immutable is_pipe = first.toString == META_PIPE;
-        enforce( is_cat  ||  is_pipe );
+
+        immutable is_cat_or_pipe = is_cat  ||  is_pipe;
+        enforce( is_cat_or_pipe, "lib_transfeat: !is_cat_or_pipe: "~one_modif.toString );
 
         immutable n = slist.rest.length;
         enforce( 0 < n );
@@ -377,6 +379,29 @@ struct TransfeatT( T )
     }
   
 };
+
+
+// Details
+
+immutable(SExpr) expand_sexpr_cat_pipe( in SExpr e )
+{
+  if (e.isList)
+    {
+      auto li  = cast(SList)( e );
+      auto fis = li.first.toString;
+      auto arr = li.rest.map!expand_sexpr_cat_pipe.array; // always recurse
+
+      return fis == META_CAT  ||  fis == META_PIPE  ?  sList( [sAtom( fis )]~arr ) // no expansion needed
+        
+        : // Expand synctatic sugar e.g. (/ a b c) => (pipe (cat a b c) /)
+        sList( [sAtom( META_PIPE )
+                , sList( [sAtom( META_CAT )]~arr )
+                , sAtom( fis )
+                ] );
+    }
+  
+  return e.idup;
+}
 
 
 unittest  // ------------------------------
