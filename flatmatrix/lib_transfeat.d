@@ -394,7 +394,7 @@ immutable(SExpr) expand_sexpr_cat_pipe( in SExpr e )
         
         : // Expand synctatic sugar e.g. (/ a b c) => (pipe (cat a b c) /)
         sList( [sAtom( META_PIPE )
-                , sList( [sAtom( META_CAT )]~arr )
+                , 1 < arr.length  ?  sList( [sAtom( META_CAT )]~arr )  :  arr[ 0 ].idup
                 , sAtom( fis )
                 ] );
     }
