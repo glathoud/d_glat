@@ -324,7 +324,6 @@ struct TransfeatT( T )
         }
       else if (one_modif.isAtom)
         {
-          
           assert( one_modif.toString in one_trans_of_string
                   , "Undefined transformation \""
                   ~ one_modif.toString
