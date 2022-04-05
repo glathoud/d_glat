@@ -63,7 +63,7 @@ long get_long_of_json( in JSONValue jv )
 
   enforce( jv.type == JSON_TYPE.FLOAT
            , "get_long_of_json: expects an INTEGER, UINTEGER"
-           ~ " or FLOAT. Got instead: " ~ jv.type
+           ~ " or FLOAT. Got instead: " ~ to!string(jv.type)~", value: "~jv.toString
            );
 
   // Make sure the value is an integer
