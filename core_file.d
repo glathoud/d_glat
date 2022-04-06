@@ -164,9 +164,11 @@ return to!size_t( tmp.output.splitLines[1].strip );
 }
 
 size_t getUsedDiskSpace( in string path )
-// Does what it says at `dirName( path )` and returns a number of bytes.
+// Does what it says at `path` (if isDir(path)) else at
+// `dirName(path)` (e.g. if isFile(path)), and returns a number of
+// bytes.
 {
-  immutable dir = absolutePath( dirName( path ) );
+  immutable dir = absolutePath( isDir( path )  ?  path  :  dirName( path ) );
   immutable cmd = `du -b --max-depth=0 "`~dir~`"`;
   auto tmp = executeShell( cmd );
   if (tmp.status != 0)
