@@ -138,19 +138,19 @@ class SList : SExpr
   const SExpr   first;
   const SExpr[] rest;
 
-  const SExpr[] all;
+  const SExpr[] all_v;
 
   private immutable string _str;
   
-  this( in SExpr[] all ) @safe
+  this( in SExpr[] all_v ) @safe
     {
-      this.all   = all;
-      this.first = all[ 0 ];
-      this.rest  = all[ 1..$ ];
+      this.all_v = all_v;
+      this.first = all_v[ 0 ];
+      this.rest  = all_v[ 1..$ ];
 
       auto app = appender!string();
       app ~= "(";
-      foreach(i, x; all)
+      foreach(i, x; all_v)
         {
           if (0 < i)
             app ~= " ";

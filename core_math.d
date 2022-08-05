@@ -4,7 +4,7 @@ public import std.math;
 
 import d_glat.core_array;
 import d_glat.flatmatrix.lib_stat : MatrixT, mean_cov_inplace_dim;
-import std.algorithm : sort;
+import std.algorithm : reduce, sort;
 import std.exception : enforce;
 
 /*
@@ -206,7 +206,7 @@ http://www.glat.info/ma/2006-CHN-USS-TIME-DOMAIN/my_logsum_fast.pdf
 }
 
 
-T mean(T)( in T[] arr )
+T mean_of_arr(T)( in T[] arr )
 {
   return arr.reduce!"a+b" / cast(T)( arr.length );
 }
