@@ -28,7 +28,7 @@ import std.file;
 import std.json;
 import std.range;
 import std.stdio;
-import std.string : strip;
+import std.string : indexOf, strip;
 import std.system;
 
 alias Jsonbin = JsonbinT!double;
@@ -648,14 +648,18 @@ void jsonbin_read_chars_meta( T )
 {
   // First line: json
 
-  immutable i = index + cdata[ index..$ ].countUntil( '\n' );
+  // indexOf and *not* countUntil: https://stackoverflow.com/questions/14262766/function-to-search-for-first-occurrence-of-multiple-strings-or-characters-in-a-s
+  immutable i = index + indexOf( cdata[ index..$ ], '\n' );
+
   j_str = cdata[ index..i ].idup;
   index = i+1;
-    
+
   // Second line: data type (e.g. "double"), and matrix dimensions
-    
-  immutable j_0   = index + cdata[ index..$ ].countUntil( '\n' );
+
+  // indexOf and *not* countUntil: https://stackoverflow.com/questions/14262766/function-to-search-for-first-occurrence-of-multiple-strings-or-characters-in-a-s
+  immutable j_0   = index + indexOf( cdata[ index..$ ], '\n' );
   const     s_arr = cdata[ index..j_0 ].split( ':' );
+
   index = j_0 + 1;
 
   enforce( s_arr.length == 2 );
@@ -674,8 +678,9 @@ void jsonbin_read_chars_meta( T )
   dim = to!(size_t[])( s_dim.strip );
 
   // Third line: "compression:gzip|none|..."
-    
-  immutable j_1     = index + cdata[ index..$ ].countUntil( '\n' );
+
+  // indexOf and *not* countUntil: https://stackoverflow.com/questions/14262766/function-to-search-for-first-occurrence-of-multiple-strings-or-characters-in-a-s
+  immutable j_1     = index + indexOf( cdata[ index..$ ], '\n' );
   const     s_arr_1 = cdata[ index..j_1 ].split( ':' );
   index = j_1 + 1;
   

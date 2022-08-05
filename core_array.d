@@ -42,6 +42,7 @@ void arr_change_order_inplace_nogc(T)( in size_t[] ind_arr, ref T[] buff, ref T[
 }
 
 
+
 T[] ensure_length(T)( size_t desired_length, ref T[] arr )
 pure nothrow @safe
 /*
