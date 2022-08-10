@@ -14,7 +14,14 @@ string alwaysAssertStderr( in string testcode, in string msgcode_0="" )
 // e.g:  mixin(alwaysAssertStderr(`a<b`, `"a<b not verified for a:"~to!string(a)~" and b:"~to!string(b)`))
 {
   immutable msgcode = 0 < msgcode_0.length  ?  msgcode_0  :  '"'~testcode.replace("\"", "\\\"")~'"';
-  return `if (!(`~testcode~`)) { immutable __outmsg = `~msgcode~`; import std.path : baseName; stderr.writeln( baseName(__FILE__), "@", __LINE__, ": ", __outmsg ); stderr.flush; assert( false, __outmsg ); }`;
+
+  // Impl. note: we used to have `assert( false, ... )` but that led
+  // to issue, not always having a stacktrace (esp. when catching
+  // and rethrowing Throwable).
+  //
+  // Hence we switched to a `throw new Exception` implementation.
+  // Now the catching/rethrowing works. 
+  return `if (!(`~testcode~`)) { immutable __outmsg = `~msgcode~`; import std.path : baseName; stderr.writeln( baseName(__FILE__), "@", __LINE__, ": ", __outmsg ); stderr.flush; throw new Exception( "alwaysAssertStderr: assert not verified, output message: "~__outmsg ); }`;
 }
 
 
