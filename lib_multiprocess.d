@@ -107,6 +107,7 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
         {
           stderr.writeln;
           stderr.writeln( mixin(prefix_c)~ " failed_arr:  ", to!string( failed_arr ) );
+          stderr.writeln( mixin(prefix_c)~ " note that a -9 (247) exit code should denote a lack of available RAM" );
           stderr.writeln;
           stderr.flush;
         }
@@ -226,7 +227,7 @@ void multiprocess_fail_early(T)( in string error_msg_prefix, Pid[] pid_arr, in T
     {
       writeln("multiprocess_wait_success_or_exit: failed_arr.length: ", failed_arr.length); stdout.flush; // xxx
   
-      immutable msg = error_msg_prefix~' '~to!string( failed_arr.map!(x => format("index:%d, pid:%s, output:%s",x.index,pid_arr[ x.index ].processID, x.value)) );
+      immutable msg = error_msg_prefix~' '~to!string( failed_arr.map!(x => format("index:%d, pid:%s, output:%s",x.index,pid_arr[ x.index ].processID, x.value)) )~"  Note that a -9 (247) exit code should denote a lack of available RAM.";
 
       stderr.writeln( baseName(__FILE__)~": "~msg ); stderr.flush;
 
