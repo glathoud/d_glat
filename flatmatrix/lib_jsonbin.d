@@ -487,7 +487,21 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
     {
       mixin(alwaysAssertStderr(`false`,`"Not supported: "~compression_type`));
     }
+
+  {
+    // for a quick overview
+    auto m_filaro = jb.m.subset_row( [0, jb.m.nrow-1] );
+    std.file.write( filename~".first_last_row.txt"
+                    , m_filaro.toString~'\n'~_dimstring_of_jb( jb )~'\n'~jb.j_str~'\n'
+                    );
+  }
 }
+
+private string _dimstring_of_jb(T)( in JsonbinT!T jb ) pure @safe
+{
+  return T.stringof~':'~to!string(jb.m.dim);
+}
+
 
 void jsonbin_write_uncompressed_to_file(T)( in JsonbinT!T jb, File file )
 {
@@ -502,7 +516,7 @@ void jsonbin_write_uncompressed_to_file(T)( in JsonbinT!T jb, File file )
   // Second line: <type>:<dim>
   // e.g. "double:[123456,10]
   
-  file.write( T.stringof~':'~to!string(jb.m.dim) );
+  file.write( _dimstring_of_jb!T( jb ) );
 file.write( '\n' );
 
   // Third line: compression
