@@ -492,7 +492,7 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
     // for a quick overview
     auto m_filaro = jb.m.subset_row( [0, jb.m.nrow-1] );
     std.file.write( filename~".first_last_row.txt"
-                    , m_filaro.toString~'\n'~_dimstring_of_jb( jb )~'\n'~jb.j_str~'\n'
+                    , m_filaro.toString~".\n"~_dimstring_of_jb( jb )~'\n'~jb.j_str~'\n'
                     );
   }
 }
