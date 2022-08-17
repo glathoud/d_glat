@@ -4,6 +4,7 @@ import std.algorithm : filter, map, sort;
 import std.array : appender, array;
 import std.math : abs;
 import std.range : enumerate;
+import std.stdio;
 
 /*
   Advanced tools for arrays. Boost License, see file ./LICENSE
@@ -18,7 +19,7 @@ void subset_ind_of_sorted_timeref
     , /*outputs:*/ref size_t[] ind_arr, ref TT[] deltatime_arr
     , /*option:*/TT max_deltatime = TT.max
     )
-pure @safe
+pure
 /*
   Task: 
 
@@ -53,8 +54,17 @@ out
 {
   debug
     {
-      assert( ind_arr.length       == timeref_arr.length );
-      assert( deltatime_arr.length == timeref_arr.length );
+      writeln("[ind_arr.length,deltatime_arr.length,timeref_arr.length]:",[ind_arr.length,deltatime_arr.length,timeref_arr.length]); stdout.flush;
+
+      assert( ind_arr.length == deltatime_arr.length );
+      
+      if (max_deltatime == TT.max)
+          assert( ind_arr.length       == timeref_arr.length );
+
+      else
+          assert( ind_arr.length       <= timeref_arr.length );
+
+      
       assert( ind_arr == ind_arr.dup.sort.array );
     }
 }
