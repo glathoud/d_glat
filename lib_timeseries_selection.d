@@ -19,9 +19,7 @@ import std.stdio;
 
 // ---------- API ----------
 
-alias TArrLikeDflt(T) = T[];
-
-T[] apply(T, TArrLike=TArrLikeDflt!T)( in TimeseriesSelection ts_sel, TArrLike arr )
+T[] apply(T, TArrLike=T[])( in TimeseriesSelection ts_sel, TArrLike arr )
 {
   T[] ret;
 
