@@ -473,7 +473,9 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
           return new JsonbinT!T();
         }
       
-      return new JsonbinT!T( j_str, Matrix( dim, data ) );
+      return new JsonbinT!T( j_str
+                             , Matrix( ts_sel.isFull  ?  dim  :  [0UL]~dim[ 1..$ ]
+                                       , data ) );
     }
 }
 
