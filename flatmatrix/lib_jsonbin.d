@@ -614,6 +614,11 @@ class _FakeArrAroundReadFile(T)
   T opIndex( in size_t ind )
   {
     f.seek( idx0 + ind * T.sizeof );
+    return _read_one;
+  }
+
+  private T _read_one()
+  {
     auto x = f.rawRead( buf );
     debug assert( x.length == 1 );
     
@@ -642,7 +647,7 @@ class _FakeArrAroundReadFile(T)
       {
         size_t j = 0;
         foreach (i; begin..end)
-          ret[ j++ ] = opIndex( i ); // xxx TODO: try optim seek T.sizeof SEEK_CUR
+          ret[ j++ ] = _read_one();
       }
       
       return ret;
