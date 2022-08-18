@@ -268,7 +268,7 @@ JsonbinT!T jsonbin_of_filename_or_copy
   string error_msg;
   auto ret =
     Action_of_filename_or_copy!(/*only_meta:*/false,T,prefix)
-    ( filename, error_msg, verbose );
+    ( filename, error_msg, TS_SEL_FULL, verbose );
 
   mixin(alwaysAssertStderr(`0 == error_msg.length`,`error_msg`));
   
@@ -282,7 +282,7 @@ JsonbinT!T jsonbinmeta_of_filename_or_copy
   string error_msg;
   auto ret =
     Action_of_filename_or_copy!(/*only_meta:*/true,T,prefix)
-    ( filename, error_msg, verbose );
+    ( filename, error_msg, TS_SEL_FULL, verbose );
 
   mixin(alwaysAssertStderr(`0 == error_msg.length`,`error_msg`));
   
@@ -291,21 +291,26 @@ JsonbinT!T jsonbinmeta_of_filename_or_copy
 
 
 
+
+
 JsonbinT!T jsonbin_of_filename_or_copy
 (T = double, string prefix = ".save-")
-( in string filename, ref string error_msg, bool verbose = true )
+( in string filename, ref string error_msg
+  , in TimeseriesSelection ts_sel = TS_SEL_FULL, bool verbose = true )
 {
   return Action_of_filename_or_copy!(/*only_meta:*/false,T,prefix)
-    ( filename, error_msg, verbose );
+    ( filename, error_msg, ts_sel, verbose );
 }
 
 JsonbinT!T jsonbinmeta_of_filename_or_copy
 (T = double, string prefix = ".save-")
-( in string filename, ref string error_msg, bool verbose = true )
+( in string filename, ref string error_msg
+  , in TimeseriesSelection ts_sel = TS_SEL_FULL, bool verbose = true )
 {
   return Action_of_filename_or_copy!(/*only_meta:*/true,T,prefix)
-    ( filename, error_msg, verbose );
+    ( filename, error_msg, ts_sel, verbose );
 }
+
 
 
 
@@ -314,10 +319,11 @@ JsonbinT!T Action_of_filename_or_copy
   , T = double
   , string prefix = ".save-"
   )
-( in string filename, ref string error_msg, bool verbose = true )
+( in string filename, ref string error_msg
+  , in TimeseriesSelection ts_sel = TS_SEL_FULL, bool verbose = true )
 {
   JsonbinT!T ret =
-    jsonbin_of_filename!(T, only_meta)( filename, error_msg );
+    jsonbin_of_filename!(T, only_meta)( filename, error_msg, ts_sel );
 
   if (0 < error_msg.length)
     {
@@ -331,7 +337,7 @@ JsonbinT!T Action_of_filename_or_copy
       foreach_reverse (fallback; fallback_arr) // try latest first
         {
           ret = jsonbin_of_filename!(T, only_meta)
-            ( fallback, error_msg );
+            ( fallback, error_msg, ts_sel );
           
           if (0 < error_msg.length)
             {
@@ -372,12 +378,16 @@ JsonbinT!T jsonbinmeta_of_filename( T = double )
 
 
 JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
+( in string filename )
+{
+  return jsonbin_of_filename!(T,only_meta)( filename, TS_SEL_FULL );
+}
+
+JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
 ( in string filename, TimeseriesSelection ts_sel = TS_SEL_FULL ) 
 {
-  mixin(alwaysAssertStderr!`ts_sel.isFull`); // xxx !isFull: not implemented yet
-  
   string error_msg;
-  auto ret = jsonbin_of_filename!(T, only_meta)( filename, error_msg );
+  auto ret = jsonbin_of_filename!(T, only_meta)( filename, error_msg, ts_sel );
 
   mixin(alwaysAssertStderr(`0 == error_msg.length`
                            ,`"jsonbin_of_filename: failed on filename '"~filename~"' with error '"~error_msg~"'"`));
@@ -385,8 +395,10 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
   return ret;
 }
 
+
+
 JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
-( in string filename, ref string error_msg )
+( in string filename, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL )
 {
   if (!exists( filename ))
     {
@@ -403,21 +415,20 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
   if (filename.endsWith( ".gz" ))
     data = gunzip( data );
   
-  return jsonbin_of_ubytes!(T, only_meta)( data, error_msg );
+  return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
 }
 
 JsonbinT!T jsonbin_of_ubytes( T = double, bool only_meta = false )( in ubyte[] cdata )
 {
-  
   return jsonbin_of_chars!(T, only_meta)( cast( char[] )( cdata ) );
 }
 
 JsonbinT!T jsonbin_of_ubytes( T = double, bool only_meta = false )
-( in ubyte[] cdata, ref string error_msg )
-{
-  
-  return jsonbin_of_chars!(T, only_meta)( cast( char[] )( cdata ), error_msg );
+( in ubyte[] cdata, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL  )
+{ 
+  return jsonbin_of_chars!(T, only_meta)( cast( char[] )( cdata ), error_msg, ts_sel );
 }
+
 
 JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )( in char[] cdata )
 {
@@ -431,7 +442,7 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )( in char[] cda
 }
 
 JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
-( in char[] cdata, ref string error_msg ) 
+( in char[] cdata, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL ) 
 // `0 < error_msg.length` if and only if failed.
 {
   error_msg = "";
@@ -452,7 +463,7 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
   else
     {
       auto data = jsonbin_read_chars_rest!T( cdata, index, compression
-                                             , error_msg );
+                                             , error_msg, ts_sel );
       
       if (0 == error_msg.length  &&  data.length != dim.reduce!`a*b`)
         {
@@ -712,6 +723,7 @@ void jsonbin_read_chars_meta( T )
 
 T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string compression
                                 , ref string error_msg
+                                , in TimeseriesSelection ts_sel = TS_SEL_FULL
                                 )
 // Low-level access to data starting at `index`.
 {
@@ -757,6 +769,10 @@ T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string comp
             data[ k ] = rest.peek!(T, Endian.littleEndian)( &q );
         }
     }
+
+  if (!ts_sel.isFull)
+    data = ts_sel.apply( data );
+  
   return data;
 }
  
