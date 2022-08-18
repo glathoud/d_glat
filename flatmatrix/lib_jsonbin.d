@@ -1,6 +1,7 @@
 module d_glat.flatmatrix.lib_jsonbin;
 
 public import d_glat.flatmatrix.core_matrix;
+public import d_glat.lib_timeseries_selection;
 
 /*
   Jsonbin wrapper around a flat matrix: one metadata JSON string +
@@ -370,8 +371,11 @@ JsonbinT!T jsonbinmeta_of_filename( T = double )
 
 
 
-JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )( in string filename ) 
+JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
+( in string filename, TimeseriesSelection ts_sel = TS_SEL_FULL ) 
 {
+  mixin(alwaysAssertStderr!`ts_sel.isFull`); // xxx !isFull: not implemented yet
+  
   string error_msg;
   auto ret = jsonbin_of_filename!(T, only_meta)( filename, error_msg );
 

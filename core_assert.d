@@ -1,5 +1,14 @@
 module d_glat.core_assert;
 
+/*
+  Assert-like tools.
+  
+  By Guillaume Lathoud, 2022
+  glat@glat.info
+  
+  Boost Software License version 1.0, see ./LICENSE
+*/
+
 public import std.stdio : stderr;
 
 import std.array : replace;
