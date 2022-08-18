@@ -14,6 +14,7 @@ import d_glat.core_assert;
 import d_glat.lib_search_bisection;
 import std.algorithm : max, min;
 import std.conv : to;
+import std.math : isNaN;
 
 // ---------- API ----------
 
