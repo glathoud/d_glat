@@ -407,15 +407,27 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
       return jb_empty;
     }
 
-  auto data = cast( ubyte[] )( std.file.read( filename ) );
-
   // Two possibilities to compress: whole file (automatic from the
   // ".gz" filename extension), or only data part (explicit from
   // `compression_type == COMPRESSION_GZIP`)
   if (filename.endsWith( ".gz" ))
-    data = gunzip( data );
-  
-  return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
+    {
+      auto data = cast( ubyte[] )( std.file.read( filename ) );
+      data = gunzip( data );
+      return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
+    }
+
+  static if (true) // xxx
+    {
+      // old impl
+      auto data = cast( ubyte[] )( std.file.read( filename ) );
+      return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
+    }
+  else
+    {
+      auto f = File( filename, "r" );
+      return jsonbin_of_file!(T, only_meta)( f, error_msg, ts_sel );
+    }
 }
 
 JsonbinT!T jsonbin_of_ubytes( T = double, bool only_meta = false )( in ubyte[] cdata )
@@ -464,8 +476,13 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
     {
       auto data = jsonbin_read_chars_rest!T( cdata, index, compression
                                              , error_msg, ts_sel );
-      
-      if (0 == error_msg.length  &&  data.length != dim.reduce!`a*b`)
+
+      if (0 == error_msg.length
+          &&  (ts_sel.isFull
+               ?  (data.length != dim.reduce!`a*b`)
+               :  (0 != (data.length % (dim[1..$].reduce!`a*b`)))
+               )
+          )
         {
           error_msg = "invalid data.length "~to!string(data.length)
             ~", does not match dim "~to!string(dim)
@@ -478,6 +495,42 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
                                        , data ) );
     }
 }
+
+
+
+
+JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
+( std.file.File f, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL )
+{
+  error_msg = "";
+
+  size_t   index = 0;
+  string   j_str;
+  size_t[] dim;
+  string   compression;
+
+  jsonbin_read_file_meta!T( f
+                            , index 
+                            , j_str, dim, compression );
+  
+  static if (only_meta)
+    {
+      return new JsonbinT!T( j_str, Matrix( dim, 0 ) );
+    }
+  else
+    {
+      if (compression != COMPRESSION_NONE)
+        {
+          // Need to uncompress first => fall back on the read-everything-first implementation
+          auto cdata = cast(char[])( std.file.read( f.name ) );
+          return jsonbin_of_chars!(T, only_meta)( cdata, error_msg, ts_sel );
+        }
+
+      mixin(alwaysAssertStderr(`!f.name.endsWith(".gz")`,`f.name`));
+    }
+}
+
+
 
 void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in string compression_type = COMPRESSION_NONE )
 {
