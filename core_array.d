@@ -223,6 +223,35 @@ void subset_ind_arr_of_sorted_inplace_nogc( bool exact = true, T )
     }
 }
 
+
+
+
+T[] uniq_of_sorted_arr(T)( in T[] arr ) pure
+{
+  auto app = appender!(T[]);
+  {
+    T prev;
+    foreach (i,v; arr)
+      {
+        debug
+          {
+            if (0 < i)
+              assert( prev <= v );
+          }
+
+        if (i == 0  ||  prev < v)
+          app.put( v );
+
+        prev = v;
+      }
+  }
+
+  return app.data;
+}
+
+
+
+
 unittest
 {
   import std.path;
@@ -423,6 +452,17 @@ unittest
               , [ 0.2, 1.3, 3.0, 4.6, 6.2, 7.1, 7.7, 11.3, 12.7, ] )
             == [  0,   1,   2,   3,   4,   5,   6,    7,    8,   ]
             );   
+  }
+
+
+  {
+    assert( uniq_of_sorted_arr([ 1, 2, 3, 3, 3, 4, 5, 5, 6])
+            == [1,2,3,4,5,6]);
+  }
+
+  {
+    assert( uniq_of_sorted_arr([ 1,1,1, 2, 3, 3, 3, 4, 5, 5, 6,6])
+            == [1,2,3,4,5,6]);
   }
 
   
