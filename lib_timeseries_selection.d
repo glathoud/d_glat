@@ -29,7 +29,12 @@ T[] apply(T)( in TimeseriesSelection ts_sel, T[] arr )
           mixin(alwaysAssertStderr!`-1 < ts_sel.utc_ms_col_ind`);
           mixin(alwaysAssertStderr!`0 < ts_sel.n_col`);
           mixin(alwaysAssertStderr!`0 == arr.length % ts_sel.n_col`);
-      
+
+          immutable ib_utc_ms = ts_sel.inf_begin.utc_ms;
+          immutable ib_n_past = ts_sel.inf_begin.n_past;
+          mixin(alwaysAssertStderr!`-long.max < ib_utc_ms`);
+          mixin(alwaysAssertStderr!`0 <= ib_n_past`);
+          
           double begin_fun( in size_t ind )
           {
             immutable utc_ms = arr[ ind * ts_sel.n_col + ts_sel.utc_ms_col_ind ];
@@ -38,7 +43,7 @@ T[] apply(T)( in TimeseriesSelection ts_sel, T[] arr )
 
           // -0.5+... trick to be sure to get the very first occurence,
           // in case of duplicates.
-          immutable v = -0.5 + cast(double)( ts_sel.inf_begin.utc_ms );
+          immutable v = -0.5 + cast(double)( ib_utc_ms );
           immutable size_t a0 = 0;
           immutable size_t b0 = (arr.length / cast(size_t)( ts_sel.n_col ))-1;
 
@@ -51,8 +56,11 @@ T[] apply(T)( in TimeseriesSelection ts_sel, T[] arr )
           mixin(alwaysAssertStderr!`ind0 < size_t.max`);
           mixin(alwaysAssertStderr!`ind1 < size_t.max`);
           mixin(alwaysAssertStderr!`!isNaN( prop )`);
-      
-          ret = arr[ (ts_sel.n_col * (0.0 < prop  ?  ind1  :  ind0))..$ ];
+
+          immutable size_t i_row_0 = 0.0 < prop  ?  ind1  :  ind0;
+          immutable size_t i_row   = i_row_0 > ib_n_past  ?  i_row_0 - ib_n_past  :  0;
+          
+          ret = arr[ (ts_sel.n_col * i_row)..$ ];
         }
       else
         {
