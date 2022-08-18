@@ -417,14 +417,15 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
       return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
     }
 
-  static if (true) // xxx
+  static if (false) // xxx
     {
       // old impl
       auto data = cast( ubyte[] )( std.file.read( filename ) );
       return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
     }
-  else
+  else 
     {
+      // new impl
       auto f = File( filename, "r" );
       return jsonbin_of_file!(T, only_meta)( f, error_msg, ts_sel );
     }
@@ -476,20 +477,10 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
     {
       auto data = jsonbin_read_chars_rest!T( cdata, index, compression
                                              , error_msg, ts_sel );
-
-      if (0 == error_msg.length
-          &&  (ts_sel.isFull
-               ?  (data.length != dim.reduce!`a*b`)
-               :  (0 != (data.length % (dim[1..$].reduce!`a*b`)))
-               )
-          )
-        {
-          error_msg = "invalid data.length "~to!string(data.length)
-            ~", does not match dim "~to!string(dim)
-            ~", typically from a corrupt/truncated file";
-          return new JsonbinT!T();
-        }
       
+      if (!_check_data_length( error_msg, ts_sel, data.length, dim ))
+        return new JsonbinT!T();
+              
       return new JsonbinT!T( j_str
                              , Matrix( ts_sel.isFull  ?  dim  :  [0UL]~dim[ 1..$ ]
                                        , data ) );
@@ -498,9 +489,32 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
 
 
 
+bool _check_data_length( ref string error_msg, in TimeseriesSelection ts_sel
+                         , in size_t data_length, in size_t[] dim ) pure @safe
+{
+  if (0 == error_msg.length
+      &&  (ts_sel.isFull
+           ?  (data_length != dim.reduce!`a*b`)
+           :  (0 != (data_length % (dim[1..$].reduce!`a*b`)))
+           )
+      )
+    {
+      error_msg = "invalid data_length "~to!string(data_length)
+        ~", does not match dim "~to!string(dim)
+        ~", typically from a corrupt/truncated file";
+      return false;
+    }
+
+  return 0 == error_msg.length;
+}
+      
+
+
+
+
 
 JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
-( std.file.File f, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL )
+( std.stdio.File f, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL )
 {
   error_msg = "";
 
@@ -527,10 +541,122 @@ JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
         }
 
       mixin(alwaysAssertStderr(`!f.name.endsWith(".gz")`,`f.name`));
+
+      auto data = jsonbin_read_file_rest!T( f, index, compression
+                                            , error_msg, ts_sel );
+      
+      if (!_check_data_length( error_msg, ts_sel, data.length, dim ))
+        return new JsonbinT!T();
+      
+      return new JsonbinT!T( j_str
+                             , Matrix( ts_sel.isFull  ?  dim  :  [0UL]~dim[ 1..$ ]
+                                       , data ) );
     }
 }
 
 
+
+
+
+
+T[] jsonbin_read_file_rest(T)( ref std.stdio.File f, in size_t index, in string compression
+                               , ref string error_msg
+                               , in TimeseriesSelection ts_sel = TS_SEL_FULL
+                               )
+{
+  mixin(alwaysAssertStderr(`compression == COMPRESSION_NONE`, `compression`));
+
+  // We always saved the data in littleEndian format
+
+  T[] data;
+
+  immutable rest_length_0 = f.size - index;
+  
+  immutable must_be_zero = rest_length_0 % T.sizeof;
+  if (0 != must_be_zero)
+    {
+      error_msg = "corrupt or truncated data, cannot cast or peek, details: endian == Endian.littleEndian: "~to!string( endian == Endian.littleEndian )~", rest_length_0: "~to!string( rest_length_0 )~", T.sizeof: "~to!string( T.sizeof )~", %: "~to!string( must_be_zero );
+      return data;
+    }
+
+  auto fake_arr = new _FakeArrAroundReadFile!T( f, index );
+  return ts_sel.apply!(T,typeof(fake_arr))( fake_arr );
+}
+
+class _FakeArrAroundReadFile(T)
+{
+  private std.stdio.File f;
+  private size_t        idx0;
+  private T             one_T;
+  private T[]           buf;
+  private ubyte[]       buf_UB;
+  private size_t        _length;
+  
+  this( ref std.stdio.File f, in size_t idx0 )
+    {
+      this.f    = f;
+      this.idx0 = idx0;
+
+      mixin(alwaysAssertStderr(`idx0 < f.size`,`to!string([idx0,f.size])`));
+      
+      immutable byte_length = f.size - idx0;
+      mixin(alwaysAssertStderr(`0 == byte_length % T.sizeof`, `to!string([f.size, idx0, T.sizeof])`));
+
+      _length = byte_length / T.sizeof;
+
+      buf = [one_T];
+      buf_UB = cast(ubyte[])( buf );
+    }
+
+  size_t length() pure const @safe @nogc
+  {
+    return _length;
+  }
+
+  size_t opDollar() pure const @safe @nogc
+  {
+    return length();
+  }
+
+
+  
+  T opIndex( in size_t ind )
+  {
+    f.seek( idx0 + ind * T.sizeof );
+    auto x = f.rawRead( buf );
+    debug assert( x.length == 1 );
+    
+    version (BigEndian)
+      buf_UB.reverse;
+    
+    return one_T;
+  }
+  
+  T[] opSlice( size_t begin, size_t end )
+    {
+      mixin(alwaysAssertStderr(`end <= _length`, `to!string([end, length])`));
+
+      if (end >= begin)
+        {
+          T[] ret;
+          return ret;
+        }
+      
+      immutable n = end - begin;
+      
+      auto ret = new T[ n ];
+
+      f.seek( idx0 + begin * T.sizeof );
+
+      {
+        size_t j = 0;
+        foreach (i; begin..end)
+          ret[ j++ ] = opIndex( i ); // xxx optim seek T.sizeof SEEK_CUR
+      }
+      
+      return ret;
+    }
+}
 
 void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in string compression_type = COMPRESSION_NONE )
 {
@@ -723,6 +849,25 @@ T[] jsonbindata_of_filename
   catch (object.Exception e) { mixin(CATCH_CODE); }
 }
 
+
+
+void jsonbin_read_file_meta( T )
+  ( ref std.stdio.File f
+    , /*input/output*/ref size_t index
+    , /*outputs:*/ref string j_str, ref size_t[] dim, ref string compression 
+    )
+// Low-level access to metadata, `index` is updated.
+{
+  auto byli = f.byLineCopy;
+  auto line_0 = byli.front; byli.popFront();
+  auto line_1 = byli.front; byli.popFront();
+  auto line_2 = byli.front; byli.popFront();
+  
+  jsonbin_read_chars_meta!T( [line_0, line_1, line_2, ""].join( '\n' )
+                             , index 
+                             , j_str, dim, compression );
+}
+
 void jsonbin_read_chars_meta( T )
   ( in char[] cdata
     , /*input/output*/ref size_t index
@@ -776,6 +921,8 @@ void jsonbin_read_chars_meta( T )
   compression = s_arr_1[ 1 ].idup.strip;
 }
 
+
+
 T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string compression
                                 , ref string error_msg
                                 , in TimeseriesSelection ts_sel = TS_SEL_FULL
@@ -823,11 +970,11 @@ T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string comp
           foreach (k; 0..n)
             data[ k ] = rest.peek!(T, Endian.littleEndian)( &q );
         }
+
+      if (!ts_sel.isFull)
+        data = ts_sel.apply!T( data );
     }
 
-  if (!ts_sel.isFull)
-    data = ts_sel.apply( data );
-  
   return data;
 }
  

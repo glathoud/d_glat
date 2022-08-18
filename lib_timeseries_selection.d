@@ -18,7 +18,9 @@ import std.math : isNaN;
 
 // ---------- API ----------
 
-T[] apply(T)( in TimeseriesSelection ts_sel, T[] arr )
+alias TArrLikeDflt(T) = T[];
+
+T[] apply(T, TArrLike=TArrLikeDflt!T)( in TimeseriesSelection ts_sel, TArrLike arr )
 {
   T[] ret;
 
@@ -67,7 +69,7 @@ T[] apply(T)( in TimeseriesSelection ts_sel, T[] arr )
           mixin(alwaysAssertStderr(`ts_sel.isFull`
                                    ,`"maybe implementation missing (todo)"`));
 
-          ret = arr;
+          ret = arr[ 0..$ ]; // [0..$] necessary to read from fake arrays
         }
     }
   
