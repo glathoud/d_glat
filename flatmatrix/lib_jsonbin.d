@@ -417,18 +417,8 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
       return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
     }
 
-  static if (false) // xxx
-    {
-      // old impl
-      auto data = cast( ubyte[] )( std.file.read( filename ) );
-      return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
-    }
-  else 
-    {
-      // new impl
-      auto f = File( filename, "r" );
-      return jsonbin_of_file!(T, only_meta)( f, error_msg, ts_sel );
-    }
+  auto f = File( filename, "r" );
+  return jsonbin_of_file!(T, only_meta)( f, error_msg, ts_sel );
 }
 
 JsonbinT!T jsonbin_of_ubytes( T = double, bool only_meta = false )( in ubyte[] cdata )
@@ -477,7 +467,7 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
     {
       auto data = jsonbin_read_chars_rest!T( cdata, index, compression
                                              , error_msg, ts_sel );
-      
+
       if (!_check_data_length( error_msg, ts_sel, data.length, dim ))
         return new JsonbinT!T();
               
@@ -502,6 +492,7 @@ bool _check_data_length( ref string error_msg, in TimeseriesSelection ts_sel
       error_msg = "invalid data_length "~to!string(data_length)
         ~", does not match dim "~to!string(dim)
         ~", typically from a corrupt/truncated file";
+
       return false;
     }
 
@@ -544,7 +535,7 @@ JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
 
       auto data = jsonbin_read_file_rest!T( f, index, compression
                                             , error_msg, ts_sel );
-      
+
       if (!_check_data_length( error_msg, ts_sel, data.length, dim ))
         return new JsonbinT!T();
       
@@ -580,6 +571,7 @@ T[] jsonbin_read_file_rest(T)( ref std.stdio.File f, in size_t index, in string 
     }
 
   auto fake_arr = new _FakeArrAroundReadFile!T( f, index );
+
   return ts_sel.apply!(T,typeof(fake_arr))( fake_arr );
 }
 
@@ -587,7 +579,6 @@ class _FakeArrAroundReadFile(T)
 {
   private std.stdio.File f;
   private size_t        idx0;
-  private T             one_T;
   private T[]           buf;
   private ubyte[]       buf_UB;
   private size_t        _length;
@@ -604,7 +595,7 @@ class _FakeArrAroundReadFile(T)
 
       _length = byte_length / T.sizeof;
 
-      buf = [one_T];
+      buf    = new T[ 1 ];
       buf_UB = cast(ubyte[])( buf );
     }
 
@@ -628,15 +619,15 @@ class _FakeArrAroundReadFile(T)
     
     version (BigEndian)
       buf_UB.reverse;
-    
-    return one_T;
+
+    return buf[ 0 ];
   }
   
   T[] opSlice( size_t begin, size_t end )
     {
       mixin(alwaysAssertStderr(`end <= _length`, `to!string([end, length])`));
 
-      if (end >= begin)
+      if (end <= begin)
         {
           T[] ret;
           return ret;
@@ -651,7 +642,7 @@ class _FakeArrAroundReadFile(T)
       {
         size_t j = 0;
         foreach (i; begin..end)
-          ret[ j++ ] = opIndex( i ); // xxx optim seek T.sizeof SEEK_CUR
+          ret[ j++ ] = opIndex( i ); // xxx TODO: try optim seek T.sizeof SEEK_CUR
       }
       
       return ret;

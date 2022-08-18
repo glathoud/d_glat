@@ -15,6 +15,7 @@ import d_glat.lib_search_bisection;
 import std.algorithm : max, min;
 import std.conv : to;
 import std.math : isNaN;
+import std.stdio;
 
 // ---------- API ----------
 
@@ -69,7 +70,7 @@ T[] apply(T, TArrLike=TArrLikeDflt!T)( in TimeseriesSelection ts_sel, TArrLike a
           mixin(alwaysAssertStderr(`ts_sel.isFull`
                                    ,`"maybe implementation missing (todo)"`));
 
-          ret = arr[ 0..$ ]; // [0..$] necessary to read from fake arrays
+          ret = arr[ 0..$ ]; // [0..$] necessary to read from fake arrays (./flatmatrix/lib_jsonbin.d)
         }
     }
   
