@@ -2,6 +2,7 @@ module d_glat.lib_subset_ind_of_sorted_timeref;
 
 import std.algorithm : filter, map, sort; 
 import std.array : appender, array;
+import std.conv : to;
 import std.math : abs;
 import std.range : enumerate;
 import std.stdio;
@@ -11,15 +12,18 @@ import std.stdio;
 
   By Guillaume Lathoud, 2019
   glat@glat.info
- */
+*/
 
 void subset_ind_of_sorted_timeref
-( TT/*TT means: TimeType (e.g. `long`)*/ )
+( bool auto_max_deltatime_midseg = false // means "automatically in the middle of timref segments"
+  , TT/*TT means: TimeType (must be signed, e.g. `long`)*/
+  )
   ( /*inputs:*/in TT[] timeref_arr, in TT[] time_arr
     , /*outputs:*/ref size_t[] ind_arr, ref TT[] deltatime_arr
+
     , /*option:*/TT max_deltatime = TT.max
     )
-pure
+  pure
 /*
   Task: 
 
@@ -33,14 +37,14 @@ pure
   Details:
 
   - Input: two increasingly sorted arrays `timeref_arr` and
-    `time_arr`.
+  `time_arr`.
 
   - Output: `ind_arr` an increasingly sorted array of indices in
   `time_arr`, and the corresponding `deltatime_arr` (signed values).
   
   - Option: restrict `max_deltatime` (by default: no restriction).
- */
-in
+*/
+  in
 {
   debug
     {
@@ -58,11 +62,11 @@ out
 
       assert( ind_arr.length == deltatime_arr.length );
       
-      if (max_deltatime == TT.max)
-          assert( ind_arr.length       == timeref_arr.length );
+      if (!auto_max_deltatime_midseg  &&  max_deltatime == TT.max)
+        assert( ind_arr.length       == timeref_arr.length );
 
       else
-          assert( ind_arr.length       <= timeref_arr.length );
+        assert( ind_arr.length       <= timeref_arr.length );
 
       
       assert( ind_arr == ind_arr.dup.sort.array );
@@ -83,12 +87,8 @@ body
   
   /*
     1. loop: pick the best match in `time_arr` for `timeref_arr`
-       update `data_max_deltatime`
   */
 
-  // for optional restriction `max_deltatime`, implemented in 2.
-  TT data_max_deltatime = -1;
-  
   // output
   auto ind_app       = appender!(size_t[]);
   auto deltatime_app = appender!(TT[]);
@@ -96,8 +96,10 @@ body
   // indices in `time_arr`
   size_t    i      = 0;
   immutable t_len  = time_arr.length;
+
+  immutable tref_len_m1 = timeref_arr.length - 1;
   
-  foreach (tref; timeref_arr)
+  foreach (i_tref,tref; timeref_arr)
     {
       bool   found = false;
       size_t best_i;
@@ -127,42 +129,58 @@ body
 
       debug assert( found );
 
-      ind_app      .put( best_i );
-      deltatime_app.put( best_deltatime );
+      immutable accept_it = (){
 
-      if (best_abs_deltatime > data_max_deltatime)
-        data_max_deltatime = best_abs_deltatime;
+        static if (auto_max_deltatime_midseg)
+          {
+            // limits automatically in the middle of timref segments
+            
+            auto min_dt = 0 < i_tref  ?  (timeref_arr[ i_tref - 1 ] - tref) * 0.5
+            :  -TT.max;
+            
+            auto max_dt = i_tref < tref_len_m1  ?  (timeref_arr[ i_tref + 1 ] - tref) * 0.5
+            :  TT.max;
+
+            if (0 == i_tref)
+              min_dt = -max_dt; // symmetric copy
+
+            else if (i_tref == tref_len_m1)
+              max_dt = -min_dt; // symmetric copy
+
+            debug assert( -TT.max < min_dt  &&  min_dt <= 0,     "wrong min_dt:"~to!string( min_dt ) );
+            debug assert(      0 <= max_dt  &&  max_dt < TT.max, "wrong max_dt:"~to!string( max_dt ) );
+            
+            if (best_deltatime < min_dt  ||  max_dt < best_deltatime)
+              return false;
+          }
+            
+        // and/or filter out based on a fixed `max_deltatime` value
+            
+        if (0 < max_deltatime  &&  max_deltatime < best_abs_deltatime)
+          return false; 
+
+        // accept it
+            
+        return true;
+
+      }();
+
+      if (accept_it)
+        {
+          ind_app      .put( best_i );
+          deltatime_app.put( best_deltatime );
+        }
       
       // Since the arrays are sorted, for the next `tref`, all the
       // previous ones (<best_i) will be worse, so we ignore them.
       i = best_i;
     }
 
-  /*
-    2. if necessary, filter out the ones having too much deltatime
-   */
-
-  debug assert( 0 <= data_max_deltatime );
+  // Return values
   
-  if (data_max_deltatime > max_deltatime)
-    {
-      auto deltatime_data = deltatime_app.data;
-      auto ind_data       = ind_app      .data;
-
-      auto tmp = deltatime_app
-        .data
-        .enumerate
-        .filter!( a => a.value <= max_deltatime );
-      
-      ind_arr       = tmp.map!( a => ind_data[ a.index ] ).array;
-      deltatime_arr = tmp.map!"a.value".array;
-    }
-  else
-    {
-        ind_arr       =       ind_app.data;
-        deltatime_arr = deltatime_app.data;
-    }
-
+  ind_arr       =       ind_app.data;
+  deltatime_arr = deltatime_app.data;
+  
   ind_app.clear;
   deltatime_app.clear;
 }
