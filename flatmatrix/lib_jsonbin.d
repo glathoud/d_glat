@@ -29,7 +29,7 @@ import std.file;
 import std.json;
 import std.range;
 import std.stdio;
-import std.string : indexOf, strip;
+import std.string : indexOf, splitLines, strip;
 import std.system;
 
 alias Jsonbin = JsonbinT!double;
@@ -37,6 +37,9 @@ alias Jsonbin = JsonbinT!double;
 immutable COMPRESSION      = "compression";
 immutable COMPRESSION_GZIP = "gzip";
 immutable COMPRESSION_NONE = "none";
+
+immutable J_FIRST_ROW = "first_row";
+immutable J_LAST_ROW  = "last_row";
 
 /*
   Implementation note: we preferred here a `class` over a `struct`
@@ -683,11 +686,58 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
   {
     // for a quick overview
     auto m_filaro = jb.m.subset_row( [0, jb.m.nrow-1] );
+    immutable jb_m_rd = jb.m.restdim;
+    mixin(alwaysAssertStderr!`m_filaro.restdim     == jb_m_rd`);
+    mixin(alwaysAssertStderr!`m_filaro.data.length == (jb_m_rd << 1) /*usual case: at least 2 rows*/
+          ||  m_filaro.data.length == jb_m_rd /*rare case: only one row*/
+          `);
+    
+    auto j_first_last_row = parseJSON( "{}" );
+    j_first_last_row.object[ J_FIRST_ROW ] = j_row_of( m_filaro.data[ 0..jb_m_rd ],   jb.j_str );
+    j_first_last_row.object[ J_LAST_ROW  ] = j_row_of( m_filaro.data[ $-jb_m_rd..$ ], jb.j_str );
+    
     std.file.write( filename~".first_last_row.txt"
-                    , m_filaro.toString~".\n"~_dimstring_of_jb( jb )~'\n'~jb.j_str~'\n'
+                    , m_filaro.toString
+                    ~".dim:\n"~_dimstring_of_jb( jb )~'\n'
+                    ~".j_str:\n"~jb.j_str~'\n'
+                    ~".first_last_row_json:\n"~j_first_last_row.toString(JSONOptions.specialFloatLiterals)~'\n'
                     );
   }
 }
+
+JSONValue j_first_last_row_of( string s ) { return j_first_last_row_of( s.splitLines ); }
+
+JSONValue j_first_last_row_of( File f ) { return j_first_last_row_of( f.byLine ); }
+
+JSONValue j_first_last_row_of(R)( R line_r )
+{
+  bool about_to = false;
+  foreach (line; line_r)
+    {
+      if (about_to)
+          return parseJSON( line.strip );
+      else
+          about_to = line.strip == ".first_last_row_json:";
+    }
+
+  assert( false, "lib_jsonbin: j_first_last_row_of: failed to read .first_last_row_json");
+}
+
+JSONValue j_row_of( in double[] data, in string j_str )
+{
+  auto c_arr = parseJSON( j_str ).object[ "column_name_arr" ].array.map!"a.str".array;
+  mixin(alwaysAssertStderr(`data.length == c_arr.length`, `to!string([data.length, c_arr.length])`));
+
+  auto j_ret = parseJSON( "{}" );
+  foreach (i,c; c_arr)
+    {
+      mixin(alwaysAssertStderr!`0 < c.length`);
+      j_ret.object[ c ] = JSONValue( data[ i ] );
+    }
+  
+  return j_ret;
+}
+
 
 private string _dimstring_of_jb(T)( in JsonbinT!T jb ) pure @safe
 {
