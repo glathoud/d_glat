@@ -41,6 +41,8 @@ immutable COMPRESSION_NONE = "none";
 immutable J_FIRST_ROW = "first_row";
 immutable J_LAST_ROW  = "last_row";
 
+immutable FIRST_LAST_ROW_EXT = ".first_last_row.txt";
+
 /*
   Implementation note: we preferred here a `class` over a `struct`
   to better deal with the following use case: parallel processing
@@ -696,7 +698,7 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
     j_first_last_row.object[ J_FIRST_ROW ] = j_row_of( m_filaro.data[ 0..jb_m_rd ],   jb.j_str );
     j_first_last_row.object[ J_LAST_ROW  ] = j_row_of( m_filaro.data[ $-jb_m_rd..$ ], jb.j_str );
     
-    std.file.write( filename~".first_last_row.txt"
+    std.file.write( filename~FIRST_LAST_ROW_EXT
                     , m_filaro.toString
                     ~".dim:\n"~_dimstring_of_jb( jb )~'\n'
                     ~".j_str:\n"~jb.j_str~'\n'
@@ -705,22 +707,34 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
   }
 }
 
-JSONValue j_first_last_row_of( string s ) { return j_first_last_row_of( s.splitLines ); }
-
-JSONValue j_first_last_row_of( File f ) { return j_first_last_row_of( f.byLine ); }
-
-JSONValue j_first_last_row_of(R)( R line_r )
+JSONValue j_extra_info_of_first_last_row_lines( string s )
 {
+  return j_extra_info_of_first_last_row_lines( s.splitLines );
+}
+JSONValue j_extra_info_of_first_last_row_lines( File f )
+{
+  return j_extra_info_of_first_last_row_lines( f.byLine );
+}
+JSONValue j_extra_info_of_first_last_row_lines(R)( R line_r ) { return j_line!"j_str"( line_r ); }
+
+
+JSONValue j_first_last_row_of( string s )    { return j_first_last_row_of( s.splitLines ); }
+JSONValue j_first_last_row_of( File f )      { return j_first_last_row_of( f.byLine ); }
+JSONValue j_first_last_row_of(R)( R line_r ) { return j_line!"first_last_row_json"( line_r ); }
+
+JSONValue j_line(string name, R)( R line_r )
+{
+  immutable about_line = "."~name~":";
   bool about_to = false;
   foreach (line; line_r)
     {
       if (about_to)
-          return parseJSON( line.strip );
+        return parseJSON( line.strip );
       else
-          about_to = line.strip == ".first_last_row_json:";
+        about_to = line.strip == about_line;
     }
 
-  assert( false, "lib_jsonbin: j_first_last_row_of: failed to read .first_last_row_json");
+  assert( false, "lib_jsonbin: j_first_last_row_of: failed to read "~name );
 }
 
 JSONValue j_row_of( in double[] data, in string j_str )
