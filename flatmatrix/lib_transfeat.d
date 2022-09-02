@@ -47,7 +47,7 @@ import d_glat.flatmatrix.lib_nmvpca;
 import d_glat.flatmatrix.lib_pairs;
 import d_glat.flatmatrix.lib_sortindex;
 import std.algorithm : map;
-import std.array : array;
+import std.array : appender, array;
 import std.conv : to;
 import std.exception : enforce;
 import std.stdio;
@@ -156,10 +156,33 @@ struct TransfeatT( T )
     set_dim_and_do( modif, &top_m_in, &top_m_out );
   }
 
+  ~this()
+  {
+    // small optimization for long tasks: do not wait too much to
+    // release memory, i.e. do not wait for the GC.
+    
+    foreach (ptr; _mm_created_app.data)
+        destroy(*ptr); // https://ddili.org/ders/d.en/memory.html
+
+    // probably not necessary, the GC should take care of this
+    _mm_created_app.clear;
+    mimo_of_sexpr_id.clear;
+  }
+  
  private:
   
   alias MaybeMatrix = MatrixT!T*;
+
+  auto _mm_created_app = appender!(MaybeMatrix[]);
   
+  MaybeMatrix createMaybeMatrix()
+  {
+    auto ret = new MatrixT!T;
+    _mm_created_app.put( ret );
+    return ret;
+  }
+
+ 
   struct MinMout
   {
     // If is null => use _first_m_in resp. _last_m_out
@@ -214,7 +237,7 @@ struct TransfeatT( T )
             foreach (i, sub; slist.rest)
               {
                 // On the heap, to persist
-                auto m_ptr = new Matrix();
+                auto m_ptr = createMaybeMatrix();
                 MaybeMatrix sub_m_out = m_ptr;
                 
                 auto tmp = check_and_setup_modif
@@ -236,7 +259,7 @@ struct TransfeatT( T )
                 if (i < nm1)
                   {
                     // On the heap, to persist
-                    auto m_ptr = new Matrix();
+                    auto m_ptr = createMaybeMatrix();
                     current_m_out = m_ptr;
                   }
                 else

@@ -117,8 +117,7 @@ bool file_copy_rotate
 
       if (compress)
         {
-          mixin(_wr_here);printMemUsage();
-          
+          // mixin(_wr_here);printMemUsage();
           immutable new_filename = new_fn_core~".gz";
           ensure_file_writable_or_exit( new_filename, /*ensure_dir:*/true );
           std.file.write( new_filename, gzip( cast(ubyte[])( std.file.read( filename ))) );
