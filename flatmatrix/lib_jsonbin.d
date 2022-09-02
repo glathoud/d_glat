@@ -17,7 +17,6 @@ import core.memory;
 import d_glat.core_assert;
 import d_glat.core_file;
 import d_glat.core_gzip;
-import d_glat.core_memory;
 import d_glat.core_runtime;
 import d_glat.lib_file_copy_rotate;
 import std.algorithm;

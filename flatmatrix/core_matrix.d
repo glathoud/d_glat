@@ -10,8 +10,6 @@ module d_glat.flatmatrix.core_matrix;
   Boost Software License version 1.0, see ../LICENSE
 */
 
-public import d_glat.core_memory;
-
 import core.memory;
 import d_glat.core_array;
 import d_glat.core_assert;
