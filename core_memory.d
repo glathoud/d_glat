@@ -2,6 +2,28 @@ module d_glat.core_memory;
 
 import core.stdc.stdlib;
 import std.array : split;
+import std.conv  : to;
+import std.exception : enforce;
+import std.process : executeShell;
+import std.regex   : matchFirst;
+
+private size_t _total_ram;
+size_t getTotalRam()
+// in bytes
+{
+  if (0 == _total_ram)
+    {
+      auto tmp = executeShell( "free -b" );
+      enforce( tmp.status == 0, tmp.output );
+      auto mfr = tmp.output.matchFirst( r"\b\d+\b" );
+      enforce( !mfr.empty, tmp.output );
+      _total_ram = to!(typeof(_total_ram))( mfr[ 0 ] );
+      enforce( 0 < _total_ram );
+    }
+
+  return _total_ram;
+}
+
 
 string create(S)( in string name ) pure nothrow @safe
 {
