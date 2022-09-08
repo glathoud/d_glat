@@ -5,10 +5,14 @@ public import std.process;
 import core.thread;
 import d_glat.core_assert;
 import std.algorithm : any, all, filter, map;
+import std.array : array;
 import std.conv;
+import std.datetime : Clock, dur;
+import std.exception : assumeUnique, enforce;
 import std.format;
+import std.math : ceil;
 import std.path : baseName;
-import std.range : appender, array, enumerate;
+import std.range : appender, array, enumerate, iota;
 import std.stdio;
 import std.traits;
 
@@ -40,19 +44,75 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
  , ubyte restart_code = MP_DEFAULT_RESTART_CODE
  , bool fail_early = true
  )
-  ( in size_t n_processes, in string error_msg_prefix, in bool verbose = true )
+  ( in size_t n_processes, in string error_msg_prefix, in string rampup = ""
+    , in bool verbose = true )
+/*
+  `rampup`: optional progressive rampup e.g. "30s" or "1m" or
+  "0.75m" or "45s" => at the very beginning, start 1 process, then
+  wait for `rampup` time, then start the 2nd process, then wait,
+  etc.
+  
+  This is useful when the first minutes, each process has a
+  "warm-up" time where it consumes quite a bit of memory, then later
+  on "cruises" with little memory. That way we can maximize our use
+  of CPUs for long tasks, without running out of RAM right away.
+ */
 {
   auto spawner = spawner_function!spawner_0();
   assert(isCallable!spawner);
 
   immutable prefix_c = q{__FILE__ ~ "@line:" ~ to!string( __LINE__ ) ~ ":("~error_msg_prefix~")"};
   
+  // Optional progressive rampup
+  
+  auto rampup_dur = (){
+    
+    if (0 < rampup.length)
+      {
+        immutable x = to!double( rampup[0..$-1] );
+        switch (rampup[$-1])
+          {
+          case 's': return dur!"nsecs"( cast(long)( ceil( x *    1.0e9 ) ) );
+          case 'm': return dur!"nsecs"( cast(long)( ceil( x *   60.0e9 ) ) );
+          case 'h': return dur!"nsecs"( cast(long)( ceil( x * 3600.0e9 ) ) );
+          default: enforce( false, "lib_multiprocess: unsupported rampup string \""~rampup~"\"."
+                            ~` Supported: "23.0s" (seconds), "0.74m" (minutes), "1.57h" (hours)` );
+          }
+      }
+    
+    return Duration.zero;
+  }();
+
+  auto earlier_start_of_k_part = (){
+
+    auto t = Clock.currTime();
+
+    return iota( n_processes ).map!((k_part) {
+        if (0 < k_part)
+          t += rampup_dur;
+        
+        return t;
+      })
+    .array.assumeUnique;
+  }();
+  
+  // Main loop
+
   auto pid_arr = new Pid[ n_processes ];
+  
   while (true)
     {
+      auto now = Clock.currTime;
+
       // start/restart as needed
       foreach (k_part; 0..n_processes)
         {
+          if (now < earlier_start_of_k_part[ k_part ]) // when using `rampup`
+            {
+              assert( 0 < k_part );
+              continue;
+            }
+          
           if (pid_arr[ k_part ] is null)
             {
               if (verbose)
@@ -73,12 +133,14 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
 
       // check for restart and/or failures
 
-      auto twr = pid_arr.map!tryWait.enumerate;
+      auto twr_non_null = pid_arr.filter!"a !is null".map!tryWait.enumerate;
+      
       auto failed_arr  =
-        twr.filter!("a.value.terminated  &&  a.value.status != 0  &&  a.value.status != "~to!string(restart_code))
+        twr_non_null.filter!("a.value.terminated  &&  a.value.status != 0  &&  a.value.status != "~to!string(restart_code))
         .array;
+      
       auto restart_arr =
-        twr.filter!("a.value.terminated  &&  a.value.status == "~to!string(restart_code))
+        twr_non_null.filter!("a.value.terminated  &&  a.value.status == "~to!string(restart_code))
         .array;
 
       static if (fail_early)
@@ -86,10 +148,19 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
 
       foreach (ref x; restart_arr)
         pid_arr[ x.index ] = null;
-      
-      if (0 < restart_arr.length  ||  !(twr.all!"a.value.terminated"))
-        continue;
 
+      {
+        // specific to the rampup use case
+        immutable has_not_started_all_yet = pid_arr.any!"a is null";
+
+        // all use cases
+        immutable has_not_finished_all_yet =
+          0 < restart_arr.length  ||  !(twr_non_null.all!"a.value.terminated");
+        
+        if (has_not_started_all_yet  ||  has_not_finished_all_yet)
+          continue;
+      }
+      
       // done
       
       if (verbose)
