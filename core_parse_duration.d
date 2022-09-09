@@ -81,12 +81,18 @@ unittest
 
   assert( parse_duration( "2h" ) == 2.dur!"hours" );
   assert( parse_duration( "2h37" ) == 2.dur!"hours" + 37.dur!"minutes" );
+  assert( parse_duration( "2h37m" ) == 2.dur!"hours" + 37.dur!"minutes" );
   assert( parse_duration( "3m" ) == 3.dur!"minutes" );
   assert( parse_duration( "4s" ) == 4.dur!"seconds" );
   assert( parse_duration( "2h3m4s" ) == 2.dur!"hours" + 3.dur!"minutes" + 4.dur!"seconds" );
   assert( parse_duration( "2h3m4" ) == 2.dur!"hours" + 3.dur!"minutes" + 4.dur!"seconds" );
 
   assert( parse_duration( "2.5h3.75m4.031s" )
+          == 2.dur!"hours" + 30.dur!"minutes"
+          + 3.dur!"minutes" + 45.dur!"seconds"
+          + 4.dur!"seconds" + 31.dur!"msecs" );
+
+  assert( parse_duration( "2.5h3.75m4.031" )
           == 2.dur!"hours" + 30.dur!"minutes"
           + 3.dur!"minutes" + 45.dur!"seconds"
           + 4.dur!"seconds" + 31.dur!"msecs" );
