@@ -12,6 +12,7 @@ import std.datetime : dur, Duration;
 import std.exception : enforce;
 import std.math : round;
 import std.regex : matchFirst, matchAll;
+import std.stdio;
 
 
 immutable string parse_duration_units = "hms";
@@ -28,10 +29,11 @@ Duration parse_duration( in string in_s )
 
   alias units = parse_duration_units;
   
-  char next_unit_after( in string u )
+  char next_unit_after( in char u )
   {
     immutable ind = units.countUntil( u );
     enforce( 0 <= ind  &&  ind+1 < units.length, error_msg );
+
     return units[ 1 + ind ];
   }
   
@@ -40,8 +42,10 @@ Duration parse_duration( in string in_s )
       ?  in_s
 
       : // Autocomplete last unit, if missing: "1h40" => "1h40m"
-      in_s ~ next_unit_after( in_s.matchFirst( r"([a-z])[^a-z]+$")[ 1 ] )
+      in_s ~ next_unit_after( in_s.matchFirst( r"([a-z])[^a-z]+$")[ 1 ][ 0 ] )
       ;
+
+    enforce( units.canFind( s[ $-1 ] ), error_msg );
     
     foreach (c; s.matchAll( r"[^a-z]*[a-z]"))
       {
