@@ -4,6 +4,7 @@ public import std.process;
 
 import core.thread;
 import d_glat.core_assert;
+import d_glat.core_parse_duration;
 import std.algorithm : any, all, filter, map;
 import std.array : array;
 import std.conv;
@@ -65,24 +66,8 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
   
   // Optional progressive rampup
   
-  auto rampup_dur = (){
-    
-    if (0 < rampup.length)
-      {
-        immutable x = to!double( rampup[0..$-1] );
-        switch (rampup[$-1])
-          {
-          case 's': return dur!"nsecs"( cast(long)( ceil( x *    1.0e9 ) ) );
-          case 'm': return dur!"nsecs"( cast(long)( ceil( x *   60.0e9 ) ) );
-          case 'h': return dur!"nsecs"( cast(long)( ceil( x * 3600.0e9 ) ) );
-          default: enforce( false, "lib_multiprocess: unsupported rampup string \""~rampup~"\"."
-                            ~` Supported: "23.0s" (seconds), "0.74m" (minutes), "1.57h" (hours)` );
-          }
-      }
-    
-    return Duration.zero;
-  }();
-
+  auto rampup_dur = 0 < rampup.length  ?  parse_duration( rampup )  :  Duration.zero;
+  
   auto earlier_start_of_k_part = (){
 
     auto t = Clock.currTime();
