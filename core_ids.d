@@ -15,7 +15,7 @@ import std.functional : partial;
 
 struct IDS
 {
-  size_t id_of_string( in string s )
+  size_t id_of_string( in string s ) pure @safe nothrow
   {
     if (auto p = s in i_of_s_aa)
       return *p;
@@ -23,7 +23,7 @@ struct IDS
     return _register_id_of_string( s );
   }
 
-  string string_of_id( in size_t id )
+  string string_of_id( in size_t id ) pure @safe nothrow
   {
     return s_of_i_app.data[ id ];
   }
@@ -32,9 +32,9 @@ private:
   size_t[string]      i_of_s_aa;
   Appender!(string[]) s_of_i_app;
   
-  size_t _register_id_of_string( in string s )
+  size_t _register_id_of_string( in string s ) pure @safe nothrow
   {
-    debug mixin(alwaysAssertStderr!`s !in i_of_s_aa`);
+    debug assert( s !in i_of_s_aa );
     
     immutable id = s_of_i_app.data.length;
     
