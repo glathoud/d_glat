@@ -12,6 +12,8 @@ import std.stdio : stdout, writeln, writefln;
 /*
   Profiling through mixins.
 
+
+
   Example:
 
   for (i; 0..100)
@@ -21,18 +23,51 @@ import std.stdio : stdout, writeln, writefln;
 
   void do_some()
   {
-    mixin(profile_acc_begin); // whole function
-    mixin(profile_acc_begin); // part
+    mixin(profile_acc_begin(__FUNCTION__~":"~to!string(__LINE__))); // whole function
+    mixin(profile_acc_begin(__FUNCTION__~":"~to!string(__LINE__))); // part
     ...
-    mixin(profile_acc_end); // part
-    mixin(profile_acc_begin); // part
+    mixin(profile_acc_end(":"~to!string(__LINE__))); // part
+    mixin(profile_acc_begin(__FUNCTION__~":"~to!string(__LINE__))); // part
     ...
-    mixin(profile_acc_end); // part
-    mixin(profile_acc_begin); // part
+    mixin(profile_acc_end(":"~to!string(__LINE__))); // part
+    mixin(profile_acc_begin(__FUNCTION__~":"~to!string(__LINE__))); // part
     ...
-    mixin(profile_acc_end); // part
-    mixin(profile_acc_end); // whole function
+    mixin(profile_acc_end(":"~to!string(__LINE__))); // part
+    mixin(profile_acc_end(":"~to!string(__LINE__))); // whole function
   }
+
+
+  
+  This may be boring, so a few shortcuts are provided,
+  which permit to rewrite the example as:
+  
+  // top-level
+  enum PROFILE_ACC = true; // switch to false to deactivate profiling
+  mixin(PROFILE_SHORTCUTS);
+
+  ...
+
+  for (i; 0..100)
+    do_some();
+
+  mixin(P_ACC_DUMP);
+
+  void do_some()
+  {
+    mixin(P_ACC_BEGIN); // whole function
+    mixin(P_ACC_BEGIN); // part
+    ...
+    mixin(P_ACC_END_BEGIN); // part
+    ...
+    mixin(P_ACC_END_BEGIN); // part
+    ...
+    mixin(P_ACC_END_BEGIN); // part
+    ...
+    mixin(P_ACC_END); // part
+    mixin(P_ACC_END); // whole function
+  }
+
+
 
 
   The Boost License applies, as described in the file ./LICENSE
@@ -40,6 +75,19 @@ import std.stdio : stdout, writeln, writefln;
   By Guillaume Lathoud, 2022
   glat@glat.info
  */
+
+immutable P_ACC_SHORTCUTS = q{
+  string P_ACC_BEGIN() pure
+  { return PROFILE_ACC  ?  `profile_acc_begin( __FUNCTION__~":"~format("%4d",__LINE__) );`  :  ``; }
+
+  string P_ACC_END_BEGIN() pure { return P_ACC_END()~P_ACC_BEGIN(); }
+
+  string P_ACC_END() pure
+  { return PROFILE_ACC  ?  `profile_acc_end( ":"~format("%4d",__LINE__) );`  :  ``; }
+
+  string P_ACC_DUMP() pure
+  { return PROFILE_ACC  ?  `profile_acc_dump();`  :  ``; }
+};
 
 
 void profile_acc_begin(string profile_name = "")
