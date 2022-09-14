@@ -10,7 +10,30 @@ import std.format : format;
 import std.stdio : stdout, writeln, writefln;
 
 /*
-  Profiling through mixin.
+  Profiling through mixins.
+
+  Example:
+
+  for (i; 0..100)
+    do_some();
+
+  mixin(profile_acc_dump); // show aggregated statistics
+
+  void do_some()
+  {
+    mixin(profile_acc_begin); // whole function
+    mixin(profile_acc_begin); // part
+    ...
+    mixin(profile_acc_end); // part
+    mixin(profile_acc_begin); // part
+    ...
+    mixin(profile_acc_end); // part
+    mixin(profile_acc_begin); // part
+    ...
+    mixin(profile_acc_end); // part
+    mixin(profile_acc_end); // whole function
+  }
+
 
   The Boost License applies, as described in the file ./LICENSE
   
@@ -106,7 +129,7 @@ class ProfileAcc
         immutable comment_0     = comment_of_begin_name.get( begin_name, "" );
         immutable maybe_comment = 0 < comment_0.length  ?  " ("~comment_0~")"  :  "";
         
-        return format("%80s", begin_name ~ maybe_comment) ~ " ("~format("%6.2f", prct)~"%) " ~ to!string(drtn);
+        return format("%100s", begin_name ~ maybe_comment) ~ " ("~format("%6.2f", prct)~"%) " ~ to!string(drtn);
       }
 
     auto global_drtn_0 = global_sw.peek;
