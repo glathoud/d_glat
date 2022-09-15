@@ -500,17 +500,17 @@ double json_solve_calc_one( in ref JSONValue o
 
   const op = li.first.toString;
 
-  switch (nop)
+  if (nop == 1)
     {
-    case 1:
       switch (op)
         {
         case "round": return round( operands[ 0 ] );
         default: break;
         }
       throw new Exception( "Unknown (unary?) operator "~op~" from "~li.toString );
-
-    case 2:
+    }
+  else
+    {
       switch (op)
         {
         case "+": return operands.reduce!"a+b";
@@ -521,9 +521,6 @@ double json_solve_calc_one( in ref JSONValue o
         }
       
       throw new Exception( "Unknown (binary?) operator "~op~" from "~li.toString );
-
-    default:
-      throw new Exception( "Unsupported number of operands "~to!string(nop)~" from "~li.toString );
     }
 }
 

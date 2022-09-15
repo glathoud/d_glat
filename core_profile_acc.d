@@ -176,8 +176,12 @@ class ProfileAcc
 
         immutable comment_0     = comment_of_begin_name.get( begin_name, "" );
         immutable maybe_comment = 0 < comment_0.length  ?  " ("~comment_0~")"  :  "";
+
+        immutable bnmc = begin_name ~ maybe_comment;
         
-        return format("%100s", begin_name ~ maybe_comment) ~ " ("~format("%6.2f", prct)~"%) " ~ to!string(drtn);
+        immutable bnmc_100 = 100 >= bnmc.length  ?  bnmc  :  bnmc[0..33]~"..."~bnmc[$-64..$];
+        
+        return format("%100s", bnmc_100) ~ " ("~format("%6.2f", prct)~"%) " ~ to!string(drtn);
       }
 
     auto global_drtn_0 = global_sw.peek;
