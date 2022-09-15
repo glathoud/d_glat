@@ -1,12 +1,13 @@
 module d_glat.core_profile_acc;
 
+public import std.format : format;
+
 import d_glat.core_assert;
 import std.algorithm : canFind, map, sort;
 import std.array : array, join;
 import std.conv : to;
 import std.datetime : Duration;
 import std.datetime.stopwatch : AutoStart, StopWatch;
-import std.format : format;
 import std.stdio : stdout, writeln, writefln;
 
 /*

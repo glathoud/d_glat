@@ -9,13 +9,16 @@ module d_glat.lib_timeseries_selection;
   Boost Software License version 1.0, see ./LICENSE
 */
 
-import d_bourse_common.lib_time;
 import d_glat.core_assert;
 import d_glat.lib_search_bisection;
 import std.algorithm : max, min;
 import std.conv : to;
 import std.math : isNaN;
 import std.stdio;
+
+// xxx to remove
+import d_bourse_common.lib_time;
+import d_bourse_common.constants;
 
 // ---------- API ----------
 
@@ -133,8 +136,6 @@ struct InfBegin
 
   InfBegin get_inf( in InfBegin other ) const pure @safe @nogc nothrow
   {
-    
-    
     InfBegin ret = {
     utc_ms   : min( utc_ms, other.utc_ms )
     , n_past : max( n_past, other.n_past )
