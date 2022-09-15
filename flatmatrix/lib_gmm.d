@@ -82,7 +82,7 @@ struct GmmT( T )
   
   void ll_inplace_nogc( in ref MatrixT!T m_feature
                         , /*output:*/ref MatrixT!T m_ll )
-  pure @trusted @nogc
+  pure nothrow @trusted @nogc
     /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
 
        Input:  m_feature (npoints * <restdim>) where m_feature.restdim == gmm.dim

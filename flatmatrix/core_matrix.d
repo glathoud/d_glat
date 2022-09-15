@@ -90,17 +90,17 @@ struct MatrixT( T )
 
   void setDim( in size_t[] dim ) pure nothrow @safe
   {
-    size_t total = dim[ 0 ];
-    for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
-      total *= dim[ i ];
-
-    if (!(0 < total))
-      {
-        assert( false, "Here we cannot support `0` (for automatic nrow) since there is no data. Note: if you need to create an empty matrix, pass some empty data array, as in `Matrix([0,8], []) and NOT `Matrix([0,8])`." );
-      }
-    
     if (this.dim != dim)
       {
+        size_t total = dim[ 0 ];
+        for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
+          total *= dim[ i ];
+        
+        if (!(0 < total))
+          {
+            assert( false, "Here we cannot support `0` (for automatic nrow) since there is no data. Note: if you need to create an empty matrix, pass some empty data array, as in `Matrix([0,8], []) and NOT `Matrix([0,8])`." );
+          }
+        
         this.dim  = dim.dup;
         this.data = new T[ total ];
       }
