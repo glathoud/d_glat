@@ -17,6 +17,7 @@ import core.memory;
 import d_glat.core_assert;
 import d_glat.core_file;
 import d_glat.core_gzip;
+import d_glat.core_profile_acc;
 import d_glat.core_runtime;
 import d_glat.lib_file_copy_rotate;
 import std.algorithm;
@@ -56,7 +57,7 @@ immutable FIRST_LAST_ROW_EXT = ".first_last_row.txt";
   Guillaume Lathoud
 */
 
-class JsonbinT( T )
+class JsonbinT( T ) : ProfileMemC
 {
   string    j_str;
   MatrixT!T m;

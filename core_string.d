@@ -117,6 +117,26 @@ bool string_is_num09( in string s ) pure nothrow @safe @nogc
 }
 
 
+string string_shorten( in string s, in size_t nmax ) pure nothrow @safe
+{
+  debug assert( 5 <= nmax );
+  
+  immutable n = s.length;
+  if (n <= nmax)
+    return s;
+
+  immutable n_left_0  = nmax / 3;
+  immutable n_left    = 2 < n_left_0  ?  n_left_0 - 2  :  1;
+
+  immutable n_right = nmax - 3 - n_left;
+  
+  immutable ret = s[0..n_left]~"..."~s[$-n_right..$];
+  debug assert( ret.length == nmax );
+
+  return ret;
+}
+
+
 unittest // --------------------
 {
   import std.stdio;

@@ -3,6 +3,7 @@ module d_glat.core_profile_acc;
 public import std.format : format;
 
 import d_glat.core_assert;
+import d_glat.core_string : string_shorten;
 import std.algorithm : canFind, map, sort;
 import std.array : array, join;
 import std.conv : to;
@@ -179,8 +180,8 @@ class ProfileAcc
         immutable maybe_comment = 0 < comment_0.length  ?  " ("~comment_0~")"  :  "";
 
         immutable bnmc = begin_name ~ maybe_comment;
-        
-        immutable bnmc_100 = 100 >= bnmc.length  ?  bnmc  :  bnmc[0..33]~"..."~bnmc[$-64..$];
+
+        immutable bnmc_100 = bnmc.string_shorten( 100 );
         
         return format("%100s", bnmc_100) ~ " ("~format("%6.2f", prct)~"%) " ~ to!string(drtn);
       }
@@ -206,3 +207,82 @@ class ProfileAcc
   string[string] comment_of_begin_name;
   
 };
+
+
+public:
+
+// ----------------------------------------------------------------------
+// memory profiling - temporarily put here
+
+// xxx in the end put it there: module d_glat.core_profile_mem;
+
+import std.algorithm;
+import std.stdio;
+
+/*
+  To activate this, in your constants do this:
+  __pmc.active = true;
+
+  Then you can print once in a while the stats:
+  mixin(P_MEM_DUMP);
+*/
+
+immutable P_MEM_DUMP = "__pmc._dump();";
+
+// For structs
+immutable P_MEM_RGSTR = "__pmc._register( typeid(this).name );";
+immutable P_MEM_FRGT  = "__pmc._forget( typeid(this).name );";
+
+// For classes
+class ProfileMemC
+{
+  this() { mixin(P_MEM_RGSTR); }
+  ~this() { mixin(P_MEM_FRGT); }
+}
+
+__PMC __pmc;
+
+static this()
+{
+  __pmc = new __PMC;
+}
+
+private:
+
+class __PMC
+{
+  bool active = false;
+  
+  private long[string] _n_of_tin;
+  
+  void _register( in string tin ) pure @safe
+  {
+    if (!active)
+      return;
+    
+    _n_of_tin[ tin ] = 1 + _n_of_tin.get( tin, 0 );
+  }
+  
+  void _forget( in string tin ) pure @safe
+  {
+    if (!active)
+      return;
+    
+    _n_of_tin[ tin ] = -1 + _n_of_tin.get( tin, 0 );
+  }
+
+  void _dump()
+  {
+    stdout.flush;
+    writeln;
+    writeln("__________________________________profile_mem_dump__________________________________");
+    foreach (tin; _n_of_tin.keys.dup.sort)
+      {
+        immutable tin_70 = tin.string_shorten( 70 );
+        writefln(" %70s: %4d", tin_70, _n_of_tin[ tin ]);
+      }
+    writeln;
+    stdout.flush;
+  }
+  
+}
