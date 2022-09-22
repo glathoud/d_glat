@@ -1,7 +1,7 @@
 module d_glat.core_gzip;
 
-import d_oa_common.core_unittest;
-import d_oa_common.lib_oa_tmpfilename;
+import d_glat_priv.core_unittest;
+import d_glat_priv.lib_oa_tmpfilename;
 import std.array;
 import std.conv;
 import std.file;
@@ -91,7 +91,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
             {
               try
                 {
-                  immutable tmpfn = get_tmpfilename( "d_oa_common.core_gzip" );
+                  immutable tmpfn = get_tmpfilename( "d_glat_priv.core_gzip" );
                   std.file.write( tmpfn, data );
 
                   // -n important: do not save the tmpfn into the file, to try to guarantee always same output
@@ -100,7 +100,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
                   // Detect errors.
                   if (0 != tmp.status)
                     {
-                      throw new Exception ( "d_oa_common.core_gzip.gzip: error returned by the shell. Falling back onto slower D implementation. Error caught: " ~ to!string(tmp.output) );
+                      throw new Exception ( "d_glat_priv.core_gzip.gzip: error returned by the shell. Falling back onto slower D implementation. Error caught: " ~ to!string(tmp.output) );
                     }
 
                   // Read output
@@ -121,7 +121,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
                 }
               catch ( Throwable t )
                 {
-                  stderr.writeln( "d_oa_common.core_gzip.gzip failed to use the shell. Falling back onto slower D implementation.");
+                  stderr.writeln( "d_glat_priv.core_gzip.gzip failed to use the shell. Falling back onto slower D implementation.");
                   stderr.flush;
                   synchronized( _gzipLock )
                   {

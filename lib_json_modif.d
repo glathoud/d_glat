@@ -217,7 +217,7 @@ unittest
   import std.stdio;
 
   import d_glat.core_array;
-  import d_oa_common.core_unittest;
+  import d_glat_priv.core_unittest;
   
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );

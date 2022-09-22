@@ -14,7 +14,7 @@ import d_glat.core_file;
 import d_glat.core_glob;
 import d_glat.core_gzip;
 import d_glat.core_runtime;
-import d_oa_common.core_unittest;
+import d_glat_priv.core_unittest;
 import std.algorithm : map, sort;
 import std.array : array;
 import std.datetime;
