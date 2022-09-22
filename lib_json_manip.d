@@ -47,7 +47,7 @@ private void json_ascii_inplace_iter( in Jsonplace place, ref JSONValue jv2 )
 {
   immutable ubyte some_max = 126; 
   
-  if (JSON_TYPE.STRING == jv2.type)
+  if (JSONType.string == jv2.type)
     {
       ubyte[] arr  = cast( ubyte[] )( jv2.str );
       ubyte[] arr2 = arr.map!( x => min( x, some_max ) ).array;
@@ -59,26 +59,26 @@ JSONValue json_deep_copy( in ref JSONValue j )
 {
   final switch (j.type)
     {
-    case JSON_TYPE.STRING: return JSONValue( j.str ); 
-    case JSON_TYPE.ARRAY: return JSONValue( j.array.map!json_deep_copy.array ); 
-    case JSON_TYPE.OBJECT:
+    case JSONType.string: return JSONValue( j.str ); 
+    case JSONType.array: return JSONValue( j.array.map!json_deep_copy.array ); 
+    case JSONType.object:
       JSONValue ret = parseJSON( "{}" );
       foreach (k,v; j.object)
         ret.object[ k ] = v.json_deep_copy;
       return ret;
       
-    case JSON_TYPE.NULL: return JSONValue(null);
-    case JSON_TYPE.INTEGER: return JSONValue(j.integer);
-    case JSON_TYPE.UINTEGER: return JSONValue(j.uinteger);
-    case JSON_TYPE.FLOAT: return JSONValue(j.floating);
-    case JSON_TYPE.TRUE: return JSONValue(true);
-    case JSON_TYPE.FALSE: return JSONValue(false);
+    case JSONType.null_: return JSONValue(null);
+    case JSONType.integer: return JSONValue(j.integer);
+    case JSONType.uinteger: return JSONValue(j.uinteger);
+    case JSONType.float_: return JSONValue(j.floating);
+    case JSONType.true_: return JSONValue(true);
+    case JSONType.false_: return JSONValue(false);
     }
 }
 
 JSONValue json_flatten_array( in ref JSONValue j )
 {
-  assert( j.type == JSON_TYPE.ARRAY );
+  assert( j.type == JSONType.array );
   auto ret = json_array();
   _json_flatten_push( ret, j );
   return ret;
@@ -87,7 +87,7 @@ JSONValue json_flatten_array( in ref JSONValue j )
 private void _json_flatten_push
 ( ref JSONValue ret, in ref JSONValue j )
 {
-  if ( j.type == JSON_TYPE.ARRAY )
+  if ( j.type == JSONType.array )
     {
       foreach (ref one ; j.array)
         _json_flatten_push( ret, one );
@@ -134,8 +134,8 @@ T json_get_opt_copy(T/*string | JSONValue*/)( in T j_in_0, in Jsonplace[] place_
     JSONValue j_in = j_in_0;
 
   
-  JSONValue j_ret = j_in.type == JSON_TYPE.OBJECT  ?  json_object()
-    :  j_in.type == JSON_TYPE.ARRAY ?  json_array()
+  JSONValue j_ret = j_in.type == JSONType.object  ?  json_object()
+    :  j_in.type == JSONType.array ?  json_array()
     :  parseJSON("null"); // should fail
   
   foreach (place; place_arr)
@@ -208,7 +208,7 @@ void json_walk_sorted( in ref JSONValue j, in void delegate (in string ) sink )
 {
   switch (j.type)
     {
-    case JSON_TYPE.ARRAY:
+    case JSONType.array:
 
       sink( "__.[[" );
 
@@ -225,7 +225,7 @@ void json_walk_sorted( in ref JSONValue j, in void delegate (in string ) sink )
       sink( "]].__" );
       break;
       
-    case JSON_TYPE.OBJECT:
+    case JSONType.object:
 
       sink( "__.{{" );
 
@@ -278,8 +278,8 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
 {
   if (j0.type != j1.type)
     {
-      if ((j0.type == JSON_TYPE.INTEGER  &&  j1.type == JSON_TYPE.FLOAT
-           ||  j1.type == JSON_TYPE.INTEGER  &&  j0.type == JSON_TYPE.FLOAT
+      if ((j0.type == JSONType.integer  &&  j1.type == JSONType.float_
+           ||  j1.type == JSONType.integer  &&  j0.type == JSONType.float_
            )
           &&  json_get_double( j0 ) == json_get_double( j1 )
           )
@@ -292,9 +292,9 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
   
   final switch (j0.type)
     {
-    case JSON_TYPE.STRING: return j0.str == j1.str;
+    case JSONType.string: return j0.str == j1.str;
 
-    case JSON_TYPE.ARRAY:
+    case JSONType.array:
 
       if (j0.array.length != j1.array.length)
         return false;
@@ -307,7 +307,7 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
 
       return true;
       
-    case JSON_TYPE.OBJECT:
+    case JSONType.object:
 
       foreach (k; j1.object.keys)
         {
@@ -330,11 +330,11 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
       
       return true;
 
-    case JSON_TYPE.NULL, JSON_TYPE.TRUE, JSON_TYPE.FALSE: return true;
+    case JSONType.null_, JSONType.true_, JSONType.false_: return true;
       
-    case JSON_TYPE.INTEGER:  return j0.integer  == j1.integer;
-    case JSON_TYPE.UINTEGER: return j0.uinteger == j1.uinteger;
-    case JSON_TYPE.FLOAT:    return j0.floating == j1.floating;
+    case JSONType.integer:  return j0.integer  == j1.integer;
+    case JSONType.uinteger: return j0.uinteger == j1.uinteger;
+    case JSONType.float_:    return j0.floating == j1.floating;
     }
 }
 
@@ -352,7 +352,7 @@ JSONValue json_solve_calc( in ref JSONValue o )
 
 JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, ref bool out_modified )
 {
-  enforce( o.type == JSON_TYPE.OBJECT );
+  enforce( o.type == JSONType.object );
 
   auto ret = json_deep_copy( o );
 
@@ -416,8 +416,8 @@ JSONValue json_solve_calc_one( in ref JSONValue o
                                , ref bool success
                                )
 {
-  enforce( o.type == JSON_TYPE.OBJECT ); 
-  enforce( v.type == JSON_TYPE.STRING );
+  enforce( o.type == JSONType.object ); 
+  enforce( v.type == JSONType.string );
   
   auto e = parse_sexpr( v.str );
 
@@ -445,7 +445,7 @@ double json_solve_calc_one( in ref JSONValue o
                             , ref bool success
                             )
 {
-  enforce( o.type == JSON_TYPE.OBJECT );
+  enforce( o.type == JSONType.object );
 
   enforce( !e.isEmpty );
 
@@ -455,7 +455,7 @@ double json_solve_calc_one( in ref JSONValue o
       if (auto p = s in o.object)
         {
           immutable ptyp = p.type;
-          immutable tmp_success_0 = (ptyp == JSON_TYPE.INTEGER  ||  ptyp == JSON_TYPE.FLOAT);
+          immutable tmp_success_0 = (ptyp == JSONType.integer  ||  ptyp == JSONType.float_);
           success = tmp_success_0;
           return success  ?  json_get_double( *p )  :  double.nan;
         }
@@ -597,7 +597,7 @@ private bool _json_walkreadonly_until_sub( alias test, bool stop_at_first_match 
 
   if (!ret) // if a match, do not go deeper
     {
-      if (j.type == JSON_TYPE.OBJECT)
+      if (j.type == JSONType.object)
         {
           foreach ( k2, ref v2; j.object ) // breadth walk at the lower level
             {
@@ -615,7 +615,7 @@ private bool _json_walkreadonly_until_sub( alias test, bool stop_at_first_match 
                 break;
             }
         }
-      else if (j.type == JSON_TYPE.ARRAY)
+      else if (j.type == JSONType.array)
         {
           foreach ( k2, ref v2; j.array ) // breadth walk at the lower level
             {
@@ -730,7 +730,7 @@ unittest
 
     bool iter_object( Appender!(Jsonplace[]) p_app, Jsonplace p, JSONValue j )
     {
-      immutable ret = j.type == JSON_TYPE.OBJECT  &&  j.object.keys.canFind( "x" );
+      immutable ret = j.type == JSONType.object  &&  j.object.keys.canFind( "x" );
 
       if (verbose)
         writeln( "iter_object: p,ret: ", p, ret );
@@ -845,7 +845,7 @@ private bool _json_walk_until_sub( alias test )
   
   if (!ret)
     {
-      if (j.type == JSON_TYPE.OBJECT)
+      if (j.type == JSONType.object)
         {
           foreach ( k2, ref v2; j.object )
             {
@@ -860,7 +860,7 @@ private bool _json_walk_until_sub( alias test )
                 break;
             }
         }
-      else if (j.type == JSON_TYPE.ARRAY)
+      else if (j.type == JSONType.array)
         {
           foreach ( k2, ref v2; j.array )
             {

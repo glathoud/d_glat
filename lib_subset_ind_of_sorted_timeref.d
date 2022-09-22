@@ -72,7 +72,7 @@ out
       assert( ind_arr == ind_arr.dup.sort.array );
     }
 }
-body
+do
 {
   /* 
      0. easy case

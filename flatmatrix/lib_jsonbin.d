@@ -13,6 +13,7 @@ public import d_glat.lib_timeseries_selection;
   Boost Software License version 1.0, see ../LICENSE
 */
 
+import core.exception;
 import core.memory;
 import d_glat.core_assert;
 import d_glat.core_file;
@@ -222,7 +223,7 @@ class JsonbinT( T ) : ProfileMemC
   {
     auto app = appender!(char[]);
     this.toString( (carr) { foreach (c; carr) app.put( c ); }
-                  , maybe_mstt
+                  , maybe_mstt.get
                   );
     auto ret = app.data.idup;
     app.clear;

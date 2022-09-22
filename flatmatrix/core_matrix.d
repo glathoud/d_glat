@@ -295,7 +295,7 @@ struct MatrixT( T )
   bool approxEqual( in ref Matrix other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
   {
     return this.dim == other.dim
-      &&  std.math.approxEqual( this.data, other.data, maxRelDiff, maxAbsDiff );
+      &&  std.math.isClose( this.data, other.data, maxRelDiff, maxAbsDiff );
   }
   
   // --- API: Operators overloading
@@ -1295,8 +1295,7 @@ void _spit_d( T )
           sink( format( "%(%17s,%),\n"
                         , data[ i_data..new_i_data ]
                         .enumerate
-                        .map!( x => maybe_mstt
-                               ( i_dim, i_data, x.index, x.value ) ) ) );  
+                        .map!( x => maybe_mstt.get()( i_dim, i_data, x.index, x.value ) ) ) );  
         }
       
       i_data = new_i_data;

@@ -28,13 +28,13 @@ double get_double_of_json( bool accept_null = false )( in JSONValue jv )
 
   static if (accept_null)
     {
-      return jv.type == JSON_TYPE.INTEGER  
+      return jv.type == JSONType.integer  
         ?  cast( double )( jv.integer )
         
-        :  jv.type == JSON_TYPE.UINTEGER
+        :  jv.type == JSONType.uinteger
         ?  cast( double )( jv.uinteger )
 
-        :  jv.type == JSON_TYPE.NULL
+        :  jv.type == JSONType.null_
         ?  double.nan
         
         :  jv.floating
@@ -42,10 +42,10 @@ double get_double_of_json( bool accept_null = false )( in JSONValue jv )
     }
   else
     {
-      return jv.type == JSON_TYPE.INTEGER  
+      return jv.type == JSONType.integer  
         ?  cast( double )( jv.integer )
         
-        :  jv.type == JSON_TYPE.UINTEGER
+        :  jv.type == JSONType.uinteger
         ?  cast( double )( jv.uinteger )
         
         :  jv.floating
@@ -55,13 +55,13 @@ double get_double_of_json( bool accept_null = false )( in JSONValue jv )
 
 long get_long_of_json( in JSONValue jv )
 {
-  if (jv.type == JSON_TYPE.INTEGER)
+  if (jv.type == JSONType.integer)
     return cast( long )( jv.integer );
 
-  if (jv.type == JSON_TYPE.UINTEGER)
+  if (jv.type == JSONType.uinteger)
     return cast( long )( jv.uinteger );
 
-  enforce( jv.type == JSON_TYPE.FLOAT
+  enforce( jv.type == JSONType.float_
            , "get_long_of_json: expects an INTEGER, UINTEGER"
            ~ " or FLOAT. Got instead: " ~ to!string(jv.type)~", value: "~jv.toString
            );
@@ -97,7 +97,7 @@ JSONValue json_object()
 
 T[] json_get_array(T)( in JSONValue jv )
 {
-  enforce( jv.type == JSON_TYPE.ARRAY );
+  enforce( jv.type == JSONType.array );
 
   auto apdr = appender!(T[]);
 
@@ -136,7 +136,7 @@ long json_get_long( in JSONValue jv )
 
 string json_get_string( in JSONValue jv )
 {
-  assert( jv.type == JSON_TYPE.STRING
+  assert( jv.type == JSONType.string
           , "Expected a STRING, got "~to!string(jv.type)
           ~": "~jv.toPrettyString );
   return jv.str; 
@@ -144,10 +144,10 @@ string json_get_string( in JSONValue jv )
 
 bool json_get_bool( in JSONValue jv )
 {
-  if (jv.type == JSON_TYPE.TRUE)
+  if (jv.type == JSONType.true_)
     return true;
 
-  if (jv.type == JSON_TYPE.FALSE)
+  if (jv.type == JSONType.false_)
     return false;
 
   assert( false, "bug or wrong data" );
@@ -168,7 +168,7 @@ JSONValue json_get_place( in ref JSONValue j, in Jsonplace place
                           , in JSONValue j_default )
 {
   auto j_n = json_get_place( j, place );
-  return j_n.isNull  ?  j_default  :  j_n;
+  return j_n.isNull  ?  j_default  :  j_n.get;
 }
 
 
@@ -191,12 +191,12 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
     {
       Nullable!JSONValue j_deeper;
   
-      if (j.type == JSON_TYPE.OBJECT)
+      if (j.type == JSONType.object)
         {
 	  if (auto p = place[ 0 ] in j.object)
 	    j_deeper = *p;
         }
-      else if (j.type == JSON_TYPE.ARRAY)
+      else if (j.type == JSONType.array)
         {
 	  auto sp0 = place[ 0 ];
 
@@ -210,7 +210,7 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
 
       if (!j_deeper.isNull)
         {
-          j_ret = json_get_place( j_deeper, place[ 1..$ ] );
+          j_ret = json_get_place( j_deeper.get, place[ 1..$ ] );
         }
     }
   
@@ -244,7 +244,7 @@ Nullable!JSONValue json_get_places( in ref JSONValue j, in Jsonplace[] array_of_
   
   zip( array_of_place, arr ).each!( (x){
       if (!x[ 1 ].isNull)
-	json_set_place( tmp, x[ 0 ], x[ 1 ] );
+	json_set_place( tmp, x[ 0 ], x[ 1 ].get );
     } );
 
   ret = tmp; // not "nulled"
@@ -321,7 +321,7 @@ unittest
 bool json_is_integer( in ref Nullable!JSONValue j )
 {
   
-  return !j.isNull  &&  j.type == JSON_TYPE.INTEGER;
+  return !j.isNull  &&  j.get.type == JSONType.integer;
 }
 
 
@@ -331,7 +331,7 @@ bool json_is_string( in ref Nullable!JSONValue j )
 // Should work well together with `json_get_place`.
 {
   
-  return !j.isNull  &&  j.type == JSON_TYPE.STRING;
+  return !j.isNull  &&  j.get.type == JSONType.string;
  }
 
 bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
@@ -354,14 +354,14 @@ bool json_is_string_equal( T )( in ref T j, in string s )
 bool json_is_true( in ref Nullable!JSONValue j )
 {
   
-  return !j.isNull  &&  j.type == JSON_TYPE.TRUE;
+  return !j.isNull  &&  j.get.type == JSONType.true_;
 }
 
 
 inout(JSONValue[string]) json_safeObject( inout(JSONValue) j )
 pure @trusted
 {
-  enforce( j.type == JSON_TYPE.OBJECT );
+  enforce( j.type == JSONType.object );
   return j.object;
 }
 
@@ -382,7 +382,7 @@ void json_set_place
 
   string    place_0 = place[ 0 ];
 
-  if (j.type == JSON_TYPE.OBJECT)
+  if (j.type == JSONType.object)
     {
       if (is_leaf)
         {
@@ -396,7 +396,7 @@ void json_set_place
             json_set_place( j.object[ place_0 ], place[ 1..$ ], v );
         }
     }
-  else if (j.type == JSON_TYPE.ARRAY)
+  else if (j.type == JSONType.array)
     {
       if (is_leaf)
         j.array[ to!size_t( place_0 ) ] = _build_json_object( place[ 1..$ ], v );

@@ -227,11 +227,11 @@ import std.stdio;
   mixin(P_MEM_DUMP);
 */
 
-immutable P_MEM_DUMP = "{if (__pmc.active) __pmc._dump();}";
+immutable P_MEM_DUMP = "{if (__pmc_isActive) __pmc_dump();}";
 
 // For structs
-immutable P_MEM_RGSTR = "__pmc._register( typeid(this).name );";
-immutable P_MEM_FRGT  = "__pmc._forget( typeid(this).name );";
+immutable P_MEM_RGSTR = "__pmc_register( typeid(this).name );";
+immutable P_MEM_FRGT  = "__pmc_forget( typeid(this).name );";
 
 // For classes
 class ProfileMemC
@@ -240,9 +240,32 @@ class ProfileMemC
   ~this() { mixin(P_MEM_FRGT); }
 }
 
-__PMC __pmc;
 
-static this()
+
+bool __pmc_isActive() @trusted
+{
+  synchronized (__pmc) { return (cast(__PMC)( __pmc )).active; }
+}
+
+void __pmc_register( in string tin ) @trusted
+{
+  synchronized (__pmc) { (cast( __PMC )(__pmc))._register( tin ); }
+}
+
+void __pmc_forget( in string tin ) @trusted
+{
+  synchronized (__pmc) { (cast( __PMC )(__pmc))._forget( tin ); }
+}
+
+void __pmc_dump() @trusted
+{
+  synchronized (__pmc) { (cast( __PMC )(__pmc))._dump(); }
+}
+
+
+shared __PMC __pmc;
+
+shared static this()
 {
   __pmc = new __PMC;
 }

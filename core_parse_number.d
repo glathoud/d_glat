@@ -6,7 +6,7 @@
 */
 module d_glat.core_parse_number;
 
-import std.conv : to;
+import std.conv : ConvException, to;
 import std.format : formattedRead;
 import std.regex : ctRegex, replaceAll;
 import std.typecons;
@@ -24,7 +24,7 @@ MaybeDouble parseDouble( in string s )
   MaybeDouble ret;
   try {
     ret = to!double( s );
-  } catch (std.conv.ConvException e ) {
+  } catch (ConvException e ) {
  }
 
   return ret;
@@ -47,7 +47,7 @@ MaybeDouble parseGermanDouble( in string s )
     if (0 < n_success)
       ret = x;
   }
-  catch (std.conv.ConvException e)
+  catch (ConvException e)
     {
       
     }

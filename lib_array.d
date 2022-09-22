@@ -5,7 +5,7 @@ public import d_glat.core_array;
 import d_glat.core_assert;
 import d_glat.lib_search_bisection;
 import std.array : array;
-import std.algorithm : map, max;
+import std.algorithm : map, max, sort;
 import std.math : isFinite;
 import std.traits : isFloatingPoint;
 
