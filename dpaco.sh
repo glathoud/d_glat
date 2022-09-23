@@ -356,9 +356,11 @@ then
         echo "ERROR:"
         echo "$ERROR"
         echo 
-        TO_DELETE=$(grep -o -e '^[^:]*\.o' <<<$ERROR | grep -v '\.\.' | grep -v -e '^/usr/')
+        TO_DELETE_LDC2_1_10_0=$(grep -o -e '^[^:]*\.o' <<<$ERROR | grep -v '\.\.' | grep -v -e '^/usr/')
+        TO_DELETE_LDC2_1_30_0=$(grep -o -e '[^[:space:]:]*\.o' <<<$ERROR | sort | uniq)
+
+        TO_DELETE="${TO_DELETE_LDC2_1_10_0} ${TO_DELETE_LDC2_1_30_0}"
         
-        echo
         echo "TO_DELETE:"
         echo "$TO_DELETE"
         echo
