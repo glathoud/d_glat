@@ -23,6 +23,14 @@ T* aa_getInit( T, KT )( ref T[KT] aa, in KT key, lazy T def_val = T.init )
   return &(aa[ key ] = def_val);
 }
 
+size_t[T] aa_histo_of_array(T)( in T[] arr ) pure @safe 
+{ 
+  size_t[T] ret;
+  foreach (v; arr)
+    ret[ v ] = 1 + ret.get( v, 0 );
+
+  return ret;
+}
 
 size_t[T] aa_ind_of_array(T)( in T[] arr ) pure nothrow @safe 
 { 
