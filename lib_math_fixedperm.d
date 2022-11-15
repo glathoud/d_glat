@@ -147,7 +147,7 @@ unittest
       }
   }
 
-  foreach (N; iota( 50 ).array ~ [1235] ~ iota( 4093, 4100 ).array)
+  foreach (N; chain( iota( 50 ), [1235], iota( 4093, 4100 ) ))
     test_one( N );
   
   writeln( "unittest passed: ", baseName( __FILE__ ) );
