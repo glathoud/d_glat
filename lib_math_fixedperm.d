@@ -1,12 +1,29 @@
 module d_glat.lib_math_fixedperm;
 
 /*
-  Memory-less, fixed, pseudo-random-like permutation of any number of
+  Memory-less, fixed, random-looking permutation of any number of
   indices.
 
-  Builds upon a result for memory-less permutations of power-of-two
-  elements: https://glat.info/cipo/
-
+  Implementation: builds upon a mathematical result for memory-less
+  permutations of power-of-two arrays of elements:
+  https://glat.info/cipo/
+  
+  Example of usage: 
+  
+  -- Context: running many simulations across combinations of
+  parameter values, distributed across `n_processes`.
+  
+  -- Issue: say the structure of the simulation and parameters leads
+  to having 1 iteration running much slower, every 4 iterations. If
+  `n_processes%4==0`, then some of the processes will finish much
+  later than the others.
+  
+  -- Solution 1: use a big-enough, prime number of processes. A bit
+  constraining.
+  
+  -- Solution 2: shuffle the order of the simulations using
+     FixedPerm(n): `foreach (i; FixedPerm(n))`
+     
   By Guillaume Lathoud, 2022
   glat@glat.info
 
@@ -15,8 +32,7 @@ module d_glat.lib_math_fixedperm;
 
 alias FixedPerm = FixedPermT!size_t;
 
-// xxx todo struct
-class FixedPermT( T )
+struct FixedPermT( T )
 {
   immutable T n;
 
@@ -73,7 +89,7 @@ unittest
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
-  immutable verbose = true;
+  immutable verbose = false ;
 
   import std.algorithm;
   import std.range;
@@ -87,24 +103,25 @@ unittest
       }
     
     {
-      auto rfp = new FixedPerm( N );
+      auto rfp = FixedPerm( N );
 
       assert(rfp.empty == (N == 0));
     
       foreach (i; rfp) {}
-
+      
       if (verbose)
         {
           writeln("loop done, rfp.i_in:  ", rfp.i_in);
           writeln("loop done, rfp.i_out: ", rfp.i_out);
         }
-      assert(rfp.empty);
     }
 
     {
-      const arr = (new FixedPerm( N )).array;
+      auto rfp = FixedPerm( N );
+      
+      const arr  = rfp.array;
       const arr2 = arr.dup.sort.array;
-
+      
       if (verbose)
         {
           writeln( "arr: ", arr );
@@ -113,6 +130,15 @@ unittest
 
       assert( (arr == arr2) == (N < 4) );
       assert( arr2 == iota( N ).array );
+
+      // Can repeat usage (because: `struct`)
+      {
+        auto arr3 = rfp.array;
+        assert( arr3.dup.sort.array == arr2 );
+        arr3 ~= [12345];
+        assert( arr  != arr3 );
+        assert( arr2 != arr3 );
+      }
     }
 
     if (verbose)
