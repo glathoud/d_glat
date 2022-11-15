@@ -231,13 +231,34 @@ pure nothrow @safe
   return median_inplace( arr.dup );
 }
 
+T undefined(T)()
+{
+  static if (__traits( isFloating, T ))
+    {
+      return T.nan;
+    }
+  else
+    {
+      static if (__traits( isUnsigned, T ))
+        return T.max;
+      else
+        return -T.max;
+    }
+}
+
+
 T median_inplace( T )( T[] arr )
   pure nothrow @safe @nogc
 {
-  
+  immutable n = arr.length;
+
+  if (1 > n)
+      return undefined!T;
+
+  if (2 > n)
+    return arr[ 0 ];
   
   arr.sort;
-  immutable n = arr.length;
   immutable half = cast( T )( 0.5 );
 
   return 1 == n % 2
