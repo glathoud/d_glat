@@ -27,7 +27,15 @@ struct IDS
   {
     return s_of_i_app.data[ id ];
   }
-    
+
+  void _clear() pure 
+  // Only if you know what you are doing!
+  {
+    i_of_s_aa.clear;
+    s_of_i_app.clear;
+  }
+
+  
 private:
   size_t[string]      i_of_s_aa;
   Appender!(string[]) s_of_i_app;
