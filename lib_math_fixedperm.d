@@ -1,5 +1,7 @@
 module d_glat.lib_math_fixedperm;
 
+import std.conv : to;
+
 /*
   Memory-less, fixed, random-looking permutation of any number of
   indices.
@@ -66,7 +68,7 @@ struct FixedPermT( T )
 
   T front() const pure @safe @nogc { return i_out; }
 
-  void popFront() {
+  void popFront() pure @safe @nogc {
     do {
       i_out = (i_out + step) % next_pow_2;
       step  = (1 + step) % next_pow_2;
@@ -74,6 +76,28 @@ struct FixedPermT( T )
     ++i_in;
   }
 
+  T getAtNonPast( in T i ) pure @safe
+    /*
+      Convenient to stride. Constraint: always forward ("non-past").
+
+      Example:
+
+      foreach (i; iota( 2, N, 7 ))
+      {
+      immutable v = rfp.getAtNonPast( i );
+      ...
+      }
+     */
+  {
+    if (i < i_in)
+      assert( false, "lib_math_fixedperm: getAtNonPast( i ) requires i to be in the present or the future, not in the past. i: "~to!string( i )~", i_in: "~to!string( i_in ) );
+
+    while (i > i_in)
+      popFront();
+
+    return front();
+  }
+  
   private:
 
   immutable T next_pow_2;
@@ -141,6 +165,25 @@ unittest
       }
     }
 
+    {
+      const arr = FixedPerm( N ).array;
+
+      if (verbose)
+        writeln( "stride: arr: ", arr );
+      
+      auto  rfp = FixedPerm( N );
+
+      foreach (i; iota( 2, N, 7 ))
+        {
+          immutable v = rfp.getAtNonPast( i );
+
+          if (verbose)
+              writeln("stride: i: ", i, " => v: ", v);
+          
+          assert( v == arr[ i ] );
+        }
+    }
+    
     if (verbose)
       {
         writeln( "end test_one: ", N );
