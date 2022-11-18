@@ -76,21 +76,22 @@ struct FixedPermT( T )
     ++i_in;
   }
 
-  T getAtNonPast( in T i ) pure @safe
+  T getAtForward( in T i ) pure @safe
     /*
-      Convenient to stride. Constraint: always forward ("non-past").
+      Convenient to stride. Constraint: always forward, i.e. the value
+      of the input `i` must never decrease.
 
       Example:
 
       foreach (i; iota( 2, N, 7 ))
       {
-      immutable v = rfp.getAtNonPast( i );
+      immutable v = rfp.getAtForward( i );
       ...
       }
      */
   {
     if (i < i_in)
-      assert( false, "lib_math_fixedperm: getAtNonPast( i ) requires i to be in the present or the future, not in the past. i: "~to!string( i )~", i_in: "~to!string( i_in ) );
+      assert( false, "lib_math_fixedperm: getAtForward( i ) requires i to be in the present or the future, not in the past. i: "~to!string( i )~", i_in: "~to!string( i_in ) );
 
     while (i > i_in)
       popFront();
@@ -175,7 +176,7 @@ unittest
 
       foreach (i; iota( 2, N, 7 ))
         {
-          immutable v = rfp.getAtNonPast( i );
+          immutable v = rfp.getAtForward( i );
 
           if (verbose)
               writeln("stride: i: ", i, " => v: ", v);
