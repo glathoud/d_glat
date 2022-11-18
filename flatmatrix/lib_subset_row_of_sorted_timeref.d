@@ -15,7 +15,7 @@ MatrixT!T subset_row_of_sorted_timeref
   )
 pure
 {
-  size_t[] rowind_arr;
+  scope size_t[] rowind_arr;
   
   subset_ind_of_sorted_timeref!auto_max_deltatime_midseg
     ( timeref_arr, time_arr

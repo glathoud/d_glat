@@ -90,8 +90,8 @@ do
   */
 
   // output
-  auto ind_app       = appender!(size_t[]);
-  auto deltatime_app = appender!(TT[]);
+  scope auto ind_app       = appender!(size_t[]);
+  scope auto deltatime_app = appender!(TT[]);
   
   // indices in `time_arr`
   size_t    i      = 0;
