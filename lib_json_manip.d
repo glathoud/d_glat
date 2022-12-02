@@ -13,6 +13,7 @@ public import std.json;
 import d_glat.core_cast;
 import d_glat.core_sexpr;
 import d_glat.lib_json_manip;
+import d_glat_priv.core_unittest;
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -360,13 +361,15 @@ JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, r
   while (modified)
     {
       modified = false;
+
+      bool found_todo = false;
       ret.json_walk_until!( (place, v) {
 
           if (place.length > 0  &&  place[ $-1 ] == JSON_P_CALC)
             {
+              found_todo = true;
+              
               auto new_v = json_solve_calc_one( ret, v, /*output:*/modified );
-              static if (!accept_incomplete)
-                enforce( modified ); // must succeed in this case
               
               if (modified)
                 json_set_place( ret, place[ 0..($-1)], new_v );
@@ -374,6 +377,12 @@ JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, r
 
           return modified;
         });
+
+      static if (!accept_incomplete)
+        {
+          if (found_todo)
+            enforce( modified, mixin(_dhere)~" !accept_incomplete => must progress, but here, could not do at least modification. Something is missing, or there is a dependency loop between (calc)'s.");
+        }
       
       if (modified)
         out_modified = true;

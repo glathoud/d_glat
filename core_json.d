@@ -9,6 +9,7 @@ module d_glat.core_json;
 
 import d_glat.core_assert;
 import d_glat.core_string : string_is_num09;
+import d_glat_priv.core_unittest;
 import std.algorithm : all, any, each, map;
 import std.array : appender, array, split;
 import std.conv : to;
@@ -21,11 +22,50 @@ import std.stdio : stderr,writeln;
 
 alias Jsonplace = string[]; // position in the JSON
 
+
+private bool   _j_dbl_special_init_done;
+private string _j_dbl_special_s_infinity;
+private string _j_dbl_special_s_negInfinity;
+private string _j_dbl_special_s_nan;
+
+private void _ensure_j_dbl_special()
+{
+  if (!_j_dbl_special_init_done)
+    {
+      _j_dbl_special_init_done = true;
+
+      auto j = parseJSON("{}");
+      j.object["c"] = JSONValue(double.infinity);
+      j.object["d"] = JSONValue(-double.infinity);
+      j.object["e"] = JSONValue(double.nan);
+      
+      auto js = j.toString( JSONOptions.specialFloatLiterals );
+
+      auto j2 = parseJSON( js );
+
+      _j_dbl_special_s_infinity    = j2[ "c" ].str;  // Usually  "Infinite"
+      _j_dbl_special_s_negInfinity = j2[ "d" ].str;  // Usually  "-Infinite"
+      _j_dbl_special_s_nan         = j2[ "e" ].str;  // Usually  "NaN"
+
+      debug static if (false)
+        {
+          mixin(_wr!`/*xxx*/_j_dbl_special_s_infinity`);
+          mixin(_wr!`/*xxx*/_j_dbl_special_s_negInfinity`);
+          mixin(_wr!`/*xxx*/_j_dbl_special_s_nan`);
+        }
+    }
+}
+
+
+
+
 double get_double_of_json( bool accept_null = false )( in JSONValue jv )
 {
   // Uncomment this line to debug your data:
   // import std.stdio; writeln("xxx ____ get_double_of_json jv.type, jv:", jv.type, jv );
 
+  _ensure_j_dbl_special();
+  
   static if (accept_null)
     {
       return jv.type == JSONType.integer  
@@ -36,7 +76,16 @@ double get_double_of_json( bool accept_null = false )( in JSONValue jv )
 
         :  jv.type == JSONType.null_
         ?  double.nan
-        
+
+        :  jv.type == JSONType.string  &&  jv.str == _j_dbl_special_s_infinity
+        ?  double.infinity
+
+        :  jv.type == JSONType.string  &&  jv.str == _j_dbl_special_s_negInfinity
+        ?  -double.infinity 
+
+        :  jv.type == JSONType.string  &&  jv.str == _j_dbl_special_s_nan
+        ?  double.nan
+
         :  jv.floating
         ;
     }
