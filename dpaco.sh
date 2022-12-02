@@ -33,7 +33,14 @@ COMPILER="$(which -a ldmd2 dmd | head -1)"
 EXEC=""
 EXEC_OPT=""
 FORCE=""
-FRESH_CHUNK_SIZE=50
+NPROC=$(nproc --all)
+if [[ $NPROC -lt 10 ]]; then
+    FRESH_CHUNK_SIZE=50
+elif [[ $NPROC -lt 20 ]]; then
+    FRESH_CHUNK_SIZE=25
+else
+    FRESH_CHUNK_SIZE=10
+fi    
 MODE="" # debug release relbug relbug0
 OUTBIN="dpaco.bin"
 PARALLEL_OPT=""
