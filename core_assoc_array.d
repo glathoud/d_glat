@@ -74,7 +74,7 @@ U[T] aa_indmod_of_array(T, U)( U delegate( in size_t ind, in T ) indmodfun, in T
 
 string aa_pretty( T )( in T aa ) 
 {
-  auto app = appender!(string[]);
+  scope auto app = appender!(string[]);
   aa_pretty_inplace( aa, "", app );
   auto ret = app.data.join( "\n" );
   app.clear;
@@ -138,7 +138,7 @@ bool[T] aa_set_intersection(T)( in bool[T][] arr ... ) pure @safe
     }
   else
     {
-      auto seed = aa_set_intersection!T( arr[ 0 ] );
+      scope auto seed = aa_set_intersection!T( arr[ 0 ] );
 
       return arr[1..$].fold!(aa_set_intersection!T)( seed );
     }

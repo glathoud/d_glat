@@ -48,16 +48,16 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
   assert(arr.length>1, "At least one function declaration needed");
   assert(0 == arr.length % 2, "[decl,body, decl,body, ... ]");
 
-  string[] name_arr;
-  string[string] decl_of_name;
-  ArgOfName arg_of_name;
-  ArgsetOfName argset_of_name;
-  string[string] argtype_of_argname;
+  scope string[] name_arr;
+  scope string[string] decl_of_name;
+  scope ArgOfName arg_of_name;
+  scope ArgsetOfName argset_of_name;
+  scope string[string] argtype_of_argname;
   
   alias BlockArr = Block!fext_debug[];
   alias BlockArrOfName = BlockArr[string];
 
-  BlockArrOfName block_arr_of_name;
+  scope BlockArrOfName block_arr_of_name;
 
   immutable top_switch_label = "_fext_";
 
@@ -86,16 +86,16 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
   
   for (size_t i = 0, i_end = arr.length; i < i_end; )
     {
-      string decl = arr[ i++ ];
-      string body = arr[ i++ ];
+      scope string decl = arr[ i++ ];
+      scope string body = arr[ i++ ];
 
       string   name;
-      string[] arg;
+      scope string[] arg;
       {
-        auto x = decl.findSplit( "(" );
+        scope auto x = decl.findSplit( "(" );
         name = x[ 0 ].strip.split( " " )[ $-1 ];
 
-        auto x2 = x[ 2 ];
+        scope auto x2 = x[ 2 ];
         immutable size_t close_paren = (){
           foreach_reverse( j,c; x2 )
             {
@@ -121,7 +121,7 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
         assert( close_paren < size_t.max );
         assert( open_paren < close_paren, to!string(open_paren)~" "~to!string(close_paren)~" \n"~x2~" \n"~x2[open_paren..close_paren] );
 
-        auto raw_arg = x2[ open_paren..close_paren ]
+        scope auto raw_arg = x2[ open_paren..close_paren ]
           .split( "," )
           .map!drop_dflt_init
           ;
@@ -129,7 +129,7 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
         arg = raw_arg.map!`a.strip.split( " " )[ $-1 ]`.array;
 
         
-        auto argtype = raw_arg.map!`a.strip.split( " " )[ $-2 ]`.array;
+        scope auto argtype = raw_arg.map!`a.strip.split( " " )[ $-2 ]`.array;
 
         zip( arg,argtype ).each!( x => check_set_argtype( x[ 0 ], x[ 1 ] ) );
       }
@@ -146,17 +146,17 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
       string rest_body = body;
       while (true)
         {
-          if (auto split = rest_body.findSplit("return mret!"))
+          if (scope auto split = rest_body.findSplit("return mret!"))
             {
               string before = split[ 0 ];
               
-              auto paren = split[ 2 ].findSplit("(");
+              scope auto paren = split[ 2 ].findSplit("(");
               
-              auto mret_name = paren[ 0 ];
+              scope auto mret_name = paren[ 0 ];
               
-              auto param = paren[ 2 ].findSplit( ");" );
+              scope auto param = paren[ 2 ].findSplit( ");" );
               
-              string mret_param = param[ 0 ];
+              scope string mret_param = param[ 0 ];
               
               rest_body = param[ 2 ];
               
@@ -177,7 +177,7 @@ string mdecl( bool fext_debug = false )(in string[] arr ...) pure
       block_arr_of_name[ name ] = block_arr;
     }
 
-  auto decl = decl_of_name[ name_arr[ 0 ] ];
+  scope auto decl = decl_of_name[ name_arr[ 0 ] ];
 
       
   immutable SWITCH_I = "_switch_i_";
@@ -253,7 +253,7 @@ private struct Block( bool fext_debug )
       {
         immutable bool selfrec = 1 == arg_of_name.keys.length;
     
-        auto ap = appender!(string[]);
+        scope auto ap = appender!(string[]);
 
         ap.put( before );
 
@@ -264,8 +264,8 @@ private struct Block( bool fext_debug )
           }
         else
           {
-            auto impl_arg = arg_of_name[ mret_name ];
-            auto mret_arg = mret_param.split( "," );
+            scope auto impl_arg = arg_of_name[ mret_name ];
+            scope auto mret_arg = mret_param.split( "," );
             
             enforce( mret_arg.length == impl_arg.length );
             

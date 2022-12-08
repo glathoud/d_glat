@@ -178,8 +178,8 @@ void subset_ind_arr_of_sorted_inplace_nogc( bool exact = true, T )
   if (subset_arr.length < 1)
     return;
   
-  size_t i_all = 0;
-  T      x_all = all_arr[ i_all ];
+  size_t  i_all = 0;
+  scope T x_all = all_arr[ i_all ];
 
   immutable all_length_m1 = all_arr.length - 1;
   
@@ -227,9 +227,9 @@ void subset_ind_arr_of_sorted_inplace_nogc( bool exact = true, T )
 
 T[] uniq_of_sorted_arr(T)( in T[] arr ) pure
 {
-  auto app = appender!(T[]);
+  scope auto app = appender!(T[]);
   {
-    T prev;
+    scope T prev;
     foreach (i,v; arr)
       {
         debug
