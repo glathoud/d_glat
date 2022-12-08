@@ -31,13 +31,13 @@ MatrixT!T subset_row_unique
   Option: The row comparison can be restricted using `ignore_index`
 */
 {
-  auto      m_data  = m.data;
+  auto m_data = m.data;
   immutable restdim = m.restdim;
 
   if (m_data.length < 1)
     return m.clone;
   
-  size_t[] compare_index_arr;
+  scope size_t[] compare_index_arr;
   foreach(i; 0..restdim)
     {
       if (!(i in ignore_index))
@@ -46,7 +46,7 @@ MatrixT!T subset_row_unique
 
   import std.stdio;
   
-  auto rowind_app = appender!(size_t[]);
+  scope auto rowind_app = appender!(size_t[]);
 
   static if (keep_first)
     rowind_app.put( 0 );
@@ -62,7 +62,7 @@ MatrixT!T subset_row_unique
     {
       size_t next_j2 = next_j + restdim;
       auto   next_x  = m_data[ next_j..next_j2 ];
-
+      
       bool equal = true;
       foreach (i; compare_index_arr)
         {

@@ -27,8 +27,8 @@ void mean_inplace_nogc( T )( in ref MatrixT!T m
 
   immutable i_step = m.restdim;
   
-  auto data = m.data;
-  auto mean = m_mean.data;
+  scope auto data = m.data;
+  scope auto mean = m_mean.data;
 
   size_t i = i_step;
   mean[] = data[ 0..i ][];
@@ -82,9 +82,9 @@ pure nothrow @safe @nogc
 
   debug assert( n > 1 );
 
-  auto m_data    = m.data;
-  auto mean_data = m_mean.data;
-  auto cov_data  = m_cov.data;
+  scope auto m_data    = m.data;
+  scope auto mean_data = m_mean.data;
+  scope auto cov_data  = m_cov.data;
 
   mean_data[] = cast( T )( 0.0 );
   cov_data[]  = cast( T )( 0.0 );
@@ -206,9 +206,9 @@ pure nothrow @safe @nogc
 
   debug assert( n > 1 );
 
-  auto m_data    = m.data;
-  auto mean_data = m_mean.data;
-  auto cov_data  = m_cov.data;
+  scope auto m_data    = m.data;
+  scope auto mean_data = m_mean.data;
+  scope auto cov_data  = m_cov.data;
 
   mean_data[] = cast( T )( 0.0 );
   cov_data[]  = cast( T )( 0.0 );
@@ -329,9 +329,9 @@ void mean_var_inplace_nogc
 
   mean_inplace_nogc( m, m_mean );
   
-  auto data = m.data;
-  auto mean = m_mean.data;
-  auto var  = m_var .data;
+  scope auto data = m.data;
+  scope auto mean = m_mean.data;
+  scope auto var  = m_var .data;
 
   var[] = 0;
 

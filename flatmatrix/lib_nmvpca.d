@@ -68,8 +68,6 @@ bool nmvpca_inplace( in ref Matrix a
   otherwise. The the `false` case, `b.data` is filled with NaNs.
 */
 {
-  
-
   immutable m = a.nrow;
   immutable n = a.ncol;
   immutable mtn = m * n;
@@ -82,15 +80,15 @@ bool nmvpca_inplace( in ref Matrix a
       assert( b.data.length == mtn );
     }
 
-  auto a_nmv   = buffer.a_nmv;
-  auto sigma   = buffer.sigma;
-  auto svd_res = buffer.svd_res;
+  scope auto a_nmv   = buffer.a_nmv;
+  scope auto sigma   = buffer.sigma;
+  scope auto svd_res = buffer.svd_res;
   
   // Normalize mean and variance
 
   nmv_inplace_dim( a, a_nmv, buffer.b_nmv );
   
-  auto a_nmv_data = a_nmv.data;
+  scope auto a_nmv_data = a_nmv.data;
   
   // Multiply the normalized data with itself:
   // 
@@ -98,7 +96,7 @@ bool nmvpca_inplace( in ref Matrix a
   
   sigma.setDim( [n, n] );
 
-  auto sigma_data = sigma.data;
+  scope auto sigma_data = sigma.data;
   
   immutable one_over_m_dbl = 1.0 / cast( double )( m );
   

@@ -4,6 +4,16 @@ public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.lib_subset_ind_of_sorted_timeref;
 
+/*
+  Pick a subset of rows of a matrix: those that match a sorted array
+  of time reference (signed numbers, e.g. long).
+
+  By Guillaume Lathoud, 2022
+  glat@glat.info
+
+  The Boost License applies, as described in file ../LICENSE
+ */
+
 // `auto_max_deltatime_midseg == true` means "automatically in the middle of timref segments"
 
 MatrixT!T subset_row_of_sorted_timeref
@@ -14,6 +24,7 @@ MatrixT!T subset_row_of_sorted_timeref
   , TT max_deltatime = TT.max  
   )
 pure
+// functional wrapper
 {
   scope size_t[] rowind_arr;
   
@@ -26,6 +37,7 @@ pure
 }
 
 
+// `auto_max_deltatime_midseg == true` means "automatically in the middle of timref segments"
 
 MatrixT!T subset_row_of_sorted_timeref
 ( bool auto_max_deltatime_midseg = false, TT/*means TimeType, must be signed*/, T )

@@ -34,10 +34,8 @@ MatrixT!T sortindex( T )( in MatrixT!T a )
 pure nothrow @safe
 // Functional wrapper around `sortindex_inplace_dim`
 {
-  
-
   MatrixT!T b;
-  auto buffer = new Buffer_sortindex_inplaceT!T;
+  scope auto buffer = new Buffer_sortindex_inplaceT!T;
 
   sortindex_inplace_dim( a, b, buffer );
 
@@ -51,8 +49,6 @@ void sortindex_inplace_dim( T )
     )
   pure nothrow @safe
 {
-  
-
   b.setDim( a.dim );
   sortindex_inplace( a, b, buffer );
 }
@@ -64,8 +60,6 @@ void sortindex_inplace( T )
     )
   pure nothrow @safe
 {
-  
-
   b.data[] = a.data[];
   sortindex_inplace( b, buffer);
 }
@@ -75,8 +69,6 @@ void sortindex_inplace( T )( ref MatrixT!T m
                              , ref Buffer_sortindex_inplaceT!T buffer)
   pure nothrow @safe
 {
-  
-
   immutable n       = m.dim[ 0 ];
   immutable restdim = m.restdim;
 
@@ -88,8 +80,8 @@ void sortindex_inplace( T )( ref MatrixT!T m
       return arr;
     }( buffer.indices_init );
  
-  auto index_arr    = ensure_length( n, buffer.index_arr );
-  auto value_arr    = ensure_length( n, buffer.value_arr );
+  scope auto index_arr    = ensure_length( n, buffer.index_arr );
+  scope auto value_arr    = ensure_length( n, buffer.value_arr );
  
   sortindex_inplace
     (
@@ -116,8 +108,6 @@ void sortindex_inplace( T )
     )
   pure nothrow @safe
 {
-  
-
   debug
     {
       assert( 0 < n);
@@ -129,7 +119,7 @@ void sortindex_inplace( T )
       assert( n_t_restdim == n * restdim);
     }
 
-  auto data = m.data;
+  scope auto data = m.data;
   
   foreach (d; 0..restdim)
     {

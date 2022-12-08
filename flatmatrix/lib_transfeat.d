@@ -214,8 +214,8 @@ struct TransfeatT( T )
       }
     else if (one_modif.isList)
       {
-        auto slist = cast( SList )( one_modif );
-        auto first = slist.first;
+        scope auto slist = cast( SList )( one_modif );
+        scope auto first = slist.first;
         enforce( first.isAtom );
 
         immutable is_cat  = first.toString == META_CAT;
@@ -338,11 +338,11 @@ struct TransfeatT( T )
           
           if (m_out != m_in)
             {
-               auto m_in_data =(*m_in).data;
-               (*m_out).setDim( (*m_in).dim );
-               
-               foreach (i,x; m_in_data)
-                 (*m_out).data[ i ] = x;
+              scope auto m_in_data =(*m_in).data;
+              (*m_out).setDim( (*m_in).dim );
+              
+              foreach (i,x; m_in_data)
+                (*m_out).data[ i ] = x;
             }
         }
       else if (one_modif.isAtom)
@@ -355,7 +355,7 @@ struct TransfeatT( T )
           
           // Remark: one_trans should do `m_out.setDim()`
           
-          auto one_trans =
+          scope auto one_trans =
             one_trans_of_string[ one_modif.toString ];
 
           one_trans( *m_in, *m_out );
@@ -364,7 +364,7 @@ struct TransfeatT( T )
         {
           debug assert( one_modif.isList );
 
-          auto slist = cast( SList )( one_modif );
+          scope auto slist = cast( SList )( one_modif );
 
           auto fs = slist.first.toString;
           
@@ -409,9 +409,9 @@ immutable(SExpr) expand_sexpr_cat_pipe( in SExpr e )
 {
   if (e.isList)
     {
-      auto li  = cast(SList)( e );
-      auto fis = li.first.toString;
-      auto arr = li.rest.map!expand_sexpr_cat_pipe.array; // always recurse
+      scope auto li  = cast(SList)( e );
+      scope auto fis = li.first.toString;
+      scope auto arr = li.rest.map!expand_sexpr_cat_pipe.array; // always recurse
 
       return fis == META_CAT  ||  fis == META_PIPE  ?  sList( [sAtom( fis )]~arr ) // no expansion needed
         

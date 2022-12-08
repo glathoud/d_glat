@@ -21,8 +21,6 @@ MatrixT!T pairs( alias expstr_or_fun, T )
   ( in MatrixT!T m ) pure nothrow @safe
 // Functional wrapper around `pairs_inplace`.
 {
-  
-  
   immutable n = m.dim[ 0 ];
   auto ret = MatrixT!T( [ (n*(n-1)) >> 1 ] ~ m.dim[ 1..$ ] );
   pairs_inplace!( expstr_or_fun, T )( m, ret );
@@ -72,8 +70,8 @@ void pairs_inplace( alias expstr_or_fun, T )
 
   immutable restdim = m.restdim;
 
-  auto data = m.data;
-  auto pairdelta = m_pairdelta.data;
+  scope auto data = m.data;
+  scope auto pairdelta = m_pairdelta.data;
 
   static immutable bool is_expstr =
     is( typeof(expstr_or_fun) == string )

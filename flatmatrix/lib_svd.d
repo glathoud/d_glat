@@ -89,10 +89,10 @@ bool svd_inplace_nogc( in ref Matrix A
       assert( n == ret.n );
     }
   
-  double[] u;
-  double[] q;
-  double[] v;
-  double[] e;
+  scope double[] u;
+  scope double[] q;
+  scope double[] v;
+  scope double[] e;
 
   // Init: as fast as possible
 
