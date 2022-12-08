@@ -29,7 +29,7 @@ T[] arr_change_order(T)( in size_t[] ind_arr, in T[] arr) pure @safe
 
 void arr_change_order_inplace(T)( in size_t[] ind_arr, ref T[] arr ) pure @safe
 {
-  auto buff = new T[ arr.length ];
+  scope auto buff = new T[ arr.length ];
   arr_change_order_inplace_nogc!T( ind_arr, buff, arr );
 }
 
@@ -60,9 +60,8 @@ pure nothrow @safe
   auto arr = ensure_length( n, buffer.arr );
 */
 {
-  
   if (arr.length != desired_length)
-    arr = new T[desired_length];
+    arr.length = desired_length;
 
   return arr;
 }
@@ -141,8 +140,6 @@ size_t[] subset_ind_arr_of_sorted( bool exact = true, T )
   For a "closest" match instead, set `exact` to `false`.
 */
 {
-  
-
   auto ret = new size_t[ subset_arr.length ];
 
   subset_ind_arr_of_sorted_inplace_nogc!(exact,T)
