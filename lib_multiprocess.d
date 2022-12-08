@@ -307,13 +307,13 @@ auto multiprocess_wait(bool fail_early = true)( Pid[] pid_arr )
 {
   while (true)
     {
-      auto twr = pid_arr.map!tryWait.enumerate;
+      scope auto twr = pid_arr.map!tryWait.enumerate;
 
       //writeln("xxx lib_multiprocess: fail_early: ", fail_early);
       
       static if (fail_early)
         {{
-          auto failed_arr = twr.filter!"a.value.terminated  &&  a.value.status != 0".array;
+            scope auto failed_arr = twr.filter!"a.value.terminated  &&  a.value.status != 0".array;
 
           if (0 < failed_arr.length)
             {
@@ -326,7 +326,7 @@ auto multiprocess_wait(bool fail_early = true)( Pid[] pid_arr )
       
       if (twr.all!"a.value.terminated")
         {
-          auto failed_arr = twr.filter!"a.value.status != 0".array;
+          scope auto failed_arr = twr.filter!"a.value.status != 0".array;
           
           return failed_arr;
         }

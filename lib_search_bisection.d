@@ -80,58 +80,60 @@ bool search_bisection
     }
 
   long bma;
-  while ((bma = b - a) >= 0)
-    {
-      T av = fun( a );
-      T bv = fun( b );
+  {
+    while ((bma = b - a) >= 0)
+      {
+        auto av = fun( a );
+        auto bv = fun( b );
 
-      if (mixin(T_equal_code( `av`, `v` )))
-        {
-          // Found exactly at one point
-          ind0 = ind1 = a;
-          prop = 0;
-          return true;
-        }
-      else if (mixin(T_equal_code( `bv`, `v` )))
-        {
-          // Found exactly at one point
-          ind0 = ind1 = b;
-          prop = 0;
-          return true;
-        }
-      else if (!(mixin(T_le_code( `av`, `v` ))  &&  mixin(T_le_code( `v`, `bv` ))))
-        {
-          // Not found
-          break;
-        }
-      else if (1 == bma)
-        {
-          // Found between two points
-          ind0 = a;
-          ind1 = b;
-          prop = mixin(T_prop_between_code( `v`, `av`, `bv` ));
-          return true;
-        }
+        if (mixin(T_equal_code( `av`, `v` )))
+          {
+            // Found exactly at one point
+            ind0 = ind1 = a;
+            prop = 0;
+            return true;
+          }
+        else if (mixin(T_equal_code( `bv`, `v` )))
+          {
+            // Found exactly at one point
+            ind0 = ind1 = b;
+            prop = 0;
+            return true;
+          }
+        else if (!(mixin(T_le_code( `av`, `v` ))  &&  mixin(T_le_code( `v`, `bv` ))))
+          {
+            // Not found
+            break;
+          }
+        else if (1 == bma)
+          {
+            // Found between two points
+            ind0 = a;
+            ind1 = b;
+            prop = mixin(T_prop_between_code( `v`, `av`, `bv` ));
+            return true;
+          }
       
-      // Not found yet
+        // Not found yet
 
-      size_t m  = (a + b) >> 1;
-      T mv = fun( m );
+        size_t m  = (a + b) >> 1;
+        auto mv = fun( m );
 
-      if (a < m  &&  mixin(T_le_code( `mv`, `v` )))
-        {
-          a = m;
-          continue;
-        }
+        if (a < m  &&  mixin(T_le_code( `mv`, `v` )))
+          {
+            a = m;
+            continue;
+          }
 
-      if (m < b  &&  mixin(T_le_code( `v`, `mv` )))
-        {
-          b = m;
-          continue;
-        }
+        if (m < b  &&  mixin(T_le_code( `v`, `mv` )))
+          {
+            b = m;
+            continue;
+          }
       
-      break;
-    }
+        break;
+      }
+  }
   
   return false;
 }

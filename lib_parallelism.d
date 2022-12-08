@@ -12,7 +12,7 @@ void parallel_or_single( T )( in size_t n_parallel, in T[] todo_arr, void delega
 {
   if (1 < n_parallel)
     {
-      auto taskpool = new TaskPool( n_parallel - 1 ); // -1 because the main thread will also be available to do work
+      scope auto taskpool = new TaskPool( n_parallel - 1 ); // -1 because the main thread will also be available to do work
       
       immutable todo_len = todo_arr.length;
       try
