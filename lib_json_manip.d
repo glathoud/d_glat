@@ -103,7 +103,7 @@ private void _json_flatten_push
 string json_get_hash( in ref JSONValue j )
 // 40-byte hash of sorted `j` (sorted for unicity).
 {
-  auto digest = makeDigest!SHA1;
+  scope auto digest = makeDigest!SHA1;
   void sink( in string s ) { digest.put( cast(ubyte[])( s ) ); }
   json_walk_sorted( j, &sink );
 
@@ -130,9 +130,9 @@ T json_get_opt_copy(T/*string | JSONValue*/)( in T j_in_0, in Jsonplace[] place_
   static immutable is_string = isSomeString!T;
 
   static if (is_string)
-    JSONValue j_in = parseJSON( j_in_0 );
+    scope JSONValue j_in = parseJSON( j_in_0 );
   else
-    JSONValue j_in = j_in_0;
+    scope JSONValue j_in = j_in_0;
 
   
   JSONValue j_ret = j_in.type == JSONType.object  ?  json_object()
@@ -141,7 +141,7 @@ T json_get_opt_copy(T/*string | JSONValue*/)( in T j_in_0, in Jsonplace[] place_
   
   foreach (place; place_arr)
     {
-      auto j_maybe = json_get_place( j_in, place );
+      scope auto j_maybe = json_get_place( j_in, place );
       if (!j_maybe.isNull)
 	json_set_place( j_ret, place, json_deep_copy( j_maybe.get ) );
     }

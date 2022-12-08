@@ -68,7 +68,7 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
   
   auto rampup_dur = 0 < rampup.length  ?  parse_duration( rampup )  :  Duration.zero;
   
-  auto earlier_start_of_k_part = (){
+  scope auto earlier_start_of_k_part = (){
 
     auto t = Clock.currTime();
 
@@ -83,11 +83,11 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
   
   // Main loop
 
-  auto pid_arr = new Pid[ n_processes ];
+  scope auto pid_arr = new Pid[ n_processes ];
   
   while (true)
     {
-      auto now = Clock.currTime;
+      scope auto now = Clock.currTime;
 
       // start/restart as needed
       foreach (k_part; 0..n_processes)
@@ -118,13 +118,13 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
 
       // check for restart and/or failures
 
-      auto twr_non_null = pid_arr.filter!"a !is null".map!tryWait.enumerate;
+      scope auto twr_non_null = pid_arr.filter!"a !is null".map!tryWait.enumerate;
       
-      auto failed_arr  =
+      scope auto failed_arr  =
         twr_non_null.filter!("a.value.terminated  &&  a.value.status != 0  &&  a.value.status != "~to!string(restart_code))
         .array;
       
-      auto restart_arr =
+      scope auto restart_arr =
         twr_non_null.filter!("a.value.terminated  &&  a.value.status == "~to!string(restart_code))
         .array;
 
@@ -136,10 +136,10 @@ void multiprocess_start_and_restart_and_wait_success_or_exit
 
       {
         // specific to the rampup use case
-        immutable has_not_started_all_yet = pid_arr.any!"a is null";
+        scope immutable has_not_started_all_yet = pid_arr.any!"a is null";
 
         // all use cases
-        immutable has_not_finished_all_yet =
+        scope immutable has_not_finished_all_yet =
           0 < restart_arr.length  ||  !(twr_non_null.all!"a.value.terminated");
         
         if (has_not_started_all_yet  ||  has_not_finished_all_yet)
@@ -183,7 +183,7 @@ void multiprocess_start_and_wait_success_or_exit
   ( in size_t n_processes, in string error_msg_prefix )
 // Convenience wrapper
 {
-  auto pid_arr = multiprocess_start!spawner( n_processes );
+  scope auto pid_arr = multiprocess_start!spawner( n_processes );
   multiprocess_wait_success_or_exit!fail_early( pid_arr, error_msg_prefix );
 }
 
@@ -192,7 +192,7 @@ auto multiprocess_start_and_wait
   ( in size_t n_processes )
 // Convenience wrapper
 {
-  auto pid_arr = multiprocess_start!spawner( n_processes );
+  scope auto pid_arr = multiprocess_start!spawner( n_processes );
   return multiprocess_wait!fail_early( pid_arr );
 }
 
@@ -220,14 +220,14 @@ auto multiprocess_start(alias spawner_0/*delegate | string | string[]*/)( in siz
    // now read individual outputs  from outfilename_arr
    */
 {
-  auto spawner = spawner_function!spawner_0();
+  scope auto spawner = spawner_function!spawner_0();
 
   assert(isCallable!spawner);
 
-  auto pid_app = appender!(Pid[]);
+  scope auto pid_app = appender!(Pid[]);
   foreach (k_part; 0..n_processes)
     {
-      auto sub_pid = spawner( k_part );
+      scope auto sub_pid = spawner( k_part );
       
       pid_app.put( sub_pid );
     }
@@ -273,7 +273,7 @@ auto spawner_function_of_array(alias array_of_string)()
 void multiprocess_wait_success_or_exit(bool fail_early = true)
   ( Pid[] pid_arr, in string error_msg_prefix )
 {
-  auto failed_arr = multiprocess_wait!fail_early( pid_arr );
+  scope auto failed_arr = multiprocess_wait!fail_early( pid_arr );
   multiprocess_fail_early( error_msg_prefix, pid_arr, failed_arr );
 }
 
@@ -288,7 +288,7 @@ void multiprocess_fail_early(T)( in string error_msg_prefix, Pid[] pid_arr, in T
       stderr.writeln( baseName(__FILE__)~": "~msg ); stderr.flush;
 
       // one fails => stop all remaining processes
-      foreach (ind, ref pid; pid_arr)
+      foreach (ind, scope ref pid; pid_arr)
         {
           if (!failed_arr.any!(x => x.index == ind))
             {

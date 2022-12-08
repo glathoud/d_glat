@@ -61,7 +61,7 @@ class ModifiedSlice(T)
   override
   string toString() const @safe
   {
-    double[] tmp = new double[length];
+    scope double[] tmp = new double[length];
     foreach (k; 0..length)
       tmp[k] = this[ k ];
     

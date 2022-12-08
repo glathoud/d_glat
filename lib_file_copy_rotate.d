@@ -71,7 +71,7 @@ string[] file_copy_fetch
 (string prefix = DFLT_PREFIX)
   ( in string filename )
 {
-  immutable fipr = get_fipr_of_filename_and_prefix( filename, prefix );
+  scope immutable fipr = get_fipr_of_filename_and_prefix( filename, prefix );
 
   return dirSA( fipr~'*' ).sort.array;
 }
@@ -93,18 +93,18 @@ bool file_copy_rotate
   delete), `false` otherwise.
 */
 {
-  immutable fipr = get_fipr_of_filename_and_prefix( filename, prefix );
-
+  scope immutable fipr = get_fipr_of_filename_and_prefix( filename, prefix );
+  
   bool ret_modified = false;
 
-  auto modificationTime = get_modification_time( filename );
-  auto dt_now           = cast( DateTime )( modificationTime );
+  scope auto modificationTime = get_modification_time( filename );
+  scope auto dt_now           = cast( DateTime )( modificationTime );
   
-  auto save_arr = _grab_and_sort( fipr );
+  scope auto save_arr = _grab_and_sort( fipr );
 
-  long first_dur_max = max_interval_arr[ 0 ];
+  scope long first_dur_max = max_interval_arr[ 0 ];
   
-  auto first_duration = 0 < save_arr.length
+  scope auto first_duration = 0 < save_arr.length
     ?  (dt_now - save_arr[ 0 ].dt).total!units
     :  long.max
     ;
@@ -113,18 +113,18 @@ bool file_copy_rotate
     {
       ret_modified = true;
 
-      immutable new_fn_core = fipr~(dt_now.toISOExtString);
+      scope immutable new_fn_core = fipr~(dt_now.toISOExtString);
 
       if (compress)
         {
           // mixin(_wr_here);printMemUsage();
-          immutable new_filename = new_fn_core~".gz";
+          scope immutable new_filename = new_fn_core~".gz";
           ensure_file_writable_or_exit( new_filename, /*ensure_dir:*/true );
           std.file.write( new_filename, gzip( cast(ubyte[])( std.file.read( filename ))) );
         }
       else
         {
-          immutable new_filename = new_fn_core;
+          scope immutable new_filename = new_fn_core;
           ensure_file_writable_or_exit( new_filename, /*ensure_dir:*/true );
           std.file.copy( filename, new_filename );
         }
@@ -140,7 +140,7 @@ bool file_copy_rotate
     {
       immutable n = save_arr.length, nm1 = n-1;
       
-      auto delta_arr = save_arr
+      scope auto delta_arr = save_arr
         .enumerate
         .map!( x => x.index < nm1
 

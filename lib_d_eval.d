@@ -47,7 +47,7 @@ T d_eval( T )( in string fname, in string code
 {
   assert( 0 < compiler.length, "d_eval needs a compiler." );
 
-  auto fnptr_of_code = aa_getInit( fnptr_of_code_of_compiler
+  scope auto fnptr_of_code = aa_getInit( fnptr_of_code_of_compiler
                                    , compiler );
   if (code !in *fnptr_of_code)
     {
