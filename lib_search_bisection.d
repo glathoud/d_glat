@@ -3,20 +3,41 @@ module d_glat.lib_search_bisection;
 import std.math;
 import std.stdio;
 
-
 /**
-   Convenience wrapper for the T=string use case.
+   Bisection search tools.
 
-   Useful e.g. to replace an associative array with key type string
-   with a flat, sorted array and bisection, especially for large
-   sizes, in which as of 2018-10 the associative array eats too much
-   RAM.
-   
    Guillaume Lathoud
    glat@glat.info
 
    Distributed under the Boost License, see file ./LICENSE
-*/
+ */
+
+
+
+long search_bisection_exact(T)( in T[] srtd_arr, T elt ) 
+// Returns the index of `elt` in `srtd_arr` if found, else `-1`.
+// `srtd_arr` is assumed sorted increasingly.
+{
+  return search_bisection_exact!T( (i) => srtd_arr[ i ], elt, 0, srtd_arr.length-1 );
+}
+
+long search_bisection_exact(T)( T delegate (in size_t) fun
+                                , in T v, in ulong a0, in ulong b0 )
+// Returns the index `ind` for which `v==fun(ind)` and `a0<=ind<=b0`,
+// else -1 (not found).
+//
+// `fun(x) for x in a0..b0` is assumed sorted increasingly.
+{
+  size_t ind0, ind1; double prop;
+  bool maybe_found = search_bisection!T( fun, v, a0, b0, /*outputs:*/ind0, ind1, prop );
+  if (maybe_found  &&  ind0 == ind1  &&  prop == 0.0)
+    return ind0;
+  
+  return -1;
+}
+
+
+
 
 bool search_bisection_string
 ( T = string
@@ -27,26 +48,19 @@ bool search_bisection_string
   )
   ( T delegate (in size_t) fun, in T v, in ulong a0, in ulong b0
     , out size_t ind0, out size_t ind1, out double prop )
+/**
+   Convenience wrapper for the T=string use case.
+
+   Useful e.g. to replace an associative array with key type string
+   with a flat, sorted array and bisection, especially for large
+   sizes, in which as of 2018-10 the associative array eats too much
+   RAM.
+*/
 {
   return search_bisection!( T, T_prop_between_code, T_equal_code, T_le_code, T_lt_code )
     ( fun, v, a0, b0, ind0, ind1, prop );
 }
 
-
-/**
-   Search sorted values accessible through `fun( ulong ) -> double`
-   between indices `a0` and `b0` included.
-
-   Implementation: bisection.
-
-   Returns `true` if found, `false` otherwise.
-
-   Guillaume Lathoud
-   glat@glat.info
-
-   Distributed under the Boost License, see file ./LICENSE
-
-**/
 
 bool search_bisection
 ( T = double
@@ -57,6 +71,14 @@ bool search_bisection
   )
   ( T delegate( in size_t ) fun, in T v, in ulong a0, in ulong b0
     , out size_t ind0, out size_t ind1, out double prop )
+/**
+   Search sorted values accessible through `fun( ulong ) -> double`
+   between indices `a0` and `b0` included.
+
+   Implementation: bisection.
+
+   Returns `true` if found, `false` otherwise.
+*/
 {
   size_t a = a0;
   size_t b = b0;
