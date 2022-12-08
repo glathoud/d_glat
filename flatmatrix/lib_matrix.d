@@ -177,17 +177,17 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
       if (sI != I  ||  sJ != J)
         {
           sI = I; sJ = J;
-          A_flat      = new T[ IJ ];
-          B_flat      = new T[ I2 ];
-          B_flat_init = new T[ I2 ];
+          ensure_length( IJ, A_flat );
+          ensure_length( I2, B_flat );
+          ensure_length( I2, B_flat_init );
 
           scope Matrix id; id.setDim( [I, I]); diag_inplace_nogc( 1.0, id );
           B_flat_init[] = id.data[];
 
-          A = new T[][ I ];
-          B = new T[][ I ];
-          A_init = new T[][ I ];
-          B_init = new T[][ I ];
+          ensure_length( I, A );
+          ensure_length( I, B );
+          ensure_length( I, A_init );
+          ensure_length( I, B_init );
       
           foreach (i; 0..I)
             {

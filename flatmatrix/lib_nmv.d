@@ -27,7 +27,7 @@ MatrixT!T nmv(T)( in MatrixT!T a ) pure nothrow @safe
 // Functional wrapper around `nmv_inplace_dim`
 {
   MatrixT!T b;
-  auto buffer = new Buffer_nmv_inplaceT!T;
+  scope auto buffer = new Buffer_nmv_inplaceT!T;
 
   nmv_inplace_dim!T( a, b, buffer );
 
@@ -43,21 +43,21 @@ void nmv_inplace_dim( T )( in ref MatrixT!T a
 {
   b.setDim( a.dim );
 
-  auto  m_mean  = buffer.m_mean;
-  auto  m_var   = buffer.m_var;
+  scope auto  m_mean  = buffer.m_mean;
+  scope auto  m_var   = buffer.m_var;
   
   mean_var_inplace_dim( a, m_mean, m_var );
 
-  auto mean_arr = m_mean.data;
+  scope auto mean_arr = m_mean.data;
   immutable restdim = mean_arr.length;
 
-  auto std_arr = ensure_length( restdim, buffer.std_arr );
+  scope auto std_arr = ensure_length( restdim, buffer.std_arr );
   
   foreach (i,x; m_var.data)
     std_arr[ i ] = sqrt( x );
 
-  auto a_data = a.data;
-  auto b_data = b.data;
+  scope auto a_data = a.data;
+  scope auto b_data = b.data;
 
   immutable i_end = a_data.length;
 

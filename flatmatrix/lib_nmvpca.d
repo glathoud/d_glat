@@ -24,7 +24,7 @@ Matrix nmvpca( in Matrix a ) pure nothrow @safe
 // `b` will be filled with `NaN`s.
 {
   auto b = Matrix( a.dim );
-  auto buffer = new Buffer_nmvpca_inplace;
+  scope auto buffer = new Buffer_nmvpca_inplace;
   nmvpca_inplace( a, b, buffer );
   return b;
 }
@@ -50,8 +50,6 @@ pure nothrow @safe
 // Returns `true` if PCA successful, `false` otherwise.
 // In the latter case `b` will be filled with NaNs.
 {
-  
-
   b.setDim( a.dim );
   return nmvpca_inplace( a, b, buffer );
 }
