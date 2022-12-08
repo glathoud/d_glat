@@ -740,17 +740,22 @@ JSONValue j_line(string name, R)( R line_r )
 
 JSONValue j_row_of( in double[] data, in string j_str )
 {
-  scope auto c_arr = parseJSON( j_str ).object[ "column_name_arr" ].array.map!"a.str".array;
-  mixin(alwaysAssertStderr(`data.length == c_arr.length`, `to!string([data.length, c_arr.length])`));
-
-  auto j_ret = parseJSON( "{}" );
-  foreach (i,c; c_arr)
+  if (scope auto p = "column_name_arr" in parseJSON( j_str ).object)
     {
-      mixin(alwaysAssertStderr!`0 < c.length`);
-      j_ret.object[ c ] = JSONValue( data[ i ] );
+      scope auto c_arr = (*p).array.map!"a.str".array;
+      mixin(alwaysAssertStderr(`data.length == c_arr.length`, `to!string([data.length, c_arr.length])`));
+      
+      auto j_ret = parseJSON( "{}" );
+      foreach (i,c; c_arr)
+        {
+          mixin(alwaysAssertStderr!`0 < c.length`);
+          j_ret.object[ c ] = JSONValue( data[ i ] );
+        }
+      
+      return j_ret;
     }
-  
-  return j_ret;
+
+  return parseJSON( "null" );
 }
 
 

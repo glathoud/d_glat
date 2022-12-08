@@ -402,7 +402,7 @@ unittest
   auto o1 = json_solve_calc( o0 );
 
   assert( o0.toString != o1.toString );
-  assert( o1.toString == `{"a":123,"b":{"c":239}}`);
+  assert( o1.toString == `{"a":123,"b":{"c":239.0}}`);
   
   writeln( "unittest passed: "~__FILE__~": json_solve_calc" );
 

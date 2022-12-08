@@ -276,7 +276,7 @@ unittest
     auto jmm = new JsonModifMany;
     jmm.push( ["a","b","c"], parseJSON( `{"xyz":123}` ) );
     jmm.push( "a.b.d", parseJSON( `{"tuv":456}` ) );
-    assertThrown!(core.exception.AssertError)( jmm.push( "a.b", parseJSON( `{"some":"overwrite"}` ) ) );
+    assertThrown!(Exception)( jmm.push( "a.b", parseJSON( `{"some":"overwrite"}` ) ) );
   }
 
   {
