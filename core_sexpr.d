@@ -51,7 +51,7 @@ void walk_sexpr( alias iter )( in SExpr sexpr )
   iter( sexpr );
   if (sexpr.isList)
     {
-      auto slist = cast( SList )( sexpr );
+      scope auto slist = cast( SList )( sexpr );
       slist.rest.each!(walk_sexpr!iter);
     }
 }
@@ -148,7 +148,7 @@ class SList : SExpr
       this.first = all_v[ 0 ];
       this.rest  = all_v[ 1..$ ];
 
-      auto app = appender!string();
+      scope auto app = appender!string();
       app ~= "(";
       foreach(i, x; all_v)
         {

@@ -17,7 +17,7 @@ struct IDS
 {
   size_t id_of_string( in string s ) pure @safe nothrow
   {
-    if (auto p = s in i_of_s_aa)
+    if (scope auto p = s in i_of_s_aa)
       return *p;
     
     return _register_id_of_string( s );

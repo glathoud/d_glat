@@ -37,20 +37,20 @@ void printMemUsage()
 
 string getMemUsage()
 {
-  auto app = appender!(string[]);
+  scope auto app = appender!(string[]);
   
   immutable pid = getpid();
   {
-    auto x = executeShell( "cat /proc/"~to!string(pid)~"/status  | grep VmHWM" );
+    scope auto x = executeShell( "cat /proc/"~to!string(pid)~"/status  | grep VmHWM" );
     enforce( 0 == x.status );
     app.put(x.output.strip);
   }
   {
-    auto x = executeShell( "cat /proc/"~to!string(pid)~"/status  | grep VmRSS" );
+    scope auto x = executeShell( "cat /proc/"~to!string(pid)~"/status  | grep VmRSS" );
     enforce( 0 == x.status );
     app.put(x.output.strip);
   }
-  auto stats = GC.stats; 
+  scope auto stats = GC.stats; 
   app.put( "stats.usedSize: "~to!string( stats.usedSize )~", stats.freeSize: "~to!string( stats.freeSize ));
   app.put( "" );
 

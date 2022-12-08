@@ -15,7 +15,7 @@ alias MaybeDouble = Nullable!double;
 
 bool isParsableDouble( in string s )
 {
-  auto md = parseDouble( s );
+  scope auto md = parseDouble( s );
   return !md.isNull;
 }
 
@@ -37,13 +37,13 @@ MaybeDouble parseGermanDouble( in string s )
   auto commaRx = ctRegex!( `\,` );
   auto dotRx   = ctRegex!( `\.` );
 
-  auto s2 = s.replaceAll( dotRx, "" ).replaceAll( commaRx, "." );
+  scope auto s2 = s.replaceAll( dotRx, "" ).replaceAll( commaRx, "." );
   
-  double x;
+  scope double x;
   MaybeDouble ret;
 
   try {
-    auto n_success = formattedRead( s2, "%f", &x );
+    scope auto n_success = formattedRead( s2, "%f", &x );
     if (0 < n_success)
       ret = x;
   }

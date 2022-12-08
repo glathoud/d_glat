@@ -52,7 +52,7 @@ void ensure_file_writable_or_exit( in string outfilename, in bool ensure_dir = f
       stderr.writefln( "Output: Not a directory: %s", out_dirName );
       exit( -1 );
     }
-  auto dirAttr = getAttributes( out_dirName );
+  scope auto dirAttr = getAttributes( out_dirName );
   if (!(dirAttr & octal!200))
     {
       stderr.writefln( "Output: Directory does not have user-write permission: %s", out_dirName );
@@ -99,7 +99,7 @@ bool exists_non_empty( in string filename
   
   if (existing_filename_set.available)
     {
-      if (auto p = filename in existing_filename_set.size_of_filename)
+      if (scope auto p = filename in existing_filename_set.size_of_filename)
         return 0 < *p; // *p supposed to be == getSize( filename )
       
       if (efs_knows_all)
@@ -114,9 +114,8 @@ bool exists_non_empty( in string filename
 
 SysTime get_modification_time( in string filename )
 {
-  
-
-  SysTime accessTime, modificationTime;
+  scope SysTime accessTime;
+  SysTime modificationTime;
   getTimes(filename, accessTime, modificationTime);
 
   return modificationTime;
@@ -125,8 +124,6 @@ SysTime get_modification_time( in string filename )
 
 string resolve_symlink( in string maybe_symlink )
 {
-  
-
   if (!maybe_symlink.isSymlink)
     return maybe_symlink; // not a symlink
 
@@ -149,10 +146,11 @@ size_t getAvailableDiskSpace( in string path )
 {
   immutable dir = absolutePath( dirName( path ) );
   immutable cmd = `df -B 1 --output=avail "`~dir~`"`;
-  auto tmp = executeShell( cmd );
+  scope auto tmp = executeShell( cmd );
   if (tmp.status != 0)
     {
-      immutable msg = `getAvailableDiskSpace failed on path: "`~path~`". cmd:"`~cmd~`" returned `
+      scope immutable msg =
+        `getAvailableDiskSpace failed on path: "`~path~`". cmd:"`~cmd~`" returned `
         ~`status:`~to!string(tmp.status)~` and output:`~to!string(tmp.output);
 
       stdout.writeln( msg ); stdout.flush;
@@ -170,7 +168,7 @@ size_t getUsedDiskSpace( in string path )
 {
   immutable dir = absolutePath( isDir( path )  ?  path  :  dirName( path ) );
   immutable cmd = `du -b --max-depth=0 "`~dir~`"`;
-  auto tmp = executeShell( cmd );
+  scope auto tmp = executeShell( cmd );
   if (tmp.status != 0)
     {
       immutable msg = `getUsedDiskSpace failed on path: "`~path~`". cmd:"`~cmd~`" returned `

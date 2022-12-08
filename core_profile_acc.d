@@ -124,7 +124,7 @@ ProfileAcc[string] p_acc_of_p_name;
 
 ProfileAcc _get_profile_acc( in string profile_name = "" )
 {
-  if (auto p = profile_name in p_acc_of_p_name)
+  if (scope auto p = profile_name in p_acc_of_p_name)
     return *p;
   
   return p_acc_of_p_name[ profile_name ] = new ProfileAcc( profile_name );
@@ -143,7 +143,7 @@ class ProfileAcc
   {
     previous_begin_name_r ~= begin_name;
       
-    if (auto p = begin_name in sw_of_begin_name)
+    if (scope auto p = begin_name in sw_of_begin_name)
       (*p).start;
     else
       sw_of_begin_name[ begin_name ] = StopWatch(AutoStart.yes);
@@ -153,7 +153,7 @@ class ProfileAcc
   {    
     mixin(alwaysAssertStderr!`0 < previous_begin_name_r.length`);
 
-    immutable previous_begin_name = previous_begin_name_r[ $-1 ];
+    scope immutable previous_begin_name = previous_begin_name_r[ $-1 ];
     previous_begin_name_r = previous_begin_name_r[ 0..$-1 ];
 
     sw_of_begin_name[ previous_begin_name ].stop;
@@ -186,7 +186,7 @@ class ProfileAcc
         return format("%100s", bnmc_100) ~ " ("~format("%6.2f", prct)~"%) " ~ to!string(drtn);
       }
 
-    auto global_drtn_0 = global_sw.peek;
+    scope auto global_drtn_0 = global_sw.peek;
                 
     return ([ "ProfileAcc dump: global duration: "~to!string(global_sw.peek)
               ]

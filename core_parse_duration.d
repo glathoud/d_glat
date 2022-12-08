@@ -38,7 +38,7 @@ Duration parse_duration( in string in_s )
   }
   
   {
-    immutable s = units.canFind( in_s[ $-1 ] )
+    scope immutable s = units.canFind( in_s[ $-1 ] )
       ?  in_s
 
       : // Autocomplete last unit, if missing: "1h40" => "1h40m"
@@ -49,9 +49,9 @@ Duration parse_duration( in string in_s )
     
     foreach (c; s.matchAll( r"[^a-z]*[a-z]"))
       {
-        auto a = c[ 0 ];
+        scope auto a = c[ 0 ];
         
-        immutable x = to!double( a[0..$-1] );
+        scope immutable x = to!double( a[0..$-1] );
         switch (a[$-1])
           {
           case 's': ret += dur!"nsecs"( cast(long)( round( x *    1.0e9 ) ) );

@@ -34,14 +34,14 @@ private void _ensure_j_dbl_special()
     {
       _j_dbl_special_init_done = true;
 
-      auto j = parseJSON("{}");
+      scope auto j = parseJSON("{}");
       j.object["c"] = JSONValue(double.infinity);
       j.object["d"] = JSONValue(-double.infinity);
       j.object["e"] = JSONValue(double.nan);
       
-      auto js = j.toString( JSONOptions.specialFloatLiterals );
+      scope auto js = j.toString( JSONOptions.specialFloatLiterals );
 
-      auto j2 = parseJSON( js );
+      scope auto j2 = parseJSON( js );
 
       _j_dbl_special_s_infinity    = j2[ "c" ].str;  // Usually  "Infinite"
       _j_dbl_special_s_negInfinity = j2[ "d" ].str;  // Usually  "-Infinite"
@@ -148,7 +148,7 @@ T[] json_get_array(T)( in JSONValue jv )
 {
   enforce( jv.type == JSONType.array );
 
-  auto apdr = appender!(T[]);
+  scope auto apdr = appender!(T[]);
 
   foreach (j_one; jv.array)
     {
@@ -216,7 +216,7 @@ JSONValue json_get_place( in ref JSONValue j, in string place_str
 JSONValue json_get_place( in ref JSONValue j, in Jsonplace place
                           , in JSONValue j_default )
 {
-  auto j_n = json_get_place( j, place );
+  scope auto j_n = json_get_place( j, place );
   return j_n.isNull  ?  j_default  :  j_n.get;
 }
 
@@ -238,20 +238,20 @@ Nullable!JSONValue json_get_place( in ref JSONValue j, in Jsonplace place )
     }
   else
     {
-      Nullable!JSONValue j_deeper;
+      scope Nullable!JSONValue j_deeper;
   
       if (j.type == JSONType.object)
         {
-	  if (auto p = place[ 0 ] in j.object)
+	  if (scope auto p = place[ 0 ] in j.object)
 	    j_deeper = *p;
         }
       else if (j.type == JSONType.array)
         {
-	  auto sp0 = place[ 0 ];
+	  scope auto sp0 = place[ 0 ];
 
 	  if (string_is_num09( sp0 ))
 	    {
-	      auto p0 = to!size_t( place[ 0 ] );
+	      scope auto p0 = to!size_t( place[ 0 ] );
 	      if (0 <= p0  &&  p0 < j.array.length)
 		j_deeper = j.array[ p0 ];
 	    }
@@ -283,7 +283,7 @@ Nullable!JSONValue json_get_places( in ref JSONValue j, in Jsonplace[] array_of_
  see json_get_opt_copy in ./lib_json_manip.d
 */
 {
-  auto arr = array_of_place.map!( place => json_get_place( j, place ) );
+  scope auto arr = array_of_place.map!( place => json_get_place( j, place ) );
 
   Nullable!JSONValue ret;
   if (arr.all!"a.isNull")

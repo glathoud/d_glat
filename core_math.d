@@ -44,7 +44,7 @@ T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
 // Wrapper that creates a temporary buffer
 {
   
-  auto buffer = new Buffer_e_w_logsumT!T;
+  scope auto buffer = new Buffer_e_w_logsumT!T;
   return e_w_logsum_dim( a_arr, logw_arr, buffer );
 }
 
@@ -62,8 +62,6 @@ T e_w_logsum_dim( T )( in T[] a_arr, in T[] logw_arr
    (`a_i>0.0`), one for negative values (`a_i<0.0`);
 */
 {
-  
-
   immutable n = a_arr.length;
   
   debug assert( n == logw_arr.length );
@@ -93,8 +91,8 @@ T e_w_logsum_nogc( T )( in T[] a_arr, in T[] logw_arr
   
   debug assert( n == logw_arr.length );
 
-  auto logsum_buffer = buffer.logsum_buffer;
-  auto work          = buffer.work;
+  scope auto logsum_buffer = buffer.logsum_buffer;
+  scope auto work          = buffer.work;
 
   assert( n == logsum_buffer.length );
   assert( n == work.length );
@@ -139,10 +137,8 @@ pure nothrow @safe
  want to post-process (e.g. rescale) to compensate for the overflow.
 */
 {
-  
-  
   immutable n = arr.length;
-  auto buffer = new T[n];
+  scope auto buffer = new T[n];
   
   return logsum_nogc!T( arr, 0, n, buffer );
 }
@@ -165,8 +161,6 @@ http://www.glat.info/ma/2006-CHN-USS-TIME-DOMAIN/my_logsum_fast.pdf
  want to post-process (e.g. rescale) to compensate for the overflow.
 */
 {
-  
-
   immutable n = buffer.length;
 
   debug assert( i_begin < i_end );
@@ -214,9 +208,9 @@ T mean_of_arr(T)( in T[] arr )
 void mean_stddev_inplace(bool unbiased = true, T)( in T[] arr, ref T v_mean, ref T v_stddev )
 {
   immutable N = arr.length;
-  auto m = MatrixT!T( [N, 1], cast(T[])( arr ) );
-  auto m_mean = MatrixT!T( [1, 1] );
-  auto m_cov  = MatrixT!T( [1, 1] );
+  scope auto m      = MatrixT!T( [N, 1], cast(T[])( arr ) );
+  scope auto m_mean = MatrixT!T( [1, 1] );
+  scope auto m_cov  = MatrixT!T( [1, 1] );
   mean_cov_inplace_dim!(unbiased, /*diag_only:*/true, T)( m, m_mean, m_cov );
   v_mean   = m_mean.data[ 0 ];
   v_stddev = sqrt( m_cov .data[ 0 ] );
@@ -226,8 +220,6 @@ void mean_stddev_inplace(bool unbiased = true, T)( in T[] arr, ref T v_mean, ref
 T median( T )( in T[] arr )
 pure nothrow @safe
 {
-  
-  
   return median_inplace( arr.dup );
 }
 

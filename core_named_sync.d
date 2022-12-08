@@ -29,11 +29,11 @@ private immutable(SimpleLock) add_user( in string name )
 {
   synchronized( _innerLock )
   {
-    auto _son = cast( SiloOfName* )( &_silo_of_name );
-    auto _non = cast( NuserOfName* )( &_nuser_of_name );
+    scope auto _son = cast( SiloOfName* )( &_silo_of_name );
+    scope auto _non = cast( NuserOfName* )( &_nuser_of_name );
     
-    auto _nuser = (*_non)[ name ] = 1 + (*_non).get( name, 0 );
-    auto p = name in (*_son);
+    scope auto _nuser = (*_non)[ name ] = 1 + (*_non).get( name, 0 );
+    scope auto p = name in (*_son);
     auto ret = cast( immutable(SimpleLock))
       (p ? *p : ((*_son)[ name ] = new SimpleLock));
     
@@ -45,10 +45,10 @@ private void remove_user( in string name )
 {
   synchronized( _innerLock )
   {
-    auto _son = cast( SiloOfName* )( &_silo_of_name );
-    auto _non = cast( NuserOfName* )( &_nuser_of_name );
+    scope auto _son = cast( SiloOfName* )( &_silo_of_name );
+    scope auto _non = cast( NuserOfName* )( &_nuser_of_name );
     
-    auto _nuser = (*_non)[name] = -1 + (*_non)[name];
+    scope auto _nuser = (*_non)[name] = -1 + (*_non)[name];
     if (_nuser == 0)
       {
 	(*_non).remove( name );

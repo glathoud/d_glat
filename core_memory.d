@@ -13,9 +13,9 @@ size_t getTotalRam()
 {
   if (0 == _total_ram)
     {
-      auto tmp = executeShell( "free -b" );
+      scope auto tmp = executeShell( "free -b" );
       enforce( tmp.status == 0, tmp.output );
-      auto mfr = tmp.output.matchFirst( r"\b\d+\b" );
+      scope auto mfr = tmp.output.matchFirst( r"\b\d+\b" );
       enforce( !mfr.empty, tmp.output );
       _total_ram = to!(typeof(_total_ram))( mfr[ 0 ] );
       enforce( 0 < _total_ram );
@@ -46,7 +46,7 @@ string localloc( in string name_T_count ) pure @safe
    scope(exit) deallocate( myarray );
  */
 {
-  auto q = name_T_count.split( ',' );
+  scope auto q = name_T_count.split( ',' );
   if (q.length != 3)
     assert( false, "localloc: name_T_count must contain 2 commas." );
 

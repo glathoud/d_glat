@@ -23,7 +23,7 @@ string mstr_of_arr(T/*typically float or double*/)( in T[] arr )
 
 T[] arr_of_mstr(T = double/*typically float or double*/)( in string s )
 {
-  immutable tmp = s.replace("-nan","\"NaN\"").replace("nan","\"NaN\"")
+  scope immutable tmp = s.replace("-nan","\"NaN\"").replace("nan","\"NaN\"")
     .replace("-Inf","\"-Infinite\"").replace("Inf","\"Infinite\"");
 
   import std.stdio;

@@ -45,7 +45,7 @@ string dirOne(bool maybe = false)
 string dirOne(bool maybe = false)
   ( in string path, in string glob, in SpanMode spanMode = SpanMode.shallow, in bool followSymlink = false )
 {
-  auto sa = dirSA( path, glob, spanMode, followSymlink );
+  scope auto sa = dirSA( path, glob, spanMode, followSymlink );
 
   mixin(alwaysAssertStderr
         (maybe  ?  `sa.length <= 1`  :  `sa.length == 1`,
@@ -69,7 +69,7 @@ string[] dirSA( in string path, in string glob, in SpanMode spanMode = SpanMode.
   if (!exists( path ))
     return [];
 
-  auto app = appender!(string[]);
+  scope auto app = appender!(string[]);
 
   // Speed: Try to access the string `name` directly with the hope
   // *not* to trigger (L)Stat in `DirIterator` (see std.file).

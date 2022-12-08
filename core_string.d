@@ -20,7 +20,7 @@ string _tli( string s_0 )() pure @safe
  */
 {
   string rest = s_0;
-  auto app = appender!(string[]);
+  scope auto app = appender!(string[]);
 
   void put_string( in string a )
   {
@@ -73,12 +73,12 @@ bool string_is_float( in string s ) pure @safe
     ?  s[1..$]
     :  s;
 
-  auto arr = s2.split( '.' );
+  scope auto arr = s2.split( '.' );
   if (arr.length < 2)
     arr = "0" ~ arr;
 
   // maybe exponent
-  auto tmp = arr[ 1 ].split( 'e' );
+  scope auto tmp = arr[ 1 ].split( 'e' );
   if (tmp.length > 2)
     return false;
   
@@ -102,8 +102,6 @@ bool string_is_float( in string s ) pure @safe
 
 bool string_is_num09( in string s ) pure nothrow @safe @nogc
 {
-  
-
   if (s.length < 1)
     return false;
   

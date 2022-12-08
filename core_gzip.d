@@ -12,9 +12,9 @@ import std.zlib;
 
 ubyte[] gunzip( in ubyte[] data )
 {
-  auto app = appender!(ubyte[]);
+  scope auto app = appender!(ubyte[]);
 
-  auto U = new UnCompress( HeaderFormat.gzip );
+  scope auto U = new UnCompress( HeaderFormat.gzip );
   app.put( cast( ubyte[] )( U.uncompress( data ) ) );
   app.put( cast( ubyte[] )( U.flush() ) );
   
@@ -61,17 +61,21 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
 
               immutable s = "A la claire fontaine, m'en allant promener, j'ai trouve l'eau si claire, que je m'y suis baigne.";
           
-              const d_1 = cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
+              scope const d_1 =
+                cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
+              
               mixin(_asrt!`MIN_LENGTH_FOR_SHELL_GZIP < d_1.length`);
 
-              const out_1 = gzip!also_disk( d_1 );
+              scope const out_1 = gzip!also_disk( d_1 );
 
               if (_tried_shell  &&  _use_shell)
                 {
-                  const d_2 = cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
+                  scope const d_2 =
+                    cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
+                  
                   mixin(_asrt!`MIN_LENGTH_FOR_SHELL_GZIP < d_2.length`);
               
-                  const out_2 = gzip!also_disk( d_2 );
+                  scope const out_2 = gzip!also_disk( d_2 );
 
                   _tried_shell = true;
                   _use_shell   = out_1 == out_2;
@@ -95,7 +99,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
                   std.file.write( tmpfn, data );
 
                   // -n important: do not save the tmpfn into the file, to try to guarantee always same output
-                  auto tmp = executeShell("gzip -n \""~tmpfn~"\"");
+                  scope auto tmp = executeShell("gzip -n \""~tmpfn~"\"");
 
                   // Detect errors.
                   if (0 != tmp.status)
@@ -133,8 +137,8 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
         }
     }
   
-  auto app = appender!(ubyte[]);
-  auto   C = new Compress( 9, HeaderFormat.gzip );
+  scope auto app = appender!(ubyte[]);
+  scope auto   C = new Compress( 9, HeaderFormat.gzip );
   app.put( cast( ubyte[] )( C.compress( data ) ) );
   app.put( cast( ubyte[] )( C.flush() ) );
 

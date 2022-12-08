@@ -21,11 +21,11 @@ import std.stdio;
 double stress(string duration_type /*e.g. "msecs" "usecs" "seconds" ...*/)
   ( in size_t lower_duration, in size_t higher_duration_in = 0, in bool verbose = true )
 {
-  immutable higher_duration = 0 < higher_duration_in  ?  higher_duration_in  :  lower_duration;
+  scope immutable higher_duration = 0 < higher_duration_in  ?  higher_duration_in  :  lower_duration;
   
-  immutable begin = Clock.currTime;
+  scope immutable begin = Clock.currTime;
   
-  immutable dur = dur!"usecs"( uniform( lower_duration, higher_duration ) );
+  scope immutable dur = dur!"usecs"( uniform( lower_duration, higher_duration ) );
   
   double whatever = 0.0;
   while (Clock.currTime - begin < dur)
