@@ -431,7 +431,7 @@ unittest  // ------------------------------
   import std.stdio;
 
   import std.algorithm;
-  import std.math : approxEqual, isNaN;
+  import std.math : isClose, isNaN;
   import std.random;
 
   writeln;

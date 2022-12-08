@@ -302,7 +302,7 @@ unittest
             writeln("logsum, expected: ", [logsum, logsum_expected], " delta:", logsum - logsum_expected);
           }
 
-        assert( approxEqual( logsum, logsum_expected, 1e-8, 1e-8 ) );
+        assert( isClose( logsum, logsum_expected, 1e-8, 1e-8 ) );
       }
 
   }
@@ -332,7 +332,7 @@ unittest
             writeln("weighted_sum, expected: ", [weighted_sum, weighted_sum_expected], " delta:", weighted_sum - weighted_sum_expected);
           }
 
-        assert( approxEqual( weighted_sum, weighted_sum_expected, 1e-8, 1e-8 ) );
+        assert( isClose( weighted_sum, weighted_sum_expected, 1e-8, 1e-8 ) );
       }
 
   }
@@ -364,7 +364,7 @@ unittest
             writeln("weighted_sum, expected: ", [weighted_sum, weighted_sum_expected], " delta:", weighted_sum - weighted_sum_expected);
           }
 
-        assert( approxEqual( weighted_sum, weighted_sum_expected, 1e-8, 1e-8 ) );
+        assert( isClose( weighted_sum, weighted_sum_expected, 1e-8, 1e-8 ) );
       }
 
   }

@@ -29,7 +29,7 @@ MatrixT!T corr_one(T)( in MatrixT!T m_one
 {
   
   MatrixT!T m_corr;
-  auto buffer = new Buffer_corr_one_inplaceT!T;
+  scope auto buffer = new Buffer_corr_one_inplaceT!T;
 
   corr_one_inplace!T( m_one, m_many, m_corr, buffer );
 
@@ -110,8 +110,6 @@ void corr_one_inplace( T )
   glat@glat.info
 */
 {
-  
-
   immutable n = m_one.data.length;
   immutable d = m_many.dim[ 1 ];
 
@@ -143,11 +141,11 @@ void corr_one_inplace( T )
     }
 
   // all are `double[]`
-  auto one  = m_one .data;
-  auto many = m_many.data;
-  auto corr = m_corr.data;
-  auto many_mean = m_many_mean.data;
-  auto many_var  = m_many_var .data;
+  scope auto one  = m_one .data;
+  scope auto many = m_many.data;
+  scope auto corr = m_corr.data;
+  scope auto many_mean = m_many_mean.data;
+  scope auto many_var  = m_many_var .data;
 
   immutable one_over_n_dbl = 1.0 / cast( double )( n );
 
@@ -277,8 +275,8 @@ unittest
 
     if (verbose) writeln("corr: ", m_corr );
 
-    assert( approxEqual( +1.0, m_corr.data[ 0 ] ) );
-    assert( approxEqual( -1.0, m_corr.data[ 1 ] ) );
+    assert( isClose( +1.0, m_corr.data[ 0 ] ) );
+    assert( isClose( -1.0, m_corr.data[ 1 ] ) );
     assert( isNaN( m_corr.data[ 2 ] ) );
   }
 
@@ -333,10 +331,10 @@ unittest
 
     if (verbose) writeln("corr: ", m_corr );
 
-    assert( approxEqual
+    assert( isClose
             ( 0.9970257946, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
     
-    assert( approxEqual
+    assert( isClose
             ( -0.9984470896, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
     
     assert( isNaN( m_corr.data[ 2 ] ) );
@@ -392,10 +390,10 @@ unittest
 
     if (verbose) writeln("corr: ", m_corr );
 
-    assert( approxEqual
+    assert( isClose
             ( 0.9448199076, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
     
-    assert( approxEqual
+    assert( isClose
             ( -0.9487419465, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
     
     assert( isNaN( m_corr.data[ 2 ] ) );
@@ -431,8 +429,8 @@ unittest
 
     if (verbose) writeln("corr: ", m_corr );
 
-    assert( approxEqual( +1.0, m_corr.data[ 0 ] ) );
-    assert( approxEqual( -1.0, m_corr.data[ 1 ] ) );
+    assert( isClose( +1.0, m_corr.data[ 0 ] ) );
+    assert( isClose( -1.0, m_corr.data[ 1 ] ) );
     assert( isNaN( m_corr.data[ 2 ] ) );
   }
 
@@ -488,10 +486,10 @@ unittest
 
     if (verbose) writeln("corr: ", m_corr );
 
-    assert( approxEqual
+    assert( isClose
             ( 0.9970257946, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
     
-    assert( approxEqual
+    assert( isClose
             ( -0.9984470896, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
     
     assert( isNaN( m_corr.data[ 2 ] ) );
@@ -550,10 +548,10 @@ unittest
 
     if (verbose) writeln("corr: ", m_corr );
 
-    assert( approxEqual
+    assert( isClose
             ( 0.9448199076, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
     
-    assert( approxEqual
+    assert( isClose
             ( -0.9487419465, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
     
     assert( isNaN( m_corr.data[ 2 ] ) );

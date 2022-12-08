@@ -578,7 +578,7 @@ unittest  // --------------------------------------------------
       assert( res.S.dim == [n, n] );
       assert( res.V.dim == [n, n] );
       assert( res.VT.dim == [n, n] );
-      assert( approxEqual( res.VT.data, res.V.transpose.data, 1e-10, 1e-10 ) );
+      assert( isClose( res.VT.data, res.V.transpose.data, 1e-10, 1e-10 ) );
     }
     
     {
@@ -626,7 +626,7 @@ unittest  // --------------------------------------------------
 
     const res = svd( ma );
    
-    assert( res.q.approxEqual( [sqrt( 1248.0 ), 20.0, sqrt( 384.0 ), 0.0, 0.0 ], 1e-10, 1e-10 ) ) ;
+    assert( res.q.isClose( [sqrt( 1248.0 ), 20.0, sqrt( 384.0 ), 0.0, 0.0 ], 1e-10, 1e-10 ) ) ;
     
     check_consistency( ma, res );
   }

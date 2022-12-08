@@ -437,7 +437,7 @@ sprintf("%.12g ",cov(m))
         writeln( "mean_truth: ", mean_truth );
       }
     
-    assert( approxEqual( m_mean.data, mean_truth, 1e-10, 1e-10 ) );
+    assert( isClose( m_mean.data, mean_truth, 1e-10, 1e-10 ) );
 
     if (verbose)
       {
@@ -445,7 +445,7 @@ sprintf("%.12g ",cov(m))
         writeln( "cov_truth:  ", cov_truth);
       }
     
-    assert( approxEqual( m_cov .data,  cov_truth, 1e-10, 1e-10 ) );
+    assert( isClose( m_cov .data,  cov_truth, 1e-10, 1e-10 ) );
 
 
     {
@@ -476,7 +476,7 @@ sprintf("%.12g ",cov(m))
         writeln( "mean_truth2: ", mean_truth2 );
       }
     
-    assert( approxEqual( m_mean2.data, mean_truth2, 1e-10, 1e-10 ) );
+    assert( isClose( m_mean2.data, mean_truth2, 1e-10, 1e-10 ) );
 
     if (verbose)
       {
@@ -484,7 +484,7 @@ sprintf("%.12g ",cov(m))
         writeln( "cov_truth2:  ", cov_truth2);
       }
     
-    assert( approxEqual( m_cov2 .data,  cov_truth2, 1e-10, 1e-10 ) );
+    assert( isClose( m_cov2 .data,  cov_truth2, 1e-10, 1e-10 ) );
     
     }
   }
@@ -549,7 +549,7 @@ sprintf("%.12g ",cov(m))
         writeln( "mean_truth: ", mean_truth );
       }
     
-    assert( approxEqual( m_mean.data, mean_truth, 1e-10, 1e-10 ) );
+    assert( isClose( m_mean.data, mean_truth, 1e-10, 1e-10 ) );
 
     if (verbose)
       {
@@ -557,7 +557,7 @@ sprintf("%.12g ",cov(m))
         writeln( "cov_truth:  ", cov_truth);
       }
     
-    assert( approxEqual( m_cov .data,  cov_truth, 1e-10, 1e-10 ) );
+    assert( isClose( m_cov .data,  cov_truth, 1e-10, 1e-10 ) );
 
     {
       // diag_only variant
@@ -587,7 +587,7 @@ sprintf("%.12g ",cov(m))
         writeln( "mean_truth2: ", mean_truth2 );
       }
     
-    assert( approxEqual( m_mean2.data, mean_truth2, 1e-10, 1e-10 ) );
+    assert( isClose( m_mean2.data, mean_truth2, 1e-10, 1e-10 ) );
 
     if (verbose)
       {
@@ -595,7 +595,7 @@ sprintf("%.12g ",cov(m))
         writeln( "cov_truth2:  ", cov_truth2);
       }
     
-    assert( approxEqual( m_cov2 .data,  cov_truth2, 1e-10, 1e-10 ) );
+    assert( isClose( m_cov2 .data,  cov_truth2, 1e-10, 1e-10 ) );
     
     }
   }

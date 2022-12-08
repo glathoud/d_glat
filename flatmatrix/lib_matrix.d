@@ -27,9 +27,7 @@ class Buffer_detT(T) { T[] A, temp; }
 T det(T)( in MatrixT!T m ) pure nothrow @safe
 // Variant that allocates an internal buffer.
 {
-  
-
-  auto buffer = new Buffer_detT!T;
+  scope auto buffer = new Buffer_detT!T;
 
   return det!T( m, buffer );
 }
@@ -41,8 +39,6 @@ T det( T )( in ref MatrixT!T m
             )
   pure nothrow @safe
 {
-  
-
   immutable n = m.nrow;
   
   debug
@@ -121,10 +117,8 @@ MatrixT!T inv( T )( in MatrixT!T m )
 // Functional wrapper around `inv_inplace_dim`
 pure nothrow @safe
 {
-  
-
   Matrix m_inv;
-  auto buffer = new Buffer_inv_inplaceT!T;
+  scope auto buffer = new Buffer_inv_inplaceT!T;
   
   inv_inplace_dim!T( m, m_inv, buffer );
   return m_inv;
@@ -139,7 +133,6 @@ bool inv_inplace_dim( T )( in ref MatrixT!T m
   `false` otherwise.
 */
 {
-  
   m_inv.setDim( [m.nrow, m.nrow] );
   return inv_inplace!T( m, m_inv, buffer );
 }
@@ -188,7 +181,7 @@ bool inv_inplace( T )( in ref MatrixT!T m, ref MatrixT!T m_inv
           B_flat      = new T[ I2 ];
           B_flat_init = new T[ I2 ];
 
-          Matrix id; id.setDim( [I, I]); diag_inplace_nogc( 1.0, id );
+          scope Matrix id; id.setDim( [I, I]); diag_inplace_nogc( 1.0, id );
           B_flat_init[] = id.data[];
 
           A = new T[][ I ];
@@ -407,13 +400,13 @@ unittest  // ------------------------------
        */
 
     auto d = det( m );
-    assert( approxEqual( 9053872.0, d, 1e-10, 1e-10 ) );
+    assert( isClose( 9053872.0, d, 1e-10, 1e-10 ) );
 
     auto d2 = det( m2 );
-    assert( approxEqual( 0.062664340664, d2, 1e-10, 1e-10 ) );
+    assert( isClose( 0.062664340664, d2, 1e-10, 1e-10 ) );
 
     auto d3 = det( m3 );
-    assert( approxEqual( 0.117622046234, d3, 1e-10, 1e-10 ) );
+    assert( isClose( 0.117622046234, d3, 1e-10, 1e-10 ) );
 
     if (verbose)
       writefln( "d:%.12g d2:%.12g d3:%.12g", d, d2, d3 );
@@ -437,13 +430,13 @@ unittest  // ------------------------------
        */
 
     auto d = det( m, buffer_det );
-    assert( approxEqual( 9053872.0, d, 1e-10, 1e-10 ) );
+    assert( isClose( 9053872.0, d, 1e-10, 1e-10 ) );
 
     auto d2 = det( m2, buffer_det );
-    assert( approxEqual( 0.062664340664, d2, 1e-10, 1e-10 ) );
+    assert( isClose( 0.062664340664, d2, 1e-10, 1e-10 ) );
 
     auto d3 = det( m3, buffer_det );
-    assert( approxEqual( 0.117622046234, d3, 1e-10, 1e-10 ) );
+    assert( isClose( 0.117622046234, d3, 1e-10, 1e-10 ) );
 
     if (verbose)
       writefln( "d:%.12g d2:%.12g d3:%.12g", d, d2, d3 );
@@ -474,7 +467,7 @@ unittest  // ------------------------------
 
     assert( success );
     assert( m_inv.dim == [4, 4] );
-    assert( approxEqual( m_inv.data, m_inv_truth.data
+    assert( isClose( m_inv.data, m_inv_truth.data
                          , 1e-10, 1e-10 ) );
   }
 
@@ -508,7 +501,7 @@ unittest  // ------------------------------
 
     assert( success );
     assert( m_inv.dim == [4, 4] );
-    assert( approxEqual( m_inv.data, m_inv_truth.data
+    assert( isClose( m_inv.data, m_inv_truth.data
                          , 1e-10, 1e-10 ) );
   }
 
@@ -534,7 +527,7 @@ unittest  // ------------------------------
     Matrix m_inv = inv( m );
 
     assert( m_inv.dim == [4, 4] );
-    assert( approxEqual( m_inv.data, m_inv_truth.data
+    assert( isClose( m_inv.data, m_inv_truth.data
                          , 1e-10, 1e-10 ) );
 
   }

@@ -143,7 +143,7 @@ T json_get_opt_copy(T/*string | JSONValue*/)( in T j_in_0, in Jsonplace[] place_
     {
       auto j_maybe = json_get_place( j_in, place );
       if (!j_maybe.isNull)
-	json_set_place( j_ret, place, json_deep_copy( j_maybe ) );
+	json_set_place( j_ret, place, json_deep_copy( j_maybe.get ) );
     }
 
   

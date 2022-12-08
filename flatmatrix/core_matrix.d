@@ -168,7 +168,7 @@ struct MatrixT( T )
     if (0 != newdata.length % rd)
       assert( false, "Fails to verify: 0 == newdata.length % restdim   (resp. "~to!string(newdata.length)~" and "~to!string(restdim)~")");
 
-    auto apdr = appender(&data);
+    scope auto apdr = appender(&data);
     apdr.put( newdata );
     
     dim[ 0 ] = data.length / rd;
@@ -178,7 +178,7 @@ struct MatrixT( T )
   {
     immutable rd = restdim;
     
-    auto apdr = appender(&data);
+    scope auto apdr = appender(&data);
     
     foreach (v; newdata)
       apdr.put( v );
@@ -308,13 +308,13 @@ struct MatrixT( T )
   
   string toString() const
   {
-    MaybeMSTT!T mstt_null;
+    scope MaybeMSTT!T mstt_null;
     return toString( mstt_null );
   }
 
   string toString( MaybeMSTT!T maybe_mstt ) const
   {
-    auto app = appender!(char[]);
+    scope auto app = appender!(char[]);
     this.toString( (carr) { foreach (c; carr) app.put( c ); }
                   , maybe_mstt
                   );
@@ -535,7 +535,7 @@ void dot_inplace_nogc( T )( in ref MatrixT!T X, in T[] y
   
   foreach (i; 0..X.nrow)
     {
-      T acc = 0;
+      scope T acc = 0;
       
       foreach (yj; y)
         acc += X.data[ ij_offset++ ] * yj;
@@ -575,7 +575,7 @@ void dot_inplace_nogc( T )( in ref MatrixT!T X, in ref MatrixT!T Y
   size_t i_j_ret = 0;
   size_t rowi_X  = 0;
 
-  auto ret_data = ret.data;
+  scope auto ret_data = ret.data;
   
   foreach (i; 0..p)
     {
@@ -606,8 +606,6 @@ void dot_inplace_YT_nogc( T )
     ) pure nothrow @safe @nogc
 // YT means "Y transposed"
 {
-  
-
   immutable size_t p = X.nrow, q = X.ncol, r = YT.nrow;
   debug
     {
@@ -624,7 +622,7 @@ void dot_inplace_YT_nogc( T )
   size_t i_j_ret = 0;
   size_t rowi_X  = 0;
 
-  auto ret_data = ret.data;
+  scope auto ret_data = ret.data;
   
   foreach (i; 0..p)
     {
@@ -684,7 +682,7 @@ void extract_ind_inplace_nogc( T )
       assert( ret.length == X.nrow );
     }
 
-  auto data = X.data;
+  scope auto data = X.data;
   immutable i_end = data.length;
   
   for (size_t i = ind, j = 0;
@@ -700,9 +698,9 @@ T[] fold_rows(alias /*T[] */fun/*( T[], in T[] row )*/, T)
   ( in MatrixT!T m )
 // Fold rows, using the first row as implicit seed (duplicated).
 {
-  auto m_rest = MatrixT!T( [ m.nrow - 1 ] ~ m.dim[ 1..$ ]
-                           , cast( T[] )( m.data[ m.restdim..$ ] ) // we trust .dup and fold_rows(m,seed)
-                           );
+  scope auto m_rest = MatrixT!T( [ m.nrow - 1 ] ~ m.dim[ 1..$ ]
+                                 , cast( T[] )( m.data[ m.restdim..$ ] ) // we trust .dup and fold_rows(m,seed)
+                                 );
   return fold_rows!fun( m_rest, m.data[ 0..m.restdim ].dup );
 }
 
@@ -710,10 +708,10 @@ T_OUT fold_rows(alias /*T_OUT */fun/*( T_OUT, in T[] row )*/, T, T_OUT)
   ( in MatrixT!T m, T_OUT seed )
 // Fold rows with an explicit seed (NOT duplicated: can be modified).
 {
-  auto data = m.data;
+  scope auto data = m.data;
   auto rd   = m.restdim;
 
-  auto ret = seed;
+  scope auto ret = seed;
   
   for (size_t i = 0, i_end = data.length; i < i_end; )
     {
@@ -731,7 +729,7 @@ pure nothrow @safe
 {
   
   MatrixT!T m_out;
-  size_t[]  buffer;
+  scope size_t[]  buffer;
 
   interleave_inplace!T( m_arr, m_out, buffer );
 
@@ -747,7 +745,7 @@ pure nothrow @safe
 {
   auto first_dim = m_arr[ 0 ].dim;
   
-  size_t[] restdim_arr;
+  scope size_t[] restdim_arr;
   size_t   restdim_total = 0;
 
   foreach (i,m; m_arr)
@@ -772,7 +770,7 @@ pure nothrow @safe
               
   // Fill `m_out` with interleaved data
 
-  auto   m_out_data = m_out.data;
+  scope auto   m_out_data = m_out.data;
   size_t i_out = 0;
   size_t i_end = m_out_data.length;
 
@@ -818,7 +816,7 @@ void set_ind_inplace_nogc( T )
       assert( v.length == X.nrow );
     }
 
-  auto data = X.data;
+  scope auto data = X.data;
   immutable i_end = data.length;
   
   for (size_t i = ind, j = 0;
@@ -833,8 +831,8 @@ void set_ind_inplace_nogc( T )
 void sort_inplace( T )( ref MatrixT!T m )
 {
 
-  auto      data     = m.data;
-  immutable data_len = data.length;
+  scope auto data     = m.data;
+  immutable  data_len = data.length;
 
   if (data_len < 1)
     return;
@@ -867,8 +865,8 @@ void sort_inplace( T )( ref MatrixT!T m )
 
     bool lessThan( scope size_t a, scope size_t b ) @nogc
     {
-      T* a_ptr = (cast(T*)( ptr )) + a * rd;
-      T* b_ptr = (cast(T*)( ptr )) + b * rd;
+      scope T* a_ptr = (cast(T*)( ptr )) + a * rd;
+      scope T* b_ptr = (cast(T*)( ptr )) + b * rd;
 
       const a_ptr_end = a_ptr + rd;
       
@@ -947,8 +945,8 @@ private void _check_dim_match( in size_t i
   
   // Special case: [4, 1] matches [4]
         
-  size_t[] da2 = da.dup;
-  size_t[] db2 = db.dup;
+  scope size_t[] da2 = da.dup;
+  scope size_t[] db2 = db.dup;
   if (da2.length < 2)  da2 ~= 1;
   if (db2.length < 2)  db2 ~= 1;
 
@@ -1015,8 +1013,8 @@ void subset_col_inplace_nogc(T)( in ref MatrixT!T A, in size_t[] col_arr
 
   if (0 < new_ncol)
   {
-    auto A_data = A.data;
-    auto B_data = B.data;
+    scope auto A_data = A.data;
+    scope auto B_data = B.data;
 
     immutable A_ncol = A.restdim;
     immutable jA_end = A_data.length;
@@ -1063,8 +1061,8 @@ void subset_row_inplace_nogc
 
   immutable rd = A.restdim;
   
-  auto A_data = A.data;
-  auto B_data = B.data;
+  scope auto A_data = A.data;
+  scope auto B_data = B.data;
   
   size_t iB = 0;
   foreach (row; row_arr)
@@ -1107,7 +1105,7 @@ void subset_row_filter_inplace
 {
   immutable rd = A.restdim;
 
-  auto      A_data        = A.data;
+  scope auto A_data       = A.data;
   immutable A_data_length = A_data.length;
 
   size_t j = 0;
@@ -1159,8 +1157,8 @@ MatrixT!T subset_row_mapfilter
   
   immutable rd = A.restdim;
 
-  auto   A_data = A.data;
-  auto ret_data = ret.data;
+  scope auto A_data   = A.data;
+  scope auto ret_data = ret.data;
   
   immutable A_data_length = A_data.length;
 
@@ -1177,7 +1175,7 @@ MatrixT!T subset_row_mapfilter
       {
         immutable i_A_next = i_A + rd;
         
-        auto A_row = A_data[ i_A..i_A_next ];
+        scope auto A_row = A_data[ i_A..i_A_next ];
         
         if (mapfilter_inplace_fun( row_ind, A_row, ret_row ))
           {
@@ -1222,7 +1220,6 @@ void transpose_inplace_nogc( T )
   ( in ref MatrixT!T A
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
 {
-  
   debug
     {
       assert( A.ndim == 2 );
@@ -1232,7 +1229,7 @@ void transpose_inplace_nogc( T )
 
   size_t ij_ret = 0;
 
-  auto ret_data = ret.data;
+  scope auto ret_data = ret.data;
   immutable ret_delta = ret.ncol;
   immutable rc = ret.data.length;
   
@@ -1382,8 +1379,8 @@ string _redcol_code( in string fname, in string op ) pure
         assert( 1 == RET.restdim );
       }
 
-    auto A_data   = A.data;
-    auto RET_data = RET.data;
+    scope auto A_data   = A.data;
+    scope auto RET_data = RET.data;
     
     immutable n  = A.nrow;
     immutable rd = A.restdim;

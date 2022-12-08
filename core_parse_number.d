@@ -71,8 +71,8 @@ unittest
 
   assert(isParsableDouble( "1234567.4" ));
   assert(!isParsableDouble( "abcdefgh" ));
-  assert(1e-10 > abs( 1234567.4 - parseDouble( "1234567.4" ) ));
-  assert(1e-10 > abs( 1234567.4 - parseGermanDouble( "1.234.567,4" ) ));
+  assert(1e-10 > abs( 1234567.4 - parseDouble( "1234567.4" ).get ));
+  assert(1e-10 > abs( 1234567.4 - parseGermanDouble( "1.234.567,4" ).get ));
   
   writeln( "unittest passed: ", baseName( __FILE__ ) );
 }

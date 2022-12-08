@@ -88,7 +88,7 @@ class JsonbinT( T ) : ProfileMemC
 
   ubyte[] toUbytes( in string compression = COMPRESSION_NONE ) const @trusted
     {
-      auto app = appender!(ubyte[]);
+      scope auto app = appender!(ubyte[]);
 
       // First line: JSON
       
@@ -114,7 +114,7 @@ class JsonbinT( T ) : ProfileMemC
   
       auto m_data = m.data;
 
-      const uncompressed_data = (){
+      scope const uncompressed_data = (){
         version (LittleEndian)
         {
           return cast( ubyte[] )( m_data.dup );
@@ -158,7 +158,7 @@ class JsonbinT( T ) : ProfileMemC
 
   override bool opEquals( Object other ) const pure nothrow @safe @nogc
   {
-    if (auto jb_other = cast(typeof(this))( other ))
+    if (scope auto jb_other = cast(typeof(this))( other ))
       {
         return this.j_str == jb_other.j_str
           &&  this.m == jb_other.m;
@@ -221,7 +221,7 @@ class JsonbinT( T ) : ProfileMemC
 
   private string _toString( MaybeMSTT!T maybe_mstt ) const
   {
-    auto app = appender!(char[]);
+    scope auto app = appender!(char[]);
     this.toString( (carr) { foreach (c; carr) app.put( c ); }
                   , maybe_mstt.get
                   );
@@ -338,7 +338,7 @@ JsonbinT!T Action_of_filename_or_copy
           stderr.writeln( "Action_of_filename_or_copy: failed on the main filename '"~filename~"' with error '"~error_msg~"' => about to try to find a fallback that work." );
         }
       
-      auto fallback_arr = file_copy_fetch!prefix( filename ).sort;
+      scope auto fallback_arr = file_copy_fetch!prefix( filename ).sort;
       
       foreach_reverse (fallback; fallback_arr) // try latest first
         {
@@ -418,12 +418,12 @@ JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
   // `compression_type == COMPRESSION_GZIP`)
   if (filename.endsWith( ".gz" ))
     {
-      auto data = cast( ubyte[] )( std.file.read( filename ) );
+      scope auto data = cast( ubyte[] )( std.file.read( filename ) );
       data = gunzip( data );
       return jsonbin_of_ubytes!(T, only_meta)( data, error_msg, ts_sel );
     }
 
-  auto f = File( filename, "r" );
+  scope auto f = File( filename, "r" );
   return jsonbin_of_file!(T, only_meta)( f, error_msg, ts_sel );
 }
 
@@ -458,7 +458,7 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
 
   size_t   index = 0;
   string   j_str;
-  size_t[] dim;
+  scope size_t[] dim;
   string   compression;
 
   jsonbin_read_chars_meta!T( cdata
@@ -517,7 +517,7 @@ JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
 
   size_t   index = 0;
   string   j_str;
-  size_t[] dim;
+  scope size_t[] dim;
   string   compression;
 
   jsonbin_read_file_meta!T( f
@@ -533,7 +533,7 @@ JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
       if (compression != COMPRESSION_NONE)
         {
           // Need to uncompress first => fall back on the read-everything-first implementation
-          auto cdata = cast(char[])( std.file.read( f.name ) );
+          scope auto cdata = cast(char[])( std.file.read( f.name ) );
           return jsonbin_of_chars!(T, only_meta)( cdata, error_msg, ts_sel );
         }
 
@@ -576,7 +576,7 @@ T[] jsonbin_read_file_rest(T)( ref std.stdio.File f, in size_t index, in string 
       return data;
     }
 
-  auto fake_arr = new _FakeArrAroundReadFile!T( f, index );
+  scope auto fake_arr = new _FakeArrAroundReadFile!T( f, index );
 
   return ts_sel.apply!(T,typeof(fake_arr))( fake_arr );
 }
@@ -596,7 +596,7 @@ class _FakeArrAroundReadFile(T)
 
       mixin(alwaysAssertStderr(`idx0 < f.size`,`to!string([idx0,f.size])`));
       
-      immutable byte_length = f.size - idx0;
+      scope immutable byte_length = f.size - idx0;
       mixin(alwaysAssertStderr(`0 == byte_length % T.sizeof`, `to!string([f.size, idx0, T.sizeof])`));
 
       _length = byte_length / T.sizeof;
@@ -625,7 +625,7 @@ class _FakeArrAroundReadFile(T)
 
   private T _read_one()
   {
-    auto x = f.rawRead( buf );
+    scope auto x = f.rawRead( buf );
     debug assert( x.length == 1 );
     
     version (BigEndian)
@@ -688,14 +688,14 @@ void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in stri
 
   {
     // for a quick overview
-    auto m_filaro = jb.m.subset_row( [0, jb.m.nrow-1] );
-    immutable jb_m_rd = jb.m.restdim;
+    scope auto m_filaro = jb.m.subset_row( [0, jb.m.nrow-1] );
+    scope immutable jb_m_rd = jb.m.restdim;
     mixin(alwaysAssertStderr!`m_filaro.restdim     == jb_m_rd`);
     mixin(alwaysAssertStderr!`m_filaro.data.length == (jb_m_rd << 1) /*usual case: at least 2 rows*/
           ||  m_filaro.data.length == jb_m_rd /*rare case: only one row*/
           `);
     
-    auto j_first_last_row = parseJSON( "{}" );
+    scope auto j_first_last_row = parseJSON( "{}" );
     j_first_last_row.object[ J_FIRST_ROW ] = j_row_of( m_filaro.data[ 0..jb_m_rd ],   jb.j_str );
     j_first_last_row.object[ J_LAST_ROW  ] = j_row_of( m_filaro.data[ $-jb_m_rd..$ ], jb.j_str );
     
@@ -740,7 +740,7 @@ JSONValue j_line(string name, R)( R line_r )
 
 JSONValue j_row_of( in double[] data, in string j_str )
 {
-  auto c_arr = parseJSON( j_str ).object[ "column_name_arr" ].array.map!"a.str".array;
+  scope auto c_arr = parseJSON( j_str ).object[ "column_name_arr" ].array.map!"a.str".array;
   mixin(alwaysAssertStderr(`data.length == c_arr.length`, `to!string([data.length, c_arr.length])`));
 
   auto j_ret = parseJSON( "{}" );
@@ -787,7 +787,7 @@ file.write( '\n' );
       
   // We always save the data in littleEndian format
   
-  auto m_data = jb.m.data;
+  scope auto m_data = jb.m.data;
   
   version (LittleEndian)
   {
@@ -842,7 +842,7 @@ T[] jsonbindata_of_filename_or_copy
           stderr.writeln( "jsonbindata_of_filename_or_copy: failed on the main filename '"~filename~"' with error '"~error_msg~"' => about to try to find a fallback that work." );
         }
       
-      auto fallback_arr = file_copy_fetch!prefix( filename ).sort;
+      scope auto fallback_arr = file_copy_fetch!prefix( filename ).sort;
       
       foreach_reverse (fallback; fallback_arr) // try latest first
         {
@@ -893,7 +893,7 @@ T[] jsonbindata_of_filename
 
   try
     {
-      auto cdata = cast(char[])( std.file.read( filename ) );
+      scope auto cdata = cast(char[])( std.file.read( filename ) );
       
       size_t index = 0;
       string compression;
@@ -919,10 +919,10 @@ void jsonbin_read_file_meta( T )
     )
 // Low-level access to metadata, `index` is updated.
 {
-  auto byli = f.byLineCopy;
-  auto line_0 = byli.front; byli.popFront();
-  auto line_1 = byli.front; byli.popFront();
-  auto line_2 = byli.front; byli.popFront();
+  scope auto byli = f.byLineCopy;
+  scope auto line_0 = byli.front; byli.popFront();
+  scope auto line_1 = byli.front; byli.popFront();
+  scope auto line_2 = byli.front; byli.popFront();
   
   jsonbin_read_chars_meta!T( [line_0, line_1, line_2, ""].join( '\n' )
                              , index 
@@ -947,14 +947,14 @@ void jsonbin_read_chars_meta( T )
   // Second line: data type (e.g. "double"), and matrix dimensions
 
   // indexOf and *not* countUntil: https://stackoverflow.com/questions/14262766/function-to-search-for-first-occurrence-of-multiple-strings-or-characters-in-a-s
-  immutable j_0   = index + indexOf( cdata[ index..$ ], '\n' );
-  const     s_arr = cdata[ index..j_0 ].split( ':' );
+  immutable   j_0   = index + indexOf( cdata[ index..$ ], '\n' );
+  scope const s_arr = cdata[ index..j_0 ].split( ':' );
 
   index = j_0 + 1;
 
   enforce( s_arr.length == 2 );
     
-  immutable s_T   = s_arr[ 0 ].idup;
+  scope immutable s_T   = s_arr[ 0 ].idup;
   if (s_T != T.stringof)
     {
       writeln( "jsonbin_read_chars_meta: s_T:        ", s_T );
@@ -963,15 +963,15 @@ void jsonbin_read_chars_meta( T )
 
   enforce( s_T == T.stringof, s_T );
     
-  immutable s_dim = s_arr[ 1 ].idup;
+  scope immutable s_dim = s_arr[ 1 ].idup;
     
   dim = to!(size_t[])( s_dim.strip );
 
   // Third line: "compression:gzip|none|..."
 
   // indexOf and *not* countUntil: https://stackoverflow.com/questions/14262766/function-to-search-for-first-occurrence-of-multiple-strings-or-characters-in-a-s
-  immutable j_1     = index + indexOf( cdata[ index..$ ], '\n' );
-  const     s_arr_1 = cdata[ index..j_1 ].split( ':' );
+  immutable   j_1     = index + indexOf( cdata[ index..$ ], '\n' );
+  scope const s_arr_1 = cdata[ index..j_1 ].split( ':' );
   index = j_1 + 1;
   
   enforce( s_arr_1.length == 2, to!string( s_arr_1 ) );
@@ -992,7 +992,7 @@ T[] jsonbin_read_chars_rest(T)( in char[] cdata, in size_t index, in string comp
 {
   // Rest: binary data, compression or not
 
-  auto rest       = (){
+  scope auto rest       = (){
     auto tmp = cast( ubyte[] )( cdata[ index..$ ] );
     switch (compression)
       {
@@ -1074,7 +1074,7 @@ unittest  // ------------------------------
   if (exists( tmp_filename ))    std.file.remove( tmp_filename );
   if (exists( tmp_filename_gz )) std.file.remove( tmp_filename_gz );
 
-  immutable string j_str = `{abcd:1234,efgh:{xyz:"qrst"}}`;
+  immutable string j_str = `{"abcd":1234,"efgh":{"xyz":"qrst"}}`;
 
   immutable m_code = q{
     auto m = Matrix( [ 0, 3 ]

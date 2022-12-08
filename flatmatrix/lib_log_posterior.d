@@ -8,7 +8,7 @@ MatrixT!T log_posterior_of_ll(T)( in MatrixT!T m_ll ) pure nothrow @safe
 {
   auto m_lpp = MatrixT!T( m_ll.dim );
 
-  auto buffer = new T[ m_ll.restdim ];
+  scope auto buffer = new T[ m_ll.restdim ];
   
   log_posterior_of_ll_inplace_nogc( m_ll, buffer, m_lpp );
   
@@ -23,10 +23,10 @@ void log_posterior_of_ll_inplace_nogc(T)( in ref MatrixT!T m_ll
 {
   immutable ncol = m_ll.restdim;
 
-  auto ll_data = m_ll.data;
+  scope auto ll_data = m_ll.data;
   immutable n  = ll_data.length;
 
-  auto lpp_data = m_lpp.data;
+  scope auto lpp_data = m_lpp.data;
   
   debug
   {

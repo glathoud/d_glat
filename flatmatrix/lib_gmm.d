@@ -116,8 +116,8 @@ struct GmmT( T )
        => leave covinv as it is.
     */
     
-    auto feature_data = m_feature.data;
-    auto      ll_data = m_ll.data;
+    scope auto feature_data = m_feature.data;
+    scope auto      ll_data = m_ll.data;
     
     size_t i_f   = 0;
     size_t i_out = 0;
@@ -132,7 +132,7 @@ struct GmmT( T )
           {
             direct_sub_inplace_nogc( m_x, m_mean_arr[ j ], m_xmm );
             
-            auto invcov_j = m_invcov_arr[ j ];
+            scope auto invcov_j = m_invcov_arr[ j ];
 
             dot_inplace_nogc( invcov_j, m_xmmT, m_invcov_t_xmm );
             dot_inplace_nogc( m_xmm, m_invcov_t_xmm
@@ -339,8 +339,6 @@ void _do_fallback_zero_var_if_necessary( T )
   filler value fudged out of the non-zero values.
  */
 {
-  
-
   immutable n = m.nrow;
   immutable np1 = n+1;
 
@@ -717,12 +715,12 @@ unittest  // ------------------------------
         foreach (vt; zip(m_ll12.data, m_ll12_truth.data))
           {
             writeln( vt
-                     , " ", approxEqual(vt[0],vt[1],1e-10,1e-10)
+                     , " ", isClose(vt[0],vt[1],1e-10,1e-10)
                      , " ", vt[1] == -double.infinity
                      , " ", vt[0] < -1000.0
                      , " => "
                      ,
-                     approxEqual(vt[0],vt[1],1e-10,1e-10)
+                     isClose(vt[0],vt[1],1e-10,1e-10)
                      || vt[1] == -double.infinity
                      && vt[0] < -1000.0 
                      );
@@ -730,7 +728,7 @@ unittest  // ------------------------------
       }
 
     assert( zip(m_ll12.data, m_ll12_truth.data)
-            .all!( vt => approxEqual(vt[0],vt[1],1e-10,1e-10)
+            .all!( vt => isClose(vt[0],vt[1],1e-10,1e-10)
                    || vt[1] == -double.infinity && vt[0] < -1000.0 )
             );
     
