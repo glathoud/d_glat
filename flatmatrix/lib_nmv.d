@@ -12,11 +12,12 @@ module d_glat.flatmatrix.lib_nmv;
 public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_array;
+import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat;
 import std.math;
 
 alias Buffer_nmv_inplace = Buffer_nmv_inplaceT!double;
-class Buffer_nmv_inplaceT(T)
+class Buffer_nmv_inplaceT(T) : ProfileMemC
 {
   MatrixT!T m_mean, m_var;
   T[] std_arr;

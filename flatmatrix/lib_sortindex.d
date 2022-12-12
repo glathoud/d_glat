@@ -14,6 +14,7 @@ public import d_glat.flatmatrix.core_matrix;
 
 import core.exception : AssertError;
 import d_glat.core_array : ensure_length;
+import d_glat.core_profile_acc;
 import std.algorithm : any, sort;
 import std.array : array;
 import std.conv : to;
@@ -22,7 +23,7 @@ import std.range : iota;
 import std.stdio;
 
 alias Buffer_sortindex_inplace = Buffer_sortindex_inplaceT!double;
-class Buffer_sortindex_inplaceT(T)
+class Buffer_sortindex_inplaceT(T) : ProfileMemC
 {
   int[] indices_init;
   int[] index_arr;

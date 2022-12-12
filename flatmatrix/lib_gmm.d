@@ -17,6 +17,7 @@ public import d_glat.flatmatrix.lib_matrix;
 
 import d_glat.core_array;
 import d_glat.core_math;
+import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat;
 import std.algorithm : all, max;
 import std.array : array;
@@ -171,7 +172,7 @@ struct GmmT( T )
 
   
   void setSingle( in ref MatrixT!T m_feature, in bool diag_only = false )
-  nothrow @safe
+    @safe
   {
     // Single group
     auto group_arr = [ iota( 0, m_feature.nrow ).array ];
@@ -199,7 +200,7 @@ struct GmmT( T )
                       , in size_t[][] group_arr
                       , in bool diag_only = false
                       )
-  nothrow @safe
+    @safe
   {
     n   = group_arr.length;
     dim = m_feature.restdim;

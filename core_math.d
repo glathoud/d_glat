@@ -3,6 +3,7 @@ module d_glat.core_math;
 public import std.math;
 
 import d_glat.core_array;
+import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat : MatrixT, mean_cov_inplace_dim;
 import std.algorithm : reduce, sort;
 import std.exception : enforce;
@@ -32,7 +33,7 @@ T[] cumsum( T )( in T[] arr ) pure nothrow @safe
 
 alias Buffer_e_w_logsum = Buffer_e_w_logsumT!double;
 
-class Buffer_e_w_logsumT(T)
+class Buffer_e_w_logsumT(T) : ProfileMemC
 {
   T[] logsum_buffer;
   T[] work;

@@ -16,12 +16,13 @@ public import d_glat.flatmatrix.core_matrix;
 
 import core.exception : RangeError;
 import d_glat.core_array;
+import d_glat.core_profile_acc;
 import std.algorithm : all;
 import std.math : abs, isFinite;
 
 
 alias Buffer_det = Buffer_detT!double;
-class Buffer_detT(T) { T[] A, temp; }
+class Buffer_detT(T) : ProfileMemC { T[] A, temp; }
 
 
 T det(T)( in MatrixT!T m ) pure nothrow @safe
@@ -138,7 +139,7 @@ bool inv_inplace_dim( T )( in ref MatrixT!T m
 }
 
 alias Buffer_inv_inplace = Buffer_inv_inplaceT!double;
-class Buffer_inv_inplaceT(T)
+class Buffer_inv_inplaceT(T) : ProfileMemC
 {
   T[]    A_flat, B_flat, B_flat_init;
   T[][]  A, B, A_init, B_init;

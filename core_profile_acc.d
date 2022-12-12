@@ -236,8 +236,8 @@ immutable P_MEM_FRGT  = "__pmc_forget( typeid(this).name );";
 // For classes
 class ProfileMemC
 {
-  this() { mixin(P_MEM_RGSTR); }
-  ~this() { mixin(P_MEM_FRGT); }
+  this() @safe { mixin(P_MEM_RGSTR); }
+  ~this() @safe { mixin(P_MEM_FRGT); }
 }
 
 

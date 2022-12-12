@@ -12,12 +12,13 @@ module d_glat.flatmatrix.lib_corr;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import d_glat.core_profile_acc;
 import std.math;
 
 
 alias Buffer_corr_one_inplace = Buffer_corr_one_inplaceT!double;
 
-class Buffer_corr_one_inplaceT(T)
+class Buffer_corr_one_inplaceT(T) : ProfileMemC
 {
   MatrixT!T m_many_mean, m_many_var;
 }

@@ -73,7 +73,7 @@ alias OneTransOfStringT( T ) = OneTransT!T[string];
 // You can add your own through `one_trans_of_string`.
 // Do not forget to call `b.setDim`
 void set_default_transformations( T )
-  ( ref OneTransOfStringT!T tmp ) pure nothrow @safe
+  ( ref OneTransOfStringT!T tmp ) @safe
 {
   auto b_nmv = new Buffer_nmv_inplaceT!T;  
   tmp[ "nmv" ] = ( ref a, ref b ) pure nothrow @safe

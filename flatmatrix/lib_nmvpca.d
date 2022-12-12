@@ -12,13 +12,14 @@ module d_glat.flatmatrix.lib_nmvpca;
 public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_array;
+import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_nmv;
 import d_glat.flatmatrix.lib_stat;
 import d_glat.flatmatrix.lib_svd;
 import std.algorithm : any;
 import std.math : isNaN, sqrt;
 
-Matrix nmvpca( in Matrix a ) nothrow
+Matrix nmvpca( in Matrix a )
 // Functional wrapper around `nmvpca_inplace`.
 // Returns a new matrix. If the PCA failed,
 // `b` will be filled with `NaN`s.
@@ -29,18 +30,18 @@ Matrix nmvpca( in Matrix a ) nothrow
   return b;
 }
 
-class Buffer_nmvpca_inplace
+class Buffer_nmvpca_inplace : ProfileMemC
 {
   Matrix a_nmv, sigma;
   SvdResult svd_res;
   Buffer_nmv_inplace b_nmv;
 
-  this() pure nothrow @safe
+  this() @safe
     {
       b_nmv = new Buffer_nmv_inplace;
     }
 
-  ~this() nothrow
+  ~this() 
     {
       destroy( b_nmv );
     }
