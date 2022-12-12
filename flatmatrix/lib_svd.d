@@ -2,6 +2,7 @@ module d_glat.flatmatrix.lib_svd;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import d_glat.core_array;
 import std.exception;
 import std.math;
 
@@ -38,12 +39,12 @@ struct SvdResult
         this.m = m;
         this.n = n;
 
-        this.U   = Matrix([m, n]);
-        this.q   = new double[ n ];
-        this.S   = Matrix([n, n]);
-        this.V   = Matrix([n, n]);
-        this.VT  = Matrix([n, n]);
-        this.e   = new double[ n ];
+        this.U.setDim([m, n]);
+        ensure_length( n, this.q );
+        this.S.setDim([n, n]);
+        this.V.setDim([n, n]);
+        this.VT.setDim([n, n]);
+        ensure_length( n, this.e );
       }
   }
 };

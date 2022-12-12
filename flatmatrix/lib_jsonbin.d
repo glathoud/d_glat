@@ -471,8 +471,8 @@ JsonbinT!T jsonbin_of_chars( T = double, bool only_meta = false )
     }
   else
     {
-      auto data = jsonbin_read_chars_rest!T( cdata, index, compression
-                                             , error_msg, ts_sel );
+      scope auto data = jsonbin_read_chars_rest!T( cdata, index, compression
+                                                   , error_msg, ts_sel );
 
       if (!_check_data_length( error_msg, ts_sel, data.length, dim ))
         return new JsonbinT!T();
@@ -539,9 +539,9 @@ JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
 
       mixin(alwaysAssertStderr(`!f.name.endsWith(".gz")`,`f.name`));
 
-      auto data = jsonbin_read_file_rest!T( f, index, compression
-                                            , error_msg, ts_sel );
-
+      scope auto data = jsonbin_read_file_rest!T( f, index, compression
+                                                  , error_msg, ts_sel );
+      
       if (!_check_data_length( error_msg, ts_sel, data.length, dim ))
         return new JsonbinT!T();
       
@@ -605,6 +605,8 @@ class _FakeArrAroundReadFile(T)
       buf_UB = cast(ubyte[])( buf );
     }
 
+  ~this() { destroy( buf ); }
+  
   size_t length() pure const @safe @nogc
   {
     return _length;
@@ -802,7 +804,8 @@ file.write( '\n' );
     {
       version (BigEndian)
       {
-        ubyte[] ubytes = new ubyte[ m_data.length * (T.sizeof) ];
+        assert( false, "xxx wtf ubytes not touched at all");
+        scope ubyte[] ubytes = new ubyte[ m_data.length * (T.sizeof) ];
         size_t index = 0;
         foreach (d; m_data)
           file.rawWrite!(T, Endian.littleEndian)( d, &index );

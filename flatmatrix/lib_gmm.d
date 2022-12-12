@@ -185,6 +185,15 @@ struct GmmT( T )
   private bool                  _b_allocated = false;
   private Buffer_inv_inplaceT!T _b_inv_inplace;
   private Buffer_detT!T         _b_det;
+
+  ~this()
+    {
+      if (_b_allocated)
+        {
+          destroy( _b_inv_inplace );
+          destroy( _b_det );
+        }
+    }
   
   void setOfGroupArr( in ref MatrixT!T m_feature
                       , in size_t[][] group_arr
@@ -291,28 +300,28 @@ struct GmmT( T )
   void _resize() pure nothrow @safe
   {
     if (is_finite_arr.length != n)
-      is_finite_arr = new bool[ n ];
+      ensure_length( n, is_finite_arr );
     
     if (m_mean_arr.length != n)
       {
-        m_mean_arr = new MatrixT!T[ n ];
+        ensure_length( n, m_mean_arr );
         foreach (i; 0..n) m_mean_arr[ i ].setDim([1, dim]);
       }
     
     if (m_cov_arr .length != n)
       {
-        m_cov_arr = new MatrixT!T[ n ];
+        ensure_length( n, m_cov_arr );
         foreach (i; 0..n) m_cov_arr[ i ].setDim([dim, dim]);
       }
     
     if (m_invcov_arr.length != n)
       {
-        m_invcov_arr   = new MatrixT!T[ n ];
+        ensure_length( n, m_invcov_arr );
         foreach (i; 0..n) m_invcov_arr[ i ].setDim([dim, dim]);
       }
     
     if (logfactor_arr.length != n)
-      logfactor_arr = new T[ n ];
+      ensure_length( n, logfactor_arr );
 
     // Setup buffers for computations
     m_x  .setDim( [1, dim] );

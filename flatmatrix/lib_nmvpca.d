@@ -18,7 +18,7 @@ import d_glat.flatmatrix.lib_svd;
 import std.algorithm : any;
 import std.math : isNaN, sqrt;
 
-Matrix nmvpca( in Matrix a ) pure nothrow @safe
+Matrix nmvpca( in Matrix a ) nothrow
 // Functional wrapper around `nmvpca_inplace`.
 // Returns a new matrix. If the PCA failed,
 // `b` will be filled with `NaN`s.
@@ -38,6 +38,11 @@ class Buffer_nmvpca_inplace
   this() pure nothrow @safe
     {
       b_nmv = new Buffer_nmv_inplace;
+    }
+
+  ~this() nothrow
+    {
+      destroy( b_nmv );
     }
 }
 
