@@ -24,7 +24,7 @@ bool ensure_dir_exists( in string dir_name )
 // and return `false`.
 {
   immutable ret = exists( dir_name );
-  
+
   if (!ret)
     mkdirRecurse( dir_name );
   

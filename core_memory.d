@@ -7,6 +7,8 @@ import std.exception : enforce;
 import std.process : executeShell;
 import std.regex   : matchFirst;
 
+// See also: ./core_runtime.d
+
 private size_t _total_ram;
 size_t getTotalRam()
 // in bytes

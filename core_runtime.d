@@ -10,6 +10,8 @@ import std.process : executeShell;
 import std.stdio : writeln, stdout;
 import std.string : strip;
 
+// See also: ./core_memory.d
+
 string getStackTrace()
 // Code from ARSD
 // https://forum.dlang.org/post/aenumslnnxeedlrkwhaz@forum.dlang.org
