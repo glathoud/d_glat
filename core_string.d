@@ -6,6 +6,7 @@ public import std.conv : to;
 
 import std.algorithm.searching : countUntil;
 import std.array : appender, join, replace, split;
+import std.string : count;
 
 string _tli( string s_0 )() pure @safe
 /*
@@ -115,20 +116,23 @@ bool string_is_num09( in string s ) pure nothrow @safe @nogc
 }
 
 
-string string_shorten( in string s, in size_t nmax ) pure nothrow @safe
+string string_shorten( in string s, in size_t nmax, in string shortener = "..." ) pure nothrow @safe
 {
   debug assert( 5 <= nmax );
   
-  immutable n = s.length;
+  immutable n = s.count;
   if (n <= nmax)
     return s;
 
-  immutable n_left_0  = nmax / 3;
-  immutable n_left    = 2 < n_left_0  ?  n_left_0 - 2  :  1;
-
-  immutable n_right = nmax - 3 - n_left;
+  immutable slen = shortener.count;
+  immutable slen_m1 = slen - 1;
   
-  immutable ret = s[0..n_left]~"..."~s[$-n_right..$];
+  immutable n_left_0  = nmax / 3;
+  immutable n_left    = slen_m1 < n_left_0  ?  n_left_0 - slen_m1  :  1;
+
+  immutable n_right = nmax - slen - n_left;
+  
+  immutable ret = s[0..n_left] ~ shortener ~ s[$-n_right..$];
   debug assert( ret.length == nmax );
 
   return ret;
