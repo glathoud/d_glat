@@ -127,7 +127,7 @@ string string_shorten( in string s, in size_t nmax, in string shortener = "..." 
   immutable slen = shortener.count;
   immutable slen_m1 = slen - 1;
   
-  immutable n_left_0  = nmax / 3;
+  immutable n_left_0  = nmax / 2;
   immutable n_left    = slen_m1 < n_left_0  ?  n_left_0 - slen_m1  :  1;
 
   immutable n_right = nmax - slen - n_left;
