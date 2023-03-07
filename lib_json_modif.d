@@ -5,6 +5,7 @@ public import d_glat.lib_json_manip;
 
 import d_glat.core_assoc_array;
 import d_glat.core_assert;
+import d_glat.core_profile_acc;
 import std.algorithm : canFind;
 import std.array : appender, Appender, array, split;
 import std.conv : to;
@@ -30,7 +31,7 @@ struct JsonModif
 
 alias JsonModifMany = JsonModifManyPO!false;
 
-class JsonModifManyPO( bool permits_overwrite )
+class JsonModifManyPO( bool permits_overwrite ) : ProfileMemC
 {
   // Inner representation
   
