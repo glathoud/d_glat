@@ -32,7 +32,7 @@ class Buffer_sortindex_inplaceT(T) : ProfileMemC
 
 
 MatrixT!T sortindex( T )( in MatrixT!T a )
-pure nothrow @safe
+@safe
 // Functional wrapper around `sortindex_inplace_dim`
 {
   MatrixT!T b;

@@ -41,10 +41,9 @@ class Buffer_e_w_logsumT(T) : ProfileMemC
 
 
 T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
-  pure nothrow @safe
+  @safe
 // Wrapper that creates a temporary buffer
-{
-  
+{ 
   scope auto buffer = new Buffer_e_w_logsumT!T;
   return e_w_logsum_dim( a_arr, logw_arr, buffer );
 }

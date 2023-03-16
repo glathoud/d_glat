@@ -25,11 +25,10 @@ alias Buffer_det = Buffer_detT!double;
 class Buffer_detT(T) : ProfileMemC { T[] A, temp; }
 
 
-T det(T)( in MatrixT!T m ) pure nothrow @safe
+T det(T)( in MatrixT!T m ) @safe
 // Variant that allocates an internal buffer.
 {
   scope auto buffer = new Buffer_detT!T;
-
   return det!T( m, buffer );
 }
 
@@ -116,7 +115,7 @@ T det( T )( in ref MatrixT!T m
 
 MatrixT!T inv( T )( in MatrixT!T m )
 // Functional wrapper around `inv_inplace_dim`
-pure nothrow @safe
+@safe
 {
   Matrix m_inv;
   scope auto buffer = new Buffer_inv_inplaceT!T;

@@ -10,6 +10,7 @@ import std.algorithm : canFind;
 import std.array : appender, Appender, array, split;
 import std.conv : to;
 import std.exception : assumeUnique;
+import std.stdio : writeln;
 import std.string : splitLines;
 
 /*
@@ -49,9 +50,10 @@ class JsonModifManyPO( bool permits_overwrite ) : ProfileMemC
   this() { jm_app = appender!(JsonModif[]); }
   this( in JsonModif[] jm_arr ) { this(); push( jm_arr ); }
 
-  void clear() pure nothrow @safe
+  void clear() pure nothrow
   {
     jm_app.clear;
+    static if (!permits_overwrite) moso.clear;
   }
   
   bool isEmpty() const pure nothrow @safe
@@ -186,6 +188,11 @@ void json_modify_inplace(bool permits_overwrite)( in JsonModifManyPO!permits_ove
 private struct ModifiedSofar
 {
   ModifiedSofar[string] subset;
+
+  void clear() pure nothrow
+  {
+    subset.clear;
+  }
   
   void check_not_yet_and_set( in Jsonplace where )
   {

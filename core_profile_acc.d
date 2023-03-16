@@ -227,7 +227,7 @@ import std.stdio;
   mixin(P_MEM_DUMP);
 */
 
-immutable P_MEM_DUMP = "{if (__pmc_isActive) __pmc_dump();}";
+immutable P_MEM_DUMP = "{if (__pmc_isActive) {write(__FILE__.split(\"/\")[$-1] ~ \"@line:\" ~ to!string( __LINE__ ) ~ \" __pmc_dump: \");__pmc_dump();}}";
 
 // For structs
 immutable P_MEM_RGSTR = "__pmc_register( typeid(this).name );";

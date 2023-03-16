@@ -11,6 +11,7 @@ module d_glat.core_sexpr;
   glat@glat.info
  */
 
+import d_glat.core_profile_acc;
 import std.algorithm : each;
 import std.array : appender;
 import std.conv : to;
@@ -63,11 +64,11 @@ alias SExprId = ulong;
 
 private SExprId _sexpr_id = 0;
 
-abstract class SExpr
+abstract class SExpr : ProfileMemC
 {
   immutable SExprId id;
 
-  this() @safe @nogc
+  this() @safe
     { id = _sexpr_id++; }
   
   // For convenience, esp. for `maybe_check_fun`
@@ -114,7 +115,7 @@ class SAtom : SExpr
       this.v = c.idup;
     }
 
-  this( in string v ) @safe @nogc
+  this( in string v ) @safe 
     {
       this.v = v;
     }

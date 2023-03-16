@@ -25,10 +25,9 @@ class Buffer_corr_one_inplaceT(T) : ProfileMemC
 
 
 MatrixT!T corr_one(T)( in MatrixT!T m_one
-                       , in MatrixT!T m_many ) pure nothrow @safe
+                       , in MatrixT!T m_many ) @safe
 // Functional wrapper around `corr_one_inplace`
 {
-  
   MatrixT!T m_corr;
   scope auto buffer = new Buffer_corr_one_inplaceT!T;
 

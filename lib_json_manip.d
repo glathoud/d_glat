@@ -199,7 +199,7 @@ JSONValue json_get_replaced_many_places_with_placeholder_string
 private immutable string JSON_HASH_MATERIAL_SEP = "__.#.__";
 string json_get_sorted_hash_material( in ref JSONValue j )
 {
-  auto app = appender!(char[]);
+  scope auto app = appender!(char[]);
   void sink( in string s ) { app.put( s ); }
   json_walk_sorted( j, &sink );
   return app.data.idup;
@@ -213,7 +213,7 @@ void json_walk_sorted( in ref JSONValue j, in void delegate (in string ) sink )
 
       sink( "__.[[" );
 
-      auto     j_array = j.array;
+      scope auto j_array = j.array;
       immutable i_last = j_array.length - 1;
 
       foreach( i, j_one; j_array )
@@ -230,8 +230,8 @@ void json_walk_sorted( in ref JSONValue j, in void delegate (in string ) sink )
 
       sink( "__.{{" );
 
-      auto j_object = j.object;
-      auto     keys = j_object.keys.sort(); // unicity
+      scope auto j_object = j.object;
+      scope auto     keys = j_object.keys.sort(); // unicity
       immutable i_last = keys.length - 1;
 
       size_t i = 0;
@@ -369,7 +369,7 @@ JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, r
             {
               found_todo = true;
               
-              auto new_v = json_solve_calc_one( ret, v, /*output:*/modified );
+              scope auto new_v = json_solve_calc_one( ret, v, /*output:*/modified );
               
               if (modified)
                 json_set_place( ret, place[ 0..($-1)], new_v );
@@ -428,7 +428,7 @@ JSONValue json_solve_calc_one( in ref JSONValue o
   enforce( o.type == JSONType.object ); 
   enforce( v.type == JSONType.string );
   
-  auto e = parse_sexpr( v.str );
+  scope auto e = parse_sexpr( v.str );
 
   bool tmp_success = false;
 
@@ -461,7 +461,7 @@ double json_solve_calc_one( in ref JSONValue o
   if (e.isAtom)
     {
       immutable string s = e.toString;
-      if (auto p = s in o.object)
+      if (scope auto p = s in o.object)
         {
           immutable ptyp = p.type;
           immutable tmp_success_0 = (ptyp == JSONType.integer  ||  ptyp == JSONType.float_);
@@ -489,11 +489,11 @@ double json_solve_calc_one( in ref JSONValue o
   
   assert( e.isList );
 
-  const li = cast( SList )( e );
+  scope const li = cast( SList )( e );
 
   success = true;
   
-  double[] operands =
+  scope double[] operands =
     li.rest.map!( (x) {
         bool op_success = false;
         auto ret = json_solve_calc_one( o, x, op_success );
@@ -588,7 +588,7 @@ bool json_walkreadonly_until( alias test, bool stop_at_first_match = true )( in 
   especially faster in a multithreading case, because much less GC.
 */
 {
-  auto top_place = appender!Jsonplace();
+  scope auto top_place = appender!Jsonplace();
   
   return _json_walkreadonly_until_sub!( test, stop_at_first_match )( top_place, j );
 }
@@ -620,8 +620,11 @@ private bool _json_walkreadonly_until_sub( alias test, bool stop_at_first_match 
                   place_app.shrinkTo( place_app.data.length - 1 );
                 }
 
-              if (stop_at_first_match  &&  ret)
-                break;
+              static if (stop_at_first_match)
+                {
+                  if (ret)
+                    break;
+                }
             }
         }
       else if (j.type == JSONType.array)
@@ -638,8 +641,11 @@ private bool _json_walkreadonly_until_sub( alias test, bool stop_at_first_match 
                   place_app.shrinkTo( place_app.data.length - 1 );
                 }
               
-              if (stop_at_first_match  &&  ret)
-                break;
+              static if (stop_at_first_match)
+                {
+                  if (ret)
+                    break;
+                }
             }          
         }
     }
@@ -828,7 +834,7 @@ private bool _json_walk_iter_wrap( alias iter )
   return false;
 }
 
-bool json_walk_until( alias test )( ref JSONValue j )
+bool json_walk_until( alias test, bool stop_at_first_match = true )( ref JSONValue j )
 // If your test function test( Jsonplace place, ref JSONValue jv )
 // also wants to store the place information: use `place.(i)dup`
 // 
@@ -836,12 +842,12 @@ bool json_walk_until( alias test )( ref JSONValue j )
 // implementation => in most cases much faster + less memory/GC =>
 // especially faster in a multithreading case, because much less GC.
 {
-  auto top_place = appender!Jsonplace();
+  scope auto top_place = appender!Jsonplace();
   
-  return _json_walk_until_sub!( test )( top_place, j );
+  return _json_walk_until_sub!( test, stop_at_first_match )( top_place, j );
 }
 
-private bool _json_walk_until_sub( alias test )
+private bool _json_walk_until_sub( alias test, bool stop_at_first_match = true )
   ( ref Appender!Jsonplace place_app, ref JSONValue j )
 // If your test function test( Jsonplace place, ref JSONValue jv )
 // also wants to store the place information: use `place.(i)dup`
@@ -858,35 +864,44 @@ private bool _json_walk_until_sub( alias test )
         {
           foreach ( k2, ref v2; j.object )
             {
-              if (!ret)
+              if (!stop_at_first_match  ||  !ret)
                 {
                   place_app.put( k2 );
-                  ret = _json_walk_until_sub!( test )( place_app, v2 );
+                  ret = _json_walk_until_sub!( test, stop_at_first_match )( place_app, v2 );
                   place_app.shrinkTo( place_app.data.length - 1 );
                 }
 
-              if (ret)
-                break;
+              static if (stop_at_first_match)
+                {
+                  if (ret)
+                    break;
+                }
             }
         }
       else if (j.type == JSONType.array)
         {
           foreach ( k2, ref v2; j.array )
             {
-              if (!ret)
+              if (!stop_at_first_match  ||  !ret)
                 {
                   place_app.put( to!string( k2 ) );
-                  ret = _json_walk_until_sub!( test )( place_app, v2 );
+                  ret = _json_walk_until_sub!( test, stop_at_first_match )( place_app, v2 );
                   place_app.shrinkTo( place_app.data.length - 1 );
                 }
               
-              if (ret)
-                break;
+              static if (stop_at_first_match)
+                {
+                  if (ret)
+                    break;
+                }
             }          
         }
     }
-  
-  return ret;
+
+  static if (stop_at_first_match)
+    return ret;
+  else
+    return false;
 }
 
 string json_white_out_comments( in string extended_json_string )
@@ -895,7 +910,7 @@ string json_white_out_comments( in string extended_json_string )
 quotes etc. Simplistic but enough for most practical purposes.
 */
   {
-    auto modifiable = cast( char[] )( extended_json_string );
+    scope auto modifiable = cast( char[] )( extended_json_string );
     json_white_out_comments_inplace( modifiable );
     return modifiable.idup;
   }

@@ -24,7 +24,7 @@ class Buffer_nmv_inplaceT(T) : ProfileMemC
 }
 
 
-MatrixT!T nmv(T)( in MatrixT!T a ) pure nothrow @safe
+MatrixT!T nmv(T)( in MatrixT!T a ) @safe
 // Functional wrapper around `nmv_inplace_dim`
 {
   MatrixT!T b;
