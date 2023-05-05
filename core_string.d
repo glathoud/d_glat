@@ -62,6 +62,13 @@ string _tli( string s_0 )() pure @safe
 }
 
 
+string string_default( in string s, in string s_dflt ) pure @safe
+{
+  return 0 < s.length   ?  s  :  s_dflt;
+}
+
+
+
 bool string_is_float( in string s ) pure @safe
 {
   
