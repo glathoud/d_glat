@@ -5,6 +5,7 @@ import std.array : Appender, appender, join;
 import std.conv : to;
 import std.exception : assumeUnique;
 import std.stdio;
+import std.string : strip;
 import std.traits : isAssociativeArray, isBasicType, isSomeString;
 
 /*
@@ -184,6 +185,29 @@ U[T] aa_set_union(T,U)( in U[T][] arr ... ) pure @safe
       foreach(k,v; one)
         ret[ k ] = v;
     }
+  return ret;
+}
+
+U[string] aa_strip_keys(U)( in U[string] record ) pure @safe
+// This permits to ignore spaces in the keys, e.g. in the key strings
+// of a CSV header.  How: spaces are removed from each key string.
+{
+  U[string] ret;
+  foreach (ref key, ref value; record)
+    ret[ key.strip ] = value;
+
+  return ret;
+}
+
+U[string] aa_strip_keys_values(U)( in U[string] record ) pure @safe
+// This permits to ignore spaces in the keys, e.g. in the key strings
+// of a CSV header.  How: spaces are removed from each key string,
+// as well as from each value string.
+{
+  U[string] ret;
+  foreach (ref key, ref value; record)
+    ret[ key.strip ] = value.strip;
+
   return ret;
 }
 
