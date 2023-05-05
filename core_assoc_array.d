@@ -5,7 +5,7 @@ import std.array : Appender, appender, join;
 import std.conv : to;
 import std.exception : assumeUnique;
 import std.stdio;
-import std.traits : isBasicType, isSomeString;
+import std.traits : isAssociativeArray, isBasicType, isSomeString;
 
 /*
   Tools for associative arrays. Boost License, see file ./LICENSE
@@ -91,15 +91,17 @@ void aa_pretty_inplace( T )
 
   foreach (k,v; aa)
     {
-      static if (isBasicType!(typeof(v))  ||  isSomeString!(typeof(v)))
-        {
-          app.put( ip2~to!string(k)~" : "~to!string(v)~", " );
-        }
-      else
+      static if (isAssociativeArray!(typeof(v)))
         {
           app.put( ip2~to!string(k)~" : [" );
           
           aa_pretty_inplace( v, ip2, app );
+
+          app.put("]");
+        }
+      else
+        {
+          app.put( ip2~to!string(k)~" : "~to!string(v)~", " );
         }
     }
   app.put( indent_prefix~"]" );
