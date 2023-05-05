@@ -69,7 +69,9 @@ pure nothrow @safe
 
 bool equal_nan(T)( in T[] a, in T[] b )
   pure nothrow @safe @nogc
-// Extended equal that also permits matching NaNs.
+// Extended equal that also permits matching NaNs.  For simple
+// non-array types like float etc. see also `equal_nan` in
+// ./core_math.d
 {
   static if (hasMember!(T, "nan"))
     {
