@@ -18,6 +18,9 @@ long search_bisection_exact(T)( in T[] srtd_arr, T elt )
 // Returns the index of `elt` in `srtd_arr` if found, else `-1`.
 // `srtd_arr` is assumed sorted increasingly.
 {
+  if (srtd_arr.length < 1)
+    return -1;
+  
   return search_bisection_exact!T( (i) => srtd_arr[ i ], elt, 0, srtd_arr.length-1 );
 }
 
