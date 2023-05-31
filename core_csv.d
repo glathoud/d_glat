@@ -42,7 +42,22 @@ T[] v_arr_of_csv_data(string FIELD, T, D)( in D csv_data )
 {
   return v_arr_arr_of_csv_data!([FIELD], T, D)( csv_data )[ 0 ];
 }
+
+T[][string] v_arr_of_field_of_csv_data(string[] FIELD_ARR, T, D)( in csv_data )
+{
+  // compute
+  scope auto v_arr_arr = v_arr_arr_of_csv_data!(FIELD_ARR, T, D)( csv_data );
+
+  // store
+  T[][string] v_arr_of_field;
   
+  static foreach (K, FIELD; FIELD_ARR)
+    v_arr_of_field[ FIELD ] = v_arr_arr[ K ];
+  
+  return v_arr_of_field;
+}
+
+
 T[][] v_arr_arr_of_csv_data(string[] FIELD_ARR, T, D)( in D csv_data )
 {
   scope auto records = csvReader!(string[string])(cast( string )( csv_data ), null);
@@ -64,4 +79,17 @@ T[][] v_arr_arr_of_csv_data(string[] FIELD_ARR, T, D)( in D csv_data )
     }
 
   return v_app_arr.map!"a.data".array;
+}
+
+unittest
+{
+  import std.stdio;
+  import std.path;
+
+  writeln;
+  writeln( "unittest starts: ", baseName( __FILE__ ) );
+
+  immutable verbose = false;
+
+  writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
