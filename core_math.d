@@ -140,6 +140,32 @@ T e_w_logsum_nogc( T )( in T[] a_arr, in T[] logw_arr
 }
 
 
+void linreg( in double[] x_arr, in double[] y_arr
+             , out double alpha, out double beta )
+{
+  assert( x_arr.length == y_arr.length );
+  
+  double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0;
+
+  foreach (k,x; x_arr)
+    {
+      immutable y = y_arr[ k ];
+      sum_x += x;
+      sum_y += y;
+      sum_xy += x*y;
+      sum_x2 += x*x;
+    }
+  
+  // https://en.wikipedia.org/wiki/Simple_linear_regression
+
+  immutable odN = 1.0 / cast(double)( x_arr.length );
+  
+  beta = (sum_xy - odN * sum_x * sum_y) / (sum_x2 - odN * sum_x * sum_x);
+
+  alpha = odN * (sum_y - beta * sum_x);
+}
+
+
 T logsum( T )( in T[] arr )
 pure nothrow @safe
 /* Input log(data), output: log(sum(data))
@@ -375,6 +401,28 @@ unittest
   }
 
 
+  {
+    immutable double alpha_0 = 3.0;
+    immutable double beta_0  = 10.0;
+    
+    double[] x = [2.0, 4.0, 7.0, 13.0, 19.0];
+    auto y = x.map!((a) => alpha_0 + beta_0 * a).array;
+
+    double alpha, beta;
+    linreg( x, y, alpha, beta );
+
+    assert( isClose( alpha, alpha_0, 1e-8, 1e-8 ) );
+    assert( isClose( beta, beta_0, 1e-8, 1e-8 ) );
+    
+    if (verbose)
+      {
+        writefln( "alpha_0: %g  beta_0: %g", alpha_0, beta_0 );
+        writefln( "x: %s", x );
+        writefln( "y: %s", y );
+        writefln( "alpha: %g  beta: %g", alpha, beta );
+      }
+  }
+  
   
   {
     assert( median( [ 1.0,2.0,3.0,4.0,5.0 ] ) == 3.0 );
