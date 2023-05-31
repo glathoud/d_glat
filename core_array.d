@@ -67,7 +67,7 @@ pure nothrow @safe
 }
 
 
-bool equal_nan(T)( in T[] a, in T[] b )
+bool arr_equal_nan(T)( in T[] a, in T[] b )
   pure nothrow @safe @nogc
 // Extended equal that also permits matching NaNs.  For simple
 // non-array types like float etc. see also `equal_nan` in
@@ -284,29 +284,29 @@ unittest
 
   
   {
-    assert( equal_nan!double( [], [] ) );
-    assert( equal_nan( [], [] ) );
+    assert( arr_equal_nan!double( [], [] ) );
+    assert( arr_equal_nan( [], [] ) );
 
-    assert( equal_nan( [   1.0, 2.0, 3.0 ]
+    assert( arr_equal_nan( [   1.0, 2.0, 3.0 ]
                        , [ 1.0, 2.0, 3.0 ] ) );
 
-    assert( equal_nan( [   1.0, double.nan, 3.0 ]
+    assert( arr_equal_nan( [   1.0, double.nan, 3.0 ]
                        , [ 1.0, double.nan, 3.0 ] ) );
 
 
-    assert( !equal_nan( [   1.0, 2.0, 3.0 ]
+    assert( !arr_equal_nan( [   1.0, 2.0, 3.0 ]
                         , [ 1.0, 2.0, 3.0, 4.0 ] ) );
     
-    assert( !equal_nan( [   1.0, 2.0, 3.0, 4.0 ]
+    assert( !arr_equal_nan( [   1.0, 2.0, 3.0, 4.0 ]
                         , [ 1.0, 2.0, 3.0 ] ) );
     
-    assert( !equal_nan( [   1.0, 2.0, 3.0 ]
+    assert( !arr_equal_nan( [   1.0, 2.0, 3.0 ]
                         , [ 1.1, 2.0, 3.0 ] ) );
 
-    assert( !equal_nan( [   1.0, double.nan, 3.0 ]
+    assert( !arr_equal_nan( [   1.0, double.nan, 3.0 ]
                         , [ 1.0, double.nan, 3.1 ] ) );
 
-    assert( !equal_nan( [   1.0, double.nan, 3.0 ]
+    assert( !arr_equal_nan( [   1.0, double.nan, 3.0 ]
                         , [ 1.0, 2.0,        double.nan ] ) );
 
   }

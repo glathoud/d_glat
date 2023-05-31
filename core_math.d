@@ -7,7 +7,7 @@ import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat : MatrixT, mean_cov_inplace_dim;
 import std.algorithm : reduce, sort;
 import std.exception : enforce;
-import std.traits : hasMember;
+import std.traits : hasMember, isArray;
 
 /*
   A few mathematical tool functions.
@@ -42,7 +42,7 @@ class Buffer_e_w_logsumT(T) : ProfileMemC
 
 bool equal_nan(T)( in T a, in T b )   pure nothrow @safe @nogc
 // Extended equal that also permits matching NaNs.  For an array
-// version, `equal_nan` in ./core_array.d
+// version, `arr_equal_nan` in ./core_array.d
 {
   static if (hasMember!(T, "nan")) // e.g. is(T==double)
     {

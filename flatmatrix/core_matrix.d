@@ -303,7 +303,7 @@ struct MatrixT( T )
   bool opEquals( in MatrixT!T other ) const pure nothrow @safe @nogc
   {
     return this.dim == other.dim
-      &&  equal_nan( this.data, other.data );
+      &&  arr_equal_nan( this.data, other.data );
   }
   
   string toString() const
