@@ -300,6 +300,19 @@ Nullable!JSONValue json_get_places( in ref JSONValue j, in Jsonplace[] array_of_
   return ret;
 }
 
+string json_setC( in string j_obj_name, in string v_name )
+// Code for mixin, to set a "simple" field in a JSON Object.
+{
+  return j_obj_name~`.object["`~v_name~`"] = JSONValue( `~v_name~` );`;
+}
+
+string json_setC( in string j_obj_name, in string[] v_name_arr )
+// Code for mixin, to set a "simple" field in a JSON Object.
+{
+  return v_name_arr.map!((v_name) => json_setC( j_obj_name, v_name )).join( "\n" );
+}
+
+
 unittest
 {
   import std.stdio;
