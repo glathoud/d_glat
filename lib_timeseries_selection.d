@@ -16,10 +16,6 @@ import std.conv : to;
 import std.math : isNaN;
 import std.stdio;
 
-// xxx to remove
-import d_bourse_common.lib_time;
-import d_bourse_common.constants;
-
 // ---------- API ----------
 
 T[] apply(T, TArrLike=T[])( in TimeseriesSelection ts_sel, TArrLike arr )
@@ -146,6 +142,6 @@ struct InfBegin
 
   string toString() const
   {
-    return "InfBegin(utc_ms:"~to!string(utc_ms)~"("~get_utc_str_of_timems( utc_ms )~"),n_past:"~to!string(n_past)~")";
+    return "InfBegin(utc_ms:"~to!string(utc_ms)~",n_past:"~to!string(n_past)~")";
   }
 }

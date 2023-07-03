@@ -1,7 +1,6 @@
 module d_glat.core_gzip;
 
-import d_glat_priv.core_unittest;
-import d_glat_priv.lib_oa_tmpfilename;
+import d_oa_common.lib_oa_tmpfilename;
 import std.array;
 import std.conv;
 import std.file;
@@ -91,7 +90,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
             {
               try
                 {
-                  immutable tmpfn = get_tmpfilename( "d_glat_priv.core_gzip" );
+                  immutable tmpfn = get_tmpfilename( "d_oa_common.core_gzip" );
                   std.file.write( tmpfn, data );
 
                   // -n important: do not save the tmpfn into the file, to try to guarantee always same output
