@@ -11,12 +11,11 @@ module d_glat.lib_timeseries_selection;
 
 import d_glat.core_assert;
 import d_glat.lib_search_bisection;
+import d_glat.lib_time;
 import std.algorithm : max, min;
 import std.conv : to;
 import std.math : isNaN;
 import std.stdio;
-
-import d_bourse_common.lib_time; // xxx to remove
 
 // ---------- Constants ----------
 
