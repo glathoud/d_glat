@@ -1,7 +1,6 @@
 module d_glat.core_gzip;
 
-import d_glat_priv.core_unittest;
-import d_glat_priv.lib_oa_tmpfilename;
+import d_glat.lib_tmpfilename;
 import std.array;
 import std.conv;
 import std.file;
@@ -64,7 +63,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
               scope const d_1 =
                 cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
               
-              mixin(_asrt!`MIN_LENGTH_FOR_SHELL_GZIP < d_1.length`);
+              assert( MIN_LENGTH_FOR_SHELL_GZIP < d_1.length );
 
               scope const out_1 = gzip!also_disk( d_1 );
 
@@ -73,7 +72,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
                   scope const d_2 =
                     cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
                   
-                  mixin(_asrt!`MIN_LENGTH_FOR_SHELL_GZIP < d_2.length`);
+                  assert( MIN_LENGTH_FOR_SHELL_GZIP < d_2.length );
               
                   scope const out_2 = gzip!also_disk( d_2 );
 
@@ -95,7 +94,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
             {
               try
                 {
-                  immutable tmpfn = get_tmpfilename( "d_glat_priv.core_gzip" );
+                  immutable tmpfn = get_tmpfilename( "d_glat.core_gzip" );
                   std.file.write( tmpfn, data );
 
                   // -n important: do not save the tmpfn into the file, to try to guarantee always same output
@@ -104,7 +103,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
                   // Detect errors.
                   if (0 != tmp.status)
                     {
-                      throw new Exception ( "d_glat_priv.core_gzip.gzip: error returned by the shell. Falling back onto slower D implementation. Error caught: " ~ to!string(tmp.output) );
+                      throw new Exception ( "d_glat.core_gzip.gzip: error returned by the shell. Falling back onto slower D implementation. Error caught: " ~ to!string(tmp.output) );
                     }
 
                   // Read output
@@ -125,7 +124,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
                 }
               catch ( Throwable t )
                 {
-                  stderr.writeln( "d_glat_priv.core_gzip.gzip failed to use the shell. Falling back onto slower D implementation.");
+                  stderr.writeln( "d_glat.core_gzip.gzip failed to use the shell. Falling back onto slower D implementation.");
                   stderr.flush;
                   synchronized( _gzipLock )
                   {

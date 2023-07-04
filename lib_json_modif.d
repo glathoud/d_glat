@@ -221,11 +221,11 @@ private struct ModifiedSofar
 
 unittest
 {
+  import std.exception;
   import std.path;
   import std.stdio;
 
   import d_glat.core_array;
-  import d_glat_priv.core_unittest;
   
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );

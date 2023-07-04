@@ -16,9 +16,11 @@ import std.conv : to;
 import std.math : isNaN;
 import std.stdio;
 
-// xxx to remove
-import d_bourse_common.lib_time;
-import d_bourse_common.constants;
+import d_bourse_common.lib_time; // xxx to remove
+
+// ---------- Constants ----------
+
+immutable END_UTC_MS_ALL_FUTURE = long.max;
 
 // ---------- API ----------
 
@@ -55,7 +57,7 @@ T[] apply(T, TArrLike=T[])( in TimeseriesSelection ts_sel, TArrLike arr )
           double prop = double.nan;
 
           search_bisection( &begin_fun, v, a0, b0 
-                                              , ind0, ind1, prop );
+                            , ind0, ind1, prop );
 
           mixin(alwaysAssertStderr!`ind0 < size_t.max`);
           mixin(alwaysAssertStderr!`ind1 < size_t.max`);
@@ -68,12 +70,59 @@ T[] apply(T, TArrLike=T[])( in TimeseriesSelection ts_sel, TArrLike arr )
         }
       else
         {
-          mixin(alwaysAssertStderr(`ts_sel.isFull`
+          mixin(alwaysAssertStderr(`ts_sel.isFullPast`
                                    ,`"maybe implementation missing (todo)"`));
 
           ret = arr[ 0..$ ]; // [0..$] necessary to read from fake arrays (./flatmatrix/lib_jsonbin.d)
         }
     }
+
+  
+  if (0 < ret.length)
+    {
+      if (ts_sel.end_utc_ms != END_UTC_MS_ALL_FUTURE)
+        {
+          mixin(alwaysAssertStderr!`-1 < ts_sel.utc_ms_col_ind`);
+          mixin(alwaysAssertStderr!`0 < ts_sel.n_col`);
+          mixin(alwaysAssertStderr!`0 == ret.length % ts_sel.n_col`);
+
+          immutable end_utc_ms = ts_sel.end_utc_ms;
+          mixin(alwaysAssertStderr!`end_utc_ms < END_UTC_MS_ALL_FUTURE`);
+          
+          double end_fun( in size_t ind )
+          {
+            immutable utc_ms = ret[ ind * ts_sel.n_col + ts_sel.utc_ms_col_ind ];
+            return cast(double)( utc_ms );
+          }
+
+          // `-0.5+...` trick, to be sure to be just before the first
+          // occurence of the `end_utc_ms` value that we want to
+          // *exclude*. See also `1+i_row`.
+          immutable v = -0.5 + cast(double)( end_utc_ms );
+          immutable size_t a0 = 0;
+          immutable size_t b0 = (ret.length / cast(size_t)( ts_sel.n_col ))-1;
+
+          size_t ind0 = size_t.max, ind1 = size_t.max;
+          double prop = double.nan;
+
+          search_bisection( &end_fun, v, a0, b0 
+                            , ind0, ind1, prop );
+          
+          mixin(alwaysAssertStderr!`ind0 < size_t.max`);
+          mixin(alwaysAssertStderr!`ind1 < size_t.max`);
+          mixin(alwaysAssertStderr!`!isNaN( prop )`);
+          
+          immutable size_t i_row = 0.0 < prop  ?  ind1  :  ind0;
+          
+          ret = ret[ 0..(ts_sel.n_col * (1 + i_row)) ];
+        }
+      else
+        {
+          mixin(alwaysAssertStderr(`ts_sel.isFullFuture`
+                                   ,`"maybe implementation missing (todo)"`));
+        }
+    }
+  
   
   return ret;
 }
@@ -85,6 +134,7 @@ immutable TimeseriesSelection TS_SEL_FULL = {
  utc_ms_col_ind: -1 // not needed in that case
  , n_col: -1  // not needed in that case
  , inf_begin:    INF_BEGIN_ALL_PAST
+ , end_utc_ms:   END_UTC_MS_ALL_FUTURE
 };
 
 struct TimeseriesSelection
@@ -93,9 +143,20 @@ struct TimeseriesSelection
   immutable long     utc_ms_col_ind; // Where to find the `utc_ms` value in each record
   immutable long     n_col;          // Length of each record
   immutable InfBegin inf_begin;      // Optional cut of the beginning
-  // could extend later with e.g. SupEnd etc.
+  immutable long     end_utc_ms = END_UTC_MS_ALL_FUTURE;     // Optional cut at the end
 
   bool isFull() const pure @safe @nogc
+  {
+    return isFullPast()  &&  isFullFuture();
+  }
+
+  
+  bool isFullFuture() const pure @safe @nogc
+  {
+    return end_utc_ms == END_UTC_MS_ALL_FUTURE;
+  }
+  
+  bool isFullPast() const pure @safe @nogc
   {
     return inf_begin == INF_BEGIN_ALL_PAST;
   }

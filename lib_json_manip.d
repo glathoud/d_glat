@@ -13,7 +13,6 @@ public import std.json;
 import d_glat.core_cast;
 import d_glat.core_sexpr;
 import d_glat.lib_json_manip;
-import d_glat_priv.core_unittest;
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -350,6 +349,7 @@ JSONValue json_solve_calc( in ref JSONValue o )
 
 
 
+immutable string _ici = `__FILE__ ~ "@line:" ~ to!string( __LINE__ )`;
 
 JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, ref bool out_modified )
 {
@@ -381,7 +381,7 @@ JSONValue json_solve_calc(bool accept_incomplete = false)( in ref JSONValue o, r
       static if (!accept_incomplete)
         {
           if (found_todo)
-            enforce( modified, mixin(_dhere)~" !accept_incomplete => must progress, but here, could not do at least modification. Something is missing, or there is a dependency loop between (calc)'s.");
+            enforce( modified, mixin(_ici)~" !accept_incomplete => must progress, but here, could not do at least modification. Something is missing, or there is a dependency loop between (calc)'s.");
         }
       
       if (modified)

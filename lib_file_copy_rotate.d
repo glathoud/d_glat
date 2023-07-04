@@ -14,7 +14,6 @@ import d_glat.core_file;
 import d_glat.core_glob;
 import d_glat.core_gzip;
 import d_glat.core_runtime;
-import d_glat_priv.core_unittest;
 import std.algorithm : map, sort;
 import std.array : array;
 import std.datetime;
@@ -117,7 +116,6 @@ bool file_copy_rotate
 
       if (compress)
         {
-          // mixin(_wr_here);printMemUsage();
           scope immutable new_filename = new_fn_core~".gz";
           ensure_file_writable_or_exit( new_filename, /*ensure_dir:*/true );
           std.file.write( new_filename, gzip( cast(ubyte[])( std.file.read( filename ))) );

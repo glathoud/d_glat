@@ -9,7 +9,6 @@ module d_glat.core_json;
 
 import d_glat.core_assert;
 import d_glat.core_string : string_is_num09;
-import d_glat_priv.core_unittest;
 import std.algorithm : all, any, each, map;
 import std.array : appender, array, split;
 import std.conv : to;
@@ -46,13 +45,6 @@ private void _ensure_j_dbl_special()
       _j_dbl_special_s_infinity    = j2[ "c" ].str;  // Usually  "Infinite"
       _j_dbl_special_s_negInfinity = j2[ "d" ].str;  // Usually  "-Infinite"
       _j_dbl_special_s_nan         = j2[ "e" ].str;  // Usually  "NaN"
-
-      debug static if (false)
-        {
-          mixin(_wr!`/*xxx*/_j_dbl_special_s_infinity`);
-          mixin(_wr!`/*xxx*/_j_dbl_special_s_negInfinity`);
-          mixin(_wr!`/*xxx*/_j_dbl_special_s_nan`);
-        }
     }
 }
 
