@@ -61,14 +61,14 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
               immutable s = "A la claire fontaine, m'en allant promener, j'ai trouve l'eau si claire, que je m'y suis baigne.";
           
               const d_1 = cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
-              mixin(_asrt!`MIN_LENGTH_FOR_SHELL_GZIP < d_1.length`);
+              assert( MIN_LENGTH_FOR_SHELL_GZIP < d_1.length );
 
               const out_1 = gzip!also_disk( d_1 );
 
               if (_tried_shell  &&  _use_shell)
                 {
                   const d_2 = cast(ubyte[])( s.replicate( 2 + (MIN_LENGTH_FOR_SHELL_GZIP / s.length) ) );
-                  mixin(_asrt!`MIN_LENGTH_FOR_SHELL_GZIP < d_2.length`);
+                  assert( MIN_LENGTH_FOR_SHELL_GZIP < d_2.length );
               
                   const out_2 = gzip!also_disk( d_2 );
 
