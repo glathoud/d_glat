@@ -9,7 +9,7 @@ module d_glat.core_json;
 
 import d_glat.core_assert;
 import d_glat.core_string : string_is_num09;
-import std.algorithm : all, any, each, map;
+import std.algorithm : all, any, canFind, each, map;
 import std.array : appender, array, split;
 import std.conv : to;
 import std.exception : enforce;
@@ -295,6 +295,9 @@ Nullable!JSONValue json_get_places( in ref JSONValue j, in Jsonplace[] array_of_
 string json_setC( in string j_obj_name, in string v_name )
 // Code for mixin, to set a "simple" field in a JSON Object.
 {
+  if (v_name.canFind( ',' ))
+    return json_setC( j_obj_name, v_name.split(',') );
+  
   return j_obj_name~`.object["`~v_name~`"] = JSONValue( `~v_name~` );`;
 }
 

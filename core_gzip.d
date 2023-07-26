@@ -30,9 +30,9 @@ ubyte[] gunzip( in ubyte[] data )
   // return cast( ubyte[] )( uncompress( zdata_0, 0, 47 ) );
 }
 
-ubyte[] gunzip( in void[] data )
+T gunzip(T)( in T data )
 {
-  return gunzip( cast( ubyte[] )( data ) );
+  return cast(T)( gunzip( cast( ubyte[] )( data ) ) );
 }
 
 
@@ -144,7 +144,7 @@ ubyte[] gzip(bool also_disk = true)( in ubyte[] data )
   return app.data;
 }
 
-ubyte[] gzip(bool also_disk = true)( void[] data )
+T gzip(bool also_disk = true, T)( T data )
 {
-  return gzip!also_disk( cast( ubyte[] )( data ) );
+  return cast(T)( gzip!also_disk( cast( ubyte[] )( data ) ) );
 }
