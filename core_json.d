@@ -17,7 +17,7 @@ import std.json;
 import std.range : join, zip;
 import std.typecons : Nullable;
 import std.stdio : stderr,writeln;
-
+import std.traits : hasMember;
 
 alias Jsonplace = string[]; // position in the JSON
 
@@ -374,7 +374,6 @@ unittest
 
 bool json_is_integer( in ref Nullable!JSONValue j )
 {
-  
   return !j.isNull  &&  j.get.type == JSONType.integer;
 }
 
@@ -384,23 +383,27 @@ bool json_is_integer( in ref Nullable!JSONValue j )
 bool json_is_string( in ref Nullable!JSONValue j )
 // Should work well together with `json_get_place`.
 {
-  
   return !j.isNull  &&  j.get.type == JSONType.string;
- }
+}
 
 bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
 {
-  
-  auto maybe_j = json_get_place( j, place );
-  return json_is_string_equal( maybe_j , s );
+  static if (is(T == Nullable!JSONValue))
+    auto maybe_j2 = json_get_place( j.get, place );
+  else
+    auto maybe_j2 = json_get_place( j, place );
+
+  return json_is_string_equal( maybe_j2, s );
 }
 
 
 bool json_is_string_equal( T )( in ref T j, in string s )
 // Should work well together with `json_get_place`.
 {
-  
-  return json_is_string( j )  &&  j.str == s;
+  static if (hasMember!(T, "get"))
+    return json_is_string( j )  &&  j.get.str == s;
+  else
+    return json_is_string( j )  &&  j.str == s;
 }
 
 
