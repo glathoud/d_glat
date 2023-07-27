@@ -1,4 +1,4 @@
-module d_glat.core_param_tester;
+module d_glat.core_param_restriction;
 
 import d_glat.core_assoc_array;
 import std.array : appender, array, split;
@@ -8,19 +8,19 @@ import std.conv : to, ConvException;
 import std.traits; // xxx : isCallable, isNumeric;
 
 /*
-  Parameter tester to verify that parameter values are within expected
-  ranges/lists.
+  Parameter restriction : verify that parameter values are within
+  expected ranges of numbers/lists of numbers or strings.
 
   Use at your own risk. Boost license, see file ./LICENSE
 
-  Guillaume Lathoud
+  Guillaume Lathoud, 2023 and later
   glat@glat.info
 */
 
-alias ParamTesterStrict = ParamTester!true;
-alias ParamTesterLoose  = ParamTester!false;
+alias ParamRestrictionAll  = ParamRestriction!true;
+alias ParamRestrictionSome = ParamRestriction!false;
 
-class ParamTester(bool strict = true)
+class ParamRestriction(bool check_all = true)
 {
   NumberTester[string] number_testers;
   StringTester[string] string_testers;
@@ -101,14 +101,14 @@ class ParamTester(bool strict = true)
 };
 
 
-bool matches(alias modifier_fun = false, bool strict = true, T)
-  ( in ParamTester!strict param_tester, in T name_v_aa ) const
+bool matches(alias modifier_fun = false, bool check_all = true, T)
+  ( in ParamRestriction!check_all param_tester, in T name_v_aa )
 // xxx todo: add support for lambda modifier_fun (for some reason not
 // working yet - so for now you have to e.g. declare a real function)
 {
   with (param_tester)
     {
-      static if (strict)
+      static if (check_all)
         {
           // The names in `spec` must all be present in `name_v_aa`.
           static foreach(TESTERS; ["number_testers", "string_testers"])
@@ -208,14 +208,14 @@ unittest
   import std.string;
   import std.stdio;
   
-  immutable verbose = true;
+  immutable verbose = false;
   
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
   {
     immutable spec = "";
-    const pt = new ParamTesterStrict( spec );
+    const pt = new ParamRestrictionAll( spec );
 
     string[string] name_v_aa = ["abc":"123", "def":"xyz"];
     assert( pt.matches( name_v_aa ) );
@@ -223,7 +223,7 @@ unittest
 
   {
     immutable spec = "v0^..0.007_zz^20..80";
-    const pt = new ParamTesterStrict( spec );
+    const pt = new ParamRestrictionAll( spec );
 
     if (verbose)
         writeln( spec, " pt:", pt );
@@ -254,7 +254,7 @@ unittest
 
   {
     immutable spec = "v0^..0.007_zz^20..80";
-    const pt = new ParamTesterLoose( spec );
+    const pt = new ParamRestrictionSome( spec );
     
     {
       assert( pt.matches( ["abc":"123", "def":"xyz"] ) );
@@ -277,7 +277,7 @@ unittest
 
   {
     immutable spec = "abq^20..40^60..80";
-    const pt = new ParamTesterStrict( spec );
+    const pt = new ParamRestrictionAll( spec );
 
     {
       assert( !pt.matches(["abc":"123"]));
@@ -299,7 +299,7 @@ unittest
 
   {
     immutable spec = "rpi^1^2^3^5^8^11^20..30";  // match isolated values and one range 20..30
-    const pt = new ParamTesterStrict( spec );
+    const pt = new ParamRestrictionAll( spec );
 
     assert( !pt.matches( ["rpi":0.0] ) );
     assert( pt.matches( ["rpi":1.0] ) );
