@@ -320,9 +320,33 @@ unittest
     assert( !pt.matches( ["rpi":"30.00001"] ) );
     assert( !pt.matches( ["rpi":32] ) );
   }
-  /*
-       "sp^ab^ew^gor12^325__other^1..^-1e4..10^121^-34..-11.123"  // "sp" has string values
-  */
+
+  {
+    const pt =  // "sp" has string values
+      new ParamRestrictionSome( "sp^ab^ew^gor12^325__other^-1e4..10^121^-34..-11.123" ); 
+
+    assert( !pt.matches( ["other":-1e5]));
+    assert( pt.matches( ["other":0]));
+    assert( pt.matches( ["other":"5.678"]));
+    assert( pt.matches( ["other":9]));
+    assert( pt.matches( ["other":"10"]));
+    assert( !pt.matches( ["other":"120.5"]));
+    assert( pt.matches( ["other":"121"]));
+    assert( pt.matches( ["other":121]));
+    assert( !pt.matches( ["other":121.0001]));
+    assert( !pt.matches( ["other":122]));
+
+    assert( pt.matches( ["sp":"ab"]));
+    assert( !pt.matches( ["sp":"abc"]));
+    assert( !pt.matches( ["sp":"gor"]));
+    assert( pt.matches( ["sp":"gor12"]));
+    assert( pt.matches( ["sp":"325"]));
+    assert( !pt.matches( ["sp":325])); // 325: must be a string "325"
+
+    assert( pt.matches( ["sp":"ab", "other": "121"]) );
+    assert( pt.matches( ["sp":"325", "other": "121"]) );
+    assert( !pt.matches( ["sp":325, "other": 121]) ); // 325: must be a string "325"
+  }
     
   writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
