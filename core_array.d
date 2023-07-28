@@ -101,6 +101,29 @@ bool arr_equal_nan(T)( in T[] a, in T[] b )
 }
 
 
+T[] arr_sign(T)( in T[] arr ) pure nothrow @safe
+{
+  T[] ret;
+  arr_sign_inplace_dim!T( arr, ret );
+  return ret;
+}
+
+void arr_sign_inplace_dim(T)( in T[] arr, ref T[] ret ) pure nothrow @safe
+{
+  ensure_length( arr.length, ret );
+  arr_sign_inplace_nogc!T( arr, ret );
+}
+
+
+void arr_sign_inplace_nogc(T)( in T[] arr, ref T[] ret ) pure nothrow @safe @nogc
+{
+  debug assert( ret.length == arr.length );
+  foreach (i,ref x; arr)
+    ret[ i ] = x > 0  ?  +1  :  x < 0  ?  -1  :  0;
+}
+
+
+
 
 size_t[T] get_indmap_of_arr( bool unique = true, T)( in T[] arr )
 // see also: core_assoc_array.aa_ind_of_array
