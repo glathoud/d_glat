@@ -645,6 +645,17 @@ void dot_inplace_YT_nogc( T )
 }
 
 
+T[] extract_diag(T)( in MatrixT!T X ) pure nothrow @safe
+{
+  immutable r = X.nrow;
+  immutable c = X.restdim;
+  immutable m = min( r, c );
+  auto ret = new double[ m ];
+  for (size_t i = 0, i_step = m+1, a = 0; a < m; ++a, i += i_step)
+    ret[ a ] = X.data[ i ];
+
+  return ret;
+}
 
 
 T[] extract_ind( T )( in MatrixT!T X, in size_t ind ) pure nothrow @safe
@@ -1285,11 +1296,11 @@ void _spit_d( T )
 
       if (maybe_mstt.isNull)
         {
-          sink( format( "%(%+17.14g,%),\n", data[ i_data..new_i_data ] ) );
+          sink( format( "%(%+20.14g,%),\n", data[ i_data..new_i_data ] ) );
         }
       else
         {
-          sink( format( "%(%17s,%),\n"
+          sink( format( "%(%20s,%),\n"
                         , data[ i_data..new_i_data ]
                         .enumerate
                         .map!( x => maybe_mstt.get()( i_dim, i_data, x.index, x.value ) ) ) );  
