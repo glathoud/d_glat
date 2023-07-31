@@ -22,6 +22,7 @@ import std.exception : enforce;
 import std.format : format;
 import std.math;
 import std.range : enumerate;
+import std.stdio : writeln;
 import std.string : split;
 import std.typecons : Nullable;
 
@@ -304,55 +305,7 @@ struct MatrixT( T )
   {
     return this.dim == other.dim
       &&  arr_equal_nan( this.data, other.data );
-  }
-  
-  string toString() const
-  {
-    scope MaybeMSTT!T mstt_null;
-    return toString( mstt_null );
-  }
-
-  string toString( MaybeMSTT!T maybe_mstt ) const
-  {
-    scope auto app = appender!(char[]);
-    this.toString( (carr) { foreach (c; carr) app.put( c ); }
-                  , maybe_mstt
-                  );
-    auto ret = app.data.idup;
-    app.clear;
-    return ret;
-  }
-
-  
-  void toString
-    (scope void delegate(const(char)[]) sink) const
-  {
-    MaybeMSTT!T mstt_null;
-    toString( sink, mstt_null );
-  }
-
-  void toString
-    (scope void delegate(const(char)[]) sink
-     , MaybeMSTT!T maybe_mstt
-     ) const
-  {
-    toString( sink, "", maybe_mstt );
-  }
-
-  void toString
-    (scope void delegate(const(char)[]) sink
-     , in string tab
-     , MaybeMSTT!T maybe_mstt
-     ) const
-  {  
-    sink( format( "Matrix(%s):[\n", dim ) );
-
-    immutable tab2 = tab~"  ";
-    
-    _spit_d!T( maybe_mstt, sink, tab2, dim, data );
-    
-    sink( tab~"]\n" );
-  }
+  }  
   
   // --- Convenience shortcuts
   
@@ -394,6 +347,69 @@ struct MatrixT( T )
     assert( data.length == dim[ 0 ] * restdim );
   }
 };
+
+
+
+// Because of the dual-context issue for methods, had to put `toString` outside
+
+string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+  ( in MatrixT!T m ) 
+{
+  scope MaybeMSTT!T mstt_null;
+  return toString!(format_g, format_s, T, labels)( m, mstt_null );
+}
+
+string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+  ( in MatrixT!T m, MaybeMSTT!T maybe_mstt ) 
+{
+  with (m)
+    {
+      scope auto app = appender!(char[]);
+      m.toString!(format_g, format_s, T, labels)
+        ( (carr) { foreach (c; carr) app.put( c ); }
+                  , maybe_mstt
+                  );
+    auto ret = app.data.idup;
+    app.clear;
+    return ret;
+    }
+}
+
+  
+void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+  (in MatrixT!T m, scope void delegate(const(char)[]) sink) 
+{
+  MaybeMSTT!T mstt_null;
+  m.toString!(format_g, format_s, T, labels)( sink, mstt_null );
+}
+
+void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+  (in MatrixT!T m, scope void delegate(const(char)[]) sink
+   , MaybeMSTT!T maybe_mstt
+   ) 
+{
+  m.toString!(format_g, format_s, T, labels)( sink, "", maybe_mstt );
+}
+
+void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+  (in MatrixT!T m
+   , scope void delegate(const(char)[]) sink
+   , in string tab
+   , MaybeMSTT!T maybe_mstt
+   ) 
+{  
+  with (m)
+    {
+      sink( format( "Matrix(%s):[\n", dim ) );
+      
+      immutable tab2 = tab~"  ";
+      
+      _spit_d!(format_g, format_s, T)( maybe_mstt, sink, tab2, dim, data, labels );
+      
+      sink( tab~"]\n" );
+    }
+}
+
 
 
 
@@ -1260,19 +1276,23 @@ void transpose_inplace_nogc( T )
 
 private: // ------------------------------
 
-void _spit_d( T )
+enum DFLT_FORMAT_G = "%+20.14g";
+enum DFLT_FORMAT_S = "%20s";
+
+void _spit_d(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T)
   ( MaybeMSTT!T maybe_mstt
     , scope void delegate(const(char)[]) sink
     , in string tab
     , in ref size_t[] dim
     , in ref T[] data
+    , in string[] labels
     )
 {
   size_t i_data;
-  _spit_d!T( maybe_mstt, sink, tab, dim, data, 0, i_data );
+  _spit_d!(format_g, format_s, T)( maybe_mstt, sink, tab, dim, data, 0, i_data, labels );
 }
   
-void _spit_d( T )
+void _spit_d(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T)
   ( MaybeMSTT!T maybe_mstt
     , scope void delegate(const(char)[]) sink
     , in string tab
@@ -1281,6 +1301,7 @@ void _spit_d( T )
     , in size_t i_dim
 
     , ref size_t i_data
+    , in string[] labels
     )
 {
   immutable  dim_length = dim.length;
@@ -1294,16 +1315,20 @@ void _spit_d( T )
       sink( tab );
       auto new_i_data = i_data + dim[ $-1 ];
 
+      immutable string label = 0 < labels.length  ?  "  # "~labels[ i_data / dim[ $-1 ] ]  :  "";
+      
       if (maybe_mstt.isNull)
         {
-          sink( format( "%(%+20.14g,%),\n", data[ i_data..new_i_data ] ) );
+          sink( format( "%("~format_g~",%),%s\n", data[ i_data..new_i_data ], label ) );
         }
       else
         {
-          sink( format( "%(%20s,%),\n"
+          sink( format( "%("~format_s~",%),%s\n"
                         , data[ i_data..new_i_data ]
                         .enumerate
-                        .map!( x => maybe_mstt.get()( i_dim, i_data, x.index, x.value ) ) ) );  
+                        .map!( x => maybe_mstt.get()( i_dim, i_data, x.index, x.value ) )
+                        , label
+                        ) );  
         }
       
       i_data = new_i_data;
@@ -1315,8 +1340,10 @@ void _spit_d( T )
 
   immutable d = dim[ i_dim ];
   foreach (_; 0..d)
-    _spit_d!T( maybe_mstt
-               , sink, tab, dim, data, i_dim + 1, i_data );
+    {
+      _spit_d!(format_g, format_s, T)( maybe_mstt
+                                       , sink, tab, dim, data, i_dim + 1, i_data, labels );
+    }
 }
 
 
