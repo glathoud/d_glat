@@ -6,7 +6,7 @@ module d_glat.core_octave;
 
   The Boost License applies, see file ./LICENSE
 
-  By Guillaume Lathoud, 2022
+  By Guillaume Lathoud, 2022 and later
   glat@glat.info
  */
 
