@@ -137,29 +137,7 @@ string resolve_symlink( in string maybe_symlink )
 }
 
 
-
-size_t getAvailableDiskSpace( in string path )
-// Does what it says at `dirName( path )` and returns a number of bytes.
-//
-// Impl note: until we update D to 2.081+ ...
-// after update just public import std.file : getAvailableDiskSpace
-{
-  immutable dir = absolutePath( dirName( path ) );
-  immutable cmd = `df -B 1 --output=avail "`~dir~`"`;
-  scope auto tmp = executeShell( cmd );
-  if (tmp.status != 0)
-    {
-      scope immutable msg =
-        `getAvailableDiskSpace failed on path: "`~path~`". cmd:"`~cmd~`" returned `
-        ~`status:`~to!string(tmp.status)~` and output:`~to!string(tmp.output);
-
-      stdout.writeln( msg ); stdout.flush;
-      stderr.writeln( msg ); stderr.flush;
-      assert( false, msg );
-    }
-
-return to!size_t( tmp.output.splitLines[1].strip );
-}
+import std.file : getAvailableDiskSpace;
 
 size_t getUsedDiskSpace( in string path )
 // Does what it says at `path` (if isDir(path)) else at
