@@ -306,6 +306,39 @@ struct MatrixT( T )
     return this.dim == other.dim
       &&  arr_equal_nan( this.data, other.data );
   }  
+
+  string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)() const
+  {
+    return MtoString!(T, format_g, format_s)( this );
+  }
+
+  string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
+    ( MaybeMSTT!T maybe_mstt ) const
+  {
+    return MtoString!(T, format_g, format_s)( this, maybe_mstt );
+  }
+  
+  void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
+    ( scope void delegate(const(char)[]) sink )  const
+  {
+    MtoString!(T, format_g, format_s)( this, sink );
+  }
+  
+  void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
+    ( scope void delegate(const(char)[]) sink
+      , MaybeMSTT!T maybe_mstt )  const
+  {
+    MtoString!(T, format_g, format_s)( this, sink, maybe_mstt );
+  }
+  
+  void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
+    ( scope void delegate(const(char)[]) sink
+      , in string tab
+      , MaybeMSTT!T maybe_mstt )  const
+  {
+    MtoString!(T, format_g, format_s)( this, sink, tab, maybe_mstt );
+  }
+  
   
   // --- Convenience shortcuts
   
@@ -352,20 +385,20 @@ struct MatrixT( T )
 
 // Because of the dual-context issue for methods, had to put `toString` outside
 
-string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
   ( in MatrixT!T m ) 
 {
   scope MaybeMSTT!T mstt_null;
-  return toString!(format_g, format_s, T, labels)( m, mstt_null );
+  return MtoString!(T, format_g, format_s, labels)( m, mstt_null );
 }
 
-string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
   ( in MatrixT!T m, MaybeMSTT!T maybe_mstt ) 
 {
   with (m)
     {
       scope auto app = appender!(char[]);
-      m.toString!(format_g, format_s, T, labels)
+      m.MtoString!(T, format_g, format_s, labels)
         ( (carr) { foreach (c; carr) app.put( c ); }
                   , maybe_mstt
                   );
@@ -376,22 +409,22 @@ string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S
 }
 
   
-void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
   (in MatrixT!T m, scope void delegate(const(char)[]) sink) 
 {
   MaybeMSTT!T mstt_null;
-  m.toString!(format_g, format_s, T, labels)( sink, mstt_null );
+  m.MtoString!(T, format_g, format_s, labels)( sink, mstt_null );
 }
 
-void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
   (in MatrixT!T m, scope void delegate(const(char)[]) sink
    , MaybeMSTT!T maybe_mstt
    ) 
 {
-  m.toString!(format_g, format_s, T, labels)( sink, "", maybe_mstt );
+  m.MtoString!(T, format_g, format_s, labels)( sink, "", maybe_mstt );
 }
 
-void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T, string[] labels = [])
+void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
   (in MatrixT!T m
    , scope void delegate(const(char)[]) sink
    , in string tab
@@ -404,7 +437,7 @@ void toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, 
       
       immutable tab2 = tab~"  ";
       
-      _spit_d!(format_g, format_s, T)( maybe_mstt, sink, tab2, dim, data, labels );
+      _spit_d!(T, format_g, format_s)( maybe_mstt, sink, tab2, dim, data, labels );
       
       sink( tab~"]\n" );
     }
@@ -1279,7 +1312,7 @@ private: // ------------------------------
 enum DFLT_FORMAT_G = "%+20.14g";
 enum DFLT_FORMAT_S = "%20s";
 
-void _spit_d(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T)
+void _spit_d(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
   ( MaybeMSTT!T maybe_mstt
     , scope void delegate(const(char)[]) sink
     , in string tab
@@ -1289,10 +1322,10 @@ void _spit_d(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T
     )
 {
   size_t i_data;
-  _spit_d!(format_g, format_s, T)( maybe_mstt, sink, tab, dim, data, 0, i_data, labels );
+  _spit_d!(T, format_g, format_s)( maybe_mstt, sink, tab, dim, data, 0, i_data, labels );
 }
   
-void _spit_d(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T)
+void _spit_d(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
   ( MaybeMSTT!T maybe_mstt
     , scope void delegate(const(char)[]) sink
     , in string tab
@@ -1341,7 +1374,7 @@ void _spit_d(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, T
   immutable d = dim[ i_dim ];
   foreach (_; 0..d)
     {
-      _spit_d!(format_g, format_s, T)( maybe_mstt
+      _spit_d!(T, format_g, format_s)( maybe_mstt
                                        , sink, tab, dim, data, i_dim + 1, i_data, labels );
     }
 }
