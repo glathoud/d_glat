@@ -28,6 +28,7 @@ import std.datetime;
 import std.exception : enforce;
 import std.file;
 import std.json;
+import std.path;
 import std.range;
 import std.stdio;
 import std.string : indexOf, splitLines, strip;
@@ -268,7 +269,7 @@ class JsonbinT( T ) : ProfileMemC
 
 
 JsonbinT!T jsonbin_of_filename_or_copy
-(T = double, string prefix = ".save-")
+(T = double, string prefix = DFLT_PREFIX)
 ( in string filename, bool verbose = true )
 {
   string error_msg;
@@ -282,7 +283,7 @@ JsonbinT!T jsonbin_of_filename_or_copy
 }
 
 JsonbinT!T jsonbinmeta_of_filename_or_copy
-(T = double, string prefix = ".save-")
+(T = double, string prefix = DFLT_PREFIX)
 ( in string filename, bool verbose = true )
 {
   string error_msg;
@@ -300,7 +301,7 @@ JsonbinT!T jsonbinmeta_of_filename_or_copy
 
 
 JsonbinT!T jsonbin_of_filename_or_copy
-(T = double, string prefix = ".save-")
+(T = double, string prefix = DFLT_PREFIX)
 ( in string filename, ref string error_msg
   , in TimeseriesSelection ts_sel = TS_SEL_FULL, bool verbose = true )
 {
@@ -309,7 +310,7 @@ JsonbinT!T jsonbin_of_filename_or_copy
 }
 
 JsonbinT!T jsonbinmeta_of_filename_or_copy
-(T = double, string prefix = ".save-")
+(T = double, string prefix = DFLT_PREFIX)
 ( in string filename, ref string error_msg
   , in TimeseriesSelection ts_sel = TS_SEL_FULL, bool verbose = true )
 {
@@ -318,12 +319,12 @@ JsonbinT!T jsonbinmeta_of_filename_or_copy
 }
 
 
-
+enum whereC = `baseName(__FILE__)~":"~to!string(__LINE__)`;
 
 JsonbinT!T Action_of_filename_or_copy
 ( bool only_meta
   , T = double
-  , string prefix = ".save-"
+  , string prefix = DFLT_PREFIX
   )
 ( in string filename, ref string error_msg
   , in TimeseriesSelection ts_sel = TS_SEL_FULL, bool verbose = true )
@@ -339,11 +340,17 @@ JsonbinT!T Action_of_filename_or_copy
         }
       
       scope auto fallback_arr = file_copy_fetch!prefix( filename ).sort;
+
+      if (verbose) writeln( mixin(whereC)~"fallback_arr: ", fallback_arr );
       
       foreach_reverse (fallback; fallback_arr) // try latest first
         {
+          if (verbose) writeln( mixin(whereC)~": fallback: ", fallback );
+
           ret = jsonbin_of_filename!(T, only_meta)
             ( fallback, error_msg, ts_sel );
+
+          if (verbose) writeln( mixin(whereC)~": error_msg: (length:"~to!string(error_msg.length)~") ", error_msg );
           
           if (0 < error_msg.length)
             {
@@ -831,7 +838,7 @@ file.write( '\n' );
 
 T[] jsonbindata_of_filename_or_copy
 ( T = double
-  , string prefix = ".save-"
+  , string prefix = DFLT_PREFIX
   )
 ( in string filename, ref string error_msg
   , ref string j_str, ref size_t[] dim
