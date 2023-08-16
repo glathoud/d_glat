@@ -27,11 +27,26 @@ import std.typecons : Nullable;
 
   Example of use: ./lib_regress.d
   
+  Motivation: rapid prototyping. In production, for even better
+  performance, it might be worth inquiring:
+
+  - The lubeck library https://code.dlang.org/packages/lubeck
+
+  - Integration with R
+  https://dlang.org/blog/2020/01/27/d-for-data-science-calling-r-from-d/
+  https://forum.dlang.org/thread/cdaoolmlvmgklxuugovh@forum.dlang.org
+
+  - Calling GNU Octave functions in C
+    https://stackoverflow.com/questions/56176203/call-gnu-octave-functions-in-c
+
+  Implementation note: currently, data is passed as strings via
+  Octave's standard input and output. A faster alternative might be
+  to write/load binary files, at the cost of having disk I/O.
+  
   The Boost License applies, see file ./LICENSE
 
   By Guillaume Lathoud, 2023 and later
   glat@glat.info
-
 */
 
 string getOctaveVersion() { return _getOctaveVersion(); }
