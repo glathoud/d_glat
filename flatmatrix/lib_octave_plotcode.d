@@ -1,4 +1,4 @@
-module d_glat.flatmatrix.lib_octave;
+module d_glat.flatmatrix.lib_octave_plotcode;
 
 public import d_glat.flatmatrix.core_octave;
 
@@ -26,7 +26,7 @@ struct MPlotXYT(T)
   const string style = ".";
   const string title = "";
   
-  string getCode()
+  string getCode() const
   {
     immutable xlabel = xname.replace( "_", "\\_" );
     immutable ylabel = yname.replace( "_", "\\_" );
