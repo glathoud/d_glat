@@ -4,7 +4,7 @@ import core.sys.posix.signal : SIGTERM, SIGKILL;
 import core.thread : Thread;
 import d_glat.core_assert;
 import d_glat.flatmatrix.core_matrix;
-import d_glat.flatmatrix.lib_octave;
+import d_glat.flatmatrix.core_octave;
 import std.algorithm : canFind, countUntil, endsWith, filter, map;
 import std.array : appender, array, join, replicate, split;
 import std.conv : parse, to;
