@@ -433,13 +433,13 @@ void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT
 {  
   with (m)
     {
-      sink( format( "Matrix(%s):[\n", dim ) );
+      sink( format( "Matrix(%s,[\n", dim ) );
       
       immutable tab2 = tab~"  ";
       
       _spit_d!(T, format_g, format_s)( maybe_mstt, sink, tab2, dim, data, labels );
       
-      sink( tab~"]\n" );
+      sink( tab~"])\n" );
     }
 }
 
