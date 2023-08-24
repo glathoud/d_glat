@@ -41,7 +41,8 @@ import std.typecons : Nullable;
 
   Implementation note: currently, data is passed as strings via
   Octave's standard input and output. A faster alternative might be
-  to write/load binary files, at the cost of having disk I/O.
+  to write/load binary files, at the cost of having disk I/O - unless
+  we use a RAM disk like tmpfs to exchange files.
   
   The Boost License applies, see file ./LICENSE
 
