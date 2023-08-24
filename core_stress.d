@@ -25,14 +25,16 @@ double stress(string duration_type /*e.g. "msecs" "usecs" "seconds" ...*/)
   
   scope immutable begin = Clock.currTime;
   
-  scope immutable dur = dur!"usecs"( uniform( lower_duration, higher_duration ) );
+  scope immutable dur = dur!duration_type( lower_duration == higher_duration
+                                           ?  lower_duration
+                                           :  uniform( lower_duration, higher_duration ) );
   
   double whatever = 0.0;
   while (Clock.currTime - begin < dur)
     whatever += uniform01;
   
   if (verbose)
-    writefln( "\n%s: whatever: %f, duration: %s usecs", baseName(__FILE__), whatever, (Clock.currTime - begin).total!"usecs" );
+    writefln( "\n%s: whatever: %f, duration: %s %s", baseName(__FILE__), whatever, (Clock.currTime - begin).total!duration_type, duration_type );
   
   return whatever;
 }
