@@ -4,7 +4,7 @@ import core.sys.posix.signal : SIGTERM, SIGKILL;
 import core.thread : Thread;
 import d_glat.core_assert;
 import d_glat.flatmatrix.core_matrix;
-import d_glat.flatmatrix.core_octave;
+import d_glat.flatmatrix.core_octave_code;
 import std.algorithm : canFind, countUntil, endsWith, filter, map;
 import std.array : appender, array, join, replicate, split;
 import std.conv : parse, to;
@@ -119,54 +119,6 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
 
 
 char[] octaveExecRaw( in string mCode ) { return _callOctave( mCode ); }
-
-abstract class MAction { abstract string getCode() const; }
-
-
-immutable mClearAll = cast(immutable(MExec))( mExec( "clear('all');" ) );
-
-
-MExec mExec( in string s ) { return new MExec( s ); } // Convenience wrapper
-class MExec : MAction
-{
-  immutable string action;
-  
-  this( in string action ) { this.action = action; }
-
-  override string getCode() const { return action; }
-}
-
-
-alias mSet = mSetT!double;
-alias MSet = MSetT!double;
-
-MSetT!T mSetT(T)( in string vname, in MatrixT!T m ) { return new MSetT!T( vname, m ); } // Convenience
-class MSetT(T) : MAction
-{
-  immutable string vname;
-  const MatrixT!T m;
-  
-  this( in string vname, in MatrixT!T m ) {
-    this.vname = vname;     mixin(alwaysAssertStderr!`0 < vname.length`);
-    this.m = m;             mixin(alwaysAssertStderr!`m.dim.length == 2`);
-  }
-
-  override string getCode() const { return vname~"="~mstr_of_mat( m )~";"; }
-}
-
-
-alias mPrintMatrix = mPrintMatrixT!double;
-alias MPrintMatrix = MPrintMatrixT!double;
-
-MPrintMatrixT!T mPrintMatrixT(T)( in string vname ) { return new MPrintMatrixT!T( vname ); } // Conve.
-class MPrintMatrixT(T) : MAction
-{
-  immutable string vname;
-
-  this( in string vname ) { this.vname = vname; mixin(alwaysAssertStderr!`0 < vname.length`); }
-
-  override string getCode() const { return "disp(sprintf('%d ',size("~vname~")));format long g;disp("~vname~");disp(\"\\n\")"; }
-}
 
 
 

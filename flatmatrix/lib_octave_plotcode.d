@@ -1,6 +1,6 @@
 module d_glat.flatmatrix.lib_octave_plotcode;
 
-public import d_glat.flatmatrix.core_octave;
+public import d_glat.flatmatrix.core_octave_code;
 
 import d_glat.core_string;
 import d_glat.core_struct;
