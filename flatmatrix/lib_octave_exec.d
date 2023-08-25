@@ -105,6 +105,8 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
     and (2) later on add an option to write a temporary file in binary
     format containing all the variables, because of the following
     comparison:
+
+    octave -q
   
     A=[1:10000]; tic; save myfile.mat A; toc; tic; save -binary mybinfile.mat; toc; quit    
     Elapsed time is 0.00434184 seconds.
@@ -115,6 +117,43 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
 
     tic; load mybinfile.mat A; toc; quit
     Elapsed time is 0.000192881 seconds.
+
+    ---------- tmpfs
+
+    Now let us compare with "fake" disk accesses, i.e. a RAM disk
+    mounted via tmpfs:
+
+    mkdir /tmp/tmpfs
+    sudo mount -t tmpfs -o uid=gl -o gid=gl tmpfs /tmp/tmpfs
+
+    cd /tmp/tmpfs
+
+    octave -q
+
+    A=[1:10000]; tic; save myfile.mat A; toc; tic; save -binary mybinfile.mat; toc; quit    
+    Elapsed time is 0.00434995 seconds.  # similar, but at least spares disk I/O
+    Elapsed time is 8.89301e-05 seconds. # (/ 0.000286102 8.89301e-05) ; 3.2x speed + spares disk I/O
+    
+    tic; load myfile.mat A; toc; quit  
+    Elapsed time is 0.00397897 seconds.  # similar, but at least spares disk I/O
+
+    tic; load mybinfile.mat A; toc; quit
+    Elapsed time is 0.000158072 seconds. # (/ 0.000192881 0.000158072) ; 1.2x speed + sparse disk I/O
+
+    cd
+    sudo umount /tmp/tmpfs
+    rmdir  /tmp/tmpfs
+
+    ---------- ramfs
+
+    mkdir /tmp/ramfs
+    sudo mount -t ramfs ramfs /tmp/ramfs
+    
+    cd /tmp/ramfs
+    sudo chmod a+rwx .
+
+    ... similar speed result as tmpfs (expectable, but good to check).
+
   */
 }
 
