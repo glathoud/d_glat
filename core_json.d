@@ -147,17 +147,17 @@ T[] json_get_array(T)( in JSONValue jv )
       static if (is(T == string))
         apdr.put( json_get_string( j_one ) );
 
-      else if (is( T == double))
-        apdr.put( json_get_double( j_one ) );
-
-      else if (is( T == long))
-        apdr.put( json_get_long( j_one ) );
-
-      else if (is( T == bool ))
-        apdr.put( json_get_bool( j_one ) );
-
-      else
-        assert( false, "Type not supported: "~(T.stringof) );
+      else static if (is( T == double))
+	     apdr.put( json_get_double( j_one ) );
+      
+	else static if (is( T == long))
+	       apdr.put( json_get_long( j_one ) );
+      
+	  else static if (is( T == bool ))
+		 apdr.put( json_get_bool( j_one ) );
+      
+	    else
+	      assert( false, "Type not supported: "~(T.stringof) );
     }
 
   return apdr.data;
