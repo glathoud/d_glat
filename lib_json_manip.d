@@ -280,7 +280,14 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
     {
       if ((j0.type == JSON_TYPE.INTEGER  &&  j1.type == JSON_TYPE.FLOAT
            ||  j1.type == JSON_TYPE.INTEGER  &&  j0.type == JSON_TYPE.FLOAT
-           )
+
+	   ||  j0.type == JSON_TYPE.UINTEGER  &&  j1.type == JSON_TYPE.FLOAT
+           ||  j1.type == JSON_TYPE.UINTEGER  &&  j0.type == JSON_TYPE.FLOAT
+	   
+	   ||  j0.type == JSON_TYPE.INTEGER  &&  j1.type == JSON_TYPE.UINTEGER
+           ||  j1.type == JSON_TYPE.INTEGER  &&  j0.type == JSON_TYPE.UINTEGER
+          
+	   )
           &&  json_get_double( j0 ) == json_get_double( j1 )
           )
         {
