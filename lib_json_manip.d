@@ -285,8 +285,7 @@ bool json_equals( in JSONValue j0, in JSONValue j1 )
            ||  j1.type == JSONType.uinteger  &&  j0.type == JSONType.float_
 	   
 	   ||  j0.type == JSONType.integer  &&  j1.type == JSONType.uinteger
-           ||  j1.type == JSONType.integer  &&  j0.type == JSONType.uinteger
-          
+           ||  j1.type == JSONType.integer  &&  j0.type == JSONType.uinteger          
 	   )
           &&  json_get_double( j0 ) == json_get_double( j1 )
           )
