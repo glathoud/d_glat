@@ -6,13 +6,27 @@ import std.range : join;
 import std.string : strip;
 
 /*
-  A few tool functions for structs
+  A few tool functions for structs and classes
 
   By Guillaume Lathoud, 2023
   glat@glat.info
 
   The Boost license applies to this file, as described in ./LICENSE
  */
+
+string set_thisC( in string csv_0 ) pure
+{
+  auto csv = csv_0.strip;
+
+  if (csv[ 0 ] == '{')
+    return set_thisC( csv[ 1..$-1 ] );
+
+  return csv.split( ',' )
+    .map!`a.canFind( '=' )  ?  "this."~a~";"  :  "this."~(a.strip)~" = "~(a.strip)~";\n"`
+    .join( "" )
+    ;            
+}
+
 
 string struct_initC( in string StructName, in string v_name, in string csv_0 ) pure
 // Example of use:
