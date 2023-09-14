@@ -498,6 +498,41 @@ MatrixT!T clone( T )( in MatrixT!T X ) pure nothrow @safe
   (Feel free to correct me if this analysis is wrong).
 */
 
+
+
+alias mat_zeros = mat_zerosT!double;
+alias mat_ones  = mat_onesT!double;
+
+MatrixT!T mat_zerosT(T)( in size_t[] dim ) { return mat_samevalue!(0,T)( dim ); }
+MatrixT!T mat_onesT(T) ( in size_t[] dim ) { return mat_samevalue!(1,T)( dim ); }
+
+MatrixT!T mat_samevalue(alias v,T)( in size_t[] dim )
+pure nothrow @safe
+{
+  MatrixT!T ret;
+  mat_samevalue_inplace!(v,T)( dim, ret );
+  return ret;
+}
+
+void mat_samevalue_inplace(alias v,T)( in size_t[] dim, ref MatrixT!T ret )
+  pure nothrow @safe
+{
+  ret.setDim( dim );
+  mat_samevalue_inplace_nogc!(v,T)( dim, ret );
+}
+
+void mat_samevalue_inplace_nogc(alias v,T)( in size_t[] dim, ref MatrixT!T ret )
+  pure nothrow @safe @nogc
+{
+  debug assert( ret.dim == dim );
+  ret.data[] = v;
+}
+
+
+
+
+
+
 void clone_inplace_nogc( T )
   ( in ref MatrixT!T X
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
@@ -506,6 +541,11 @@ void clone_inplace_nogc( T )
   ret.dim[]  = X.dim[];
   ret.data[] = X.data[];
 }
+
+
+alias concatcol         = interleave;
+alias concatcol_inplace = interleave_inplace;
+
 
 
 MatrixT!T diag( T )( in T[] x ) pure nothrow @safe
@@ -857,6 +897,8 @@ pure nothrow @safe
         }
     }
 }
+
+
 
 
 
