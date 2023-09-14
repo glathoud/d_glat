@@ -16,9 +16,9 @@ import std.array : join, replicate;
 
   is equivalent to:
 
-  foreach (a; v_arr_of_pn["a"])
-    foreach (b; v_arr_of_pn["b"])
-      foreach (c; v_arr_of_pn["c"])
+  foreach (ref a; v_arr_of_pn["a"])
+    foreach (ref b; v_arr_of_pn["b"])
+      foreach (ref c; v_arr_of_pn["c"])
         f(a,b,c);
   
   By Guillaume Lathoud, 2023
