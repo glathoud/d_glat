@@ -3,8 +3,17 @@ module d_glat.flatmatrix.lib_regress;
 import d_glat.flatmatrix.core_matrix;
 import d_glat.flatmatrix.lib_octave_exec;
 
+MatrixT!T linpred_apply( in MatrixT!T beta, in MatrixT!T X )
+{
+  scope auto X1 = prepend_ones( X );
+  return dot( beta, X1 );
+}
+
+
 /*
-  `regress` function similar to that of Octave.
+  `regress` function similar to that of Octave: Multiple Linear
+     Regression using Least Squares Fit of Y on X with the model 'y =
+     X * beta + e' (where the first column of X contains ones).
 
   For now running on top of an Octave engine.
   Compatible at least with Octave (6.4.0).
