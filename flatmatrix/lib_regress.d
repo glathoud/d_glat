@@ -6,7 +6,6 @@ import d_glat.flatmatrix.lib_octave_exec;
 MatrixT!T linpred_apply(T)( in MatrixT!T beta, in MatrixT!T X )
 {
   scope auto X1 = concatcol( [mat_ones( [X.nrow, 1] ), X] );
-  import std.stdio;
   return dot( X1, beta );
 }
 
