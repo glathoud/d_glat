@@ -144,6 +144,9 @@ size_t getUsedDiskSpace( in string path )
 // `dirName(path)` (e.g. if isFile(path)), and returns a number of
 // bytes.
 {
+  if (!exists( path ))
+    return 0;
+
   immutable dir = absolutePath( isDir( path )  ?  path  :  dirName( path ) );
   immutable cmd = `du -b --max-depth=0 "`~dir~`"`;
   scope auto tmp = executeShell( cmd );
