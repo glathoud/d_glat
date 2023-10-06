@@ -62,7 +62,6 @@ unittest
     assert( param_gen!int("[1,2,3,-11..-7,5,6,7,20..25]")
             == [1,2,3,-11,-10,-9,-8,5,6,7,20,21,22,23,24] );
       
-    
     if (verbose) writeln( param_gen!long( "-12..37" ) );
     
   }
