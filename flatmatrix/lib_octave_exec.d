@@ -71,9 +71,25 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
   auto octave_code = mact_arr.map!"a.getCode()".join("");
   scope auto output = octaveExecRaw( octave_code );
 
-  scope oarr = output.split( "\n\n" ).map!"a.strip".filter!"0<a.length".array;
+  scope oarr_0 = output.split( "\n\n" ).map!"a.strip".filter!"0<a.length".array;
 
-  mixin(alwaysAssertStderr(`oarr.length == a.length`, `to!string([oarr.length, a.length])`));
+  scope oarr_warning = oarr_0.filter!`a.toLower.startsWith("warning:")`.array;
+  scope oarr         = oarr_0.filter!`!a.toLower.startsWith("warning:")`.array;
+
+  if (0 < oarr_warning.length)
+    {
+      foreach (i_warning, warning; oarr_warning)
+        {
+          stderr.flush;
+          stderr.writeln;
+          stderr.writeln(__FILE__.split("/")[$-1]~"@line:"~to!string(__LINE__)~":i_warning:"
+                         ~to!string(i_warning)~":\n"~warning);
+          stderr.flush;
+        }
+    }
+  
+  mixin(alwaysAssertStderr(`oarr.length == a.length`
+                           , `to!string([oarr.length, a.length])~'\n'~output.idup`));
 
   foreach (k, ref one; a)
     {
