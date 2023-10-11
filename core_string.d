@@ -2,7 +2,16 @@ module d_glat.core_string;
 
 public import std.conv : to;
 
-// Note: regex-free functions for fast compilation
+/*
+  String tools including _tli for (mixin) templating.
+
+  Implementation note: regex-free functions for fast compilation
+
+  By Guillaume Lathoud, 2019
+  glat@glat.info
+
+  The Boost license applies to this file, as described in ./LICENSE
+ */
 
 import std.algorithm.searching : countUntil;
 import std.array : appender, join, replace, split;
@@ -16,8 +25,28 @@ string _tli( string s_0 )() pure @safe
 
     int i = 34;
     double d = 56.78;
-    auto s = mixin(_tli!"this \"thing\" is i: ${i} and that other \"thing\" is d: ${d}. Done!");
-    assert( s == "this \"thing\" is i: 34 and that other \"thing\" is d: 56.78. Done!" );
+    auto s = mixin(_tli!"this \"thing\" is i+2: ${i+2} and that other \"thing\" is d: ${d}. Done!");
+    assert( s == "this \"thing\" is i+2: 36 and that other \"thing\" is d: 56.78. Done!" );
+
+  Also usable to mixin multiline templates in a readable way:
+
+  int e=1,f=2,g=3;
+
+  immutable template_parameter = "xyz";
+  immutable v0 = "f";
+
+  mixin(_tri!q{
+    static if (abc)
+    {
+      app.put( "some_string_with_a_${template_parameter}_in_it");
+    }
+    else
+    {
+      app.put( "something else" );
+    }
+    writeln( "${v0}:", ${v0} ); // prints "f:2" ; ok, a bit contrived but you get the idea
+  });
+  
  */
 {
   string rest = s_0;
