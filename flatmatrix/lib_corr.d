@@ -3,6 +3,8 @@ module d_glat.flatmatrix.lib_corr;
 /*
   Utility for correlation between 1 and N variables.
   
+  For a full cross-correlation matrix, use ./lib_stat.d
+
   By Guillaume Lathoud, 2019.
   glat@glat.info
 
@@ -14,6 +16,20 @@ public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_profile_acc;
 import std.math;
+
+
+
+T corr(T)( in T[] x, in T[] y ) pure @safe
+// functional shortcut
+{
+  scope m_x = MatrixT!T( [0,1], x );
+  scope m_y = MatrixT!T( [0,1], y );
+  scope m_c = corr_one( m_x, m_y );
+  return m_c.data[ 0 ];
+}
+
+// for a full cross-correlation matrix, use ./lib_stat.d
+
 
 
 alias Buffer_corr_one_inplace = Buffer_corr_one_inplaceT!double;
