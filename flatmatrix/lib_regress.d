@@ -3,9 +3,15 @@ module d_glat.flatmatrix.lib_regress;
 import d_glat.flatmatrix.core_matrix;
 import d_glat.flatmatrix.lib_octave_exec;
 
+const(MatrixT!T) get_X1_of_X(T)( in MatrixT!T X )
+{
+  return concatcol( [mat_ones( [X.nrow, 1] ), X] );
+}
+
+
 MatrixT!T linpred_apply(T)( in MatrixT!T beta, in MatrixT!T X )
 {
-  scope auto X1 = concatcol( [mat_ones( [X.nrow, 1] ), X] );
+  scope auto X1 = get_X1_of_X( X );
   return dot( X1, beta );
 }
 
