@@ -50,6 +50,9 @@ struct MatrixT( T )
 
   // --- API: Constructors
 
+  this( MatrixT!T other ) pure nothrow @safe
+    { set( other.dim.dup, other.data.dup ); }
+  
   this( size_t[] dim, T[] data ) pure nothrow @safe @nogc
     { set( dim, data ); }
 
@@ -822,6 +825,16 @@ T_OUT fold_rows(alias /*T_OUT */fun/*( T_OUT, in T[] row )*/, T, T_OUT)
 
   return ret;
 }
+
+MatrixT!T interleave_v(T)( T[][] v_arr_arr )
+pure nothrow @safe
+{
+  scope auto m_arr = v_arr_arr
+    .map!((v_arr) => MatrixT!T( [0,1], v_arr))
+    .array;
+  return interleave!T( m_arr );
+}
+
 
 MatrixT!T interleave( T )( in MatrixT!T[] m_arr )
 pure nothrow @safe
