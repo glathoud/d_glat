@@ -16,13 +16,18 @@ import std.string : strip;
 
 string set_thisC( in string csv_0 ) pure
 {
+  return set_structC( "this", csv_0 );
+}
+
+string set_structC( in string sname, in string csv_0 ) pure
+{
   auto csv = csv_0.strip;
 
   if (csv[ 0 ] == '{')
-    return set_thisC( csv[ 1..$-1 ] );
+    return set_structC( sname, csv[ 1..$-1 ] );
 
   return csv.split( ',' )
-    .map!`a.canFind( '=' )  ?  "this."~a~";"  :  "this."~(a.strip)~" = "~(a.strip)~";\n"`
+    .map!((a) => a.canFind( '=' )  ?  sname~"."~a~";"  :  sname~"."~(a.strip)~" = "~(a.strip)~";\n")
     .join( "" )
     ;            
 }
