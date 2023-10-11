@@ -20,7 +20,7 @@ import d_glat.core_math;
 import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat;
 import std.algorithm : all, max;
-import std.array : array;
+import std.array : appender, array;
 import std.conv : to;
 import std.math;
 import std.range : iota;
@@ -283,6 +283,14 @@ struct GmmT( T )
 
   // --- API: Operators overloading
 
+  string toString() const
+  {
+    scope c_app = appender!(char[]);
+    toString((in char[] c2){ c_app.put( c2 ); });
+    return c_app.data.idup;
+  }
+
+  
   void toString(scope void delegate(const(char)[]) sink) const
   {
     sink( "Gmm(n:"~to!string(n)~",dim:"~to!string(n)~"): {" );
