@@ -20,23 +20,102 @@ long search_bisection_exact(T)( in T[] srtd_arr, T elt )
 {
   if (srtd_arr.length < 1)
     return -1;
+
+  T fun( in size_t i ) { return srtd_arr[ i ]; }
   
-  return search_bisection_exact!T( (i) => srtd_arr[ i ], elt, 0, srtd_arr.length-1 );
+  return search_bisection_exact!T( &fun, elt, 0UL, srtd_arr.length-1 );
 }
 
-long search_bisection_exact(T)( T delegate (in size_t) fun
+long search_bisection_exact(T
+                            , alias T_equal_code = (sa,sb) => `(`~sa~`)`~`==(`~sb~`)`
+                            , alias T_le_code    = (sa,sb) => `(`~sa~`)`~`<=(`~sb~`)`
+                            , alias T_lt_code    = (sa,sb) => `(`~sa~`)`~`<(`~sb~`)`
+                            )( T delegate (in size_t) fun
                                 , in T v, in ulong a0, in ulong b0 )
 // Returns the index `ind` for which `v==fun(ind)` and `a0<=ind<=b0`,
 // else -1 (not found).
 //
 // `fun(x) for x in a0..b0` is assumed sorted increasingly.
 {
+  /+  // Original implementation
+    
   size_t ind0, ind1; double prop;
   bool maybe_found = search_bisection!T( fun, v, a0, b0, /*outputs:*/ind0, ind1, prop );
   if (maybe_found  &&  ind0 == ind1  &&  prop == 0.0)
     return ind0;
   
   return -1;
+  +/
+
+    // Implementation that does not need float-like support
+    // Useful for stuff like BigInt
+
+    size_t a = a0;
+    size_t b = b0;
+
+  if (a > b)
+    {
+      return -1;
+    }
+  else if (mixin(T_lt_code( `v`, `fun( a )` )))
+    {
+      return -1;
+    }
+  else if (mixin(T_lt_code( `fun( b )`, `v` )))
+    {
+      return -1;
+    }
+  
+  long bma;
+  {
+    while ((bma = b - a) >= 0)
+      {
+        auto av = fun( a );
+        auto bv = fun( b );
+        
+        if (mixin(T_equal_code( `av`, `v` )))
+          {
+            // Found exactly at one point
+            return a;
+          }
+        else if (mixin(T_equal_code( `bv`, `v` )))
+          {
+            // Found exactly at one point
+            return b;
+          }
+        else if (!(mixin(T_le_code( `av`, `v` ))  &&  mixin(T_le_code( `v`, `bv` ))))
+          {
+            // Not found
+            break;
+          }
+        else if (1 == bma)
+          {
+            // Found between two points => not exact => not found
+            return -1;
+          }
+      
+        // Not found yet
+
+        size_t m  = (a + b) >> 1;
+        auto mv = fun( m );
+
+        if (a < m  &&  mixin(T_le_code( `mv`, `v` )))
+          {
+            a = m;
+            continue;
+          }
+
+        if (m < b  &&  mixin(T_le_code( `v`, `mv` )))
+          {
+            b = m;
+            continue;
+          }
+      
+        break;
+      }
+  }
+  
+  return -1; // Not found
 }
 
 
