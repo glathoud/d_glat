@@ -377,20 +377,26 @@ void _do_fallback_zero_var_if_necessary( T )
     {
       T diag_term = data[ j ];
 
-      if (diag_term == 0.0)
-        zero_j_arr[ i_zero++ ] = j;
-        
-      else
+      if (!isFinite( diag_term ))
+        return; // failed
+
+      if (diag_term > 0.0) // >0.0 and not !=0.0 because in some borderline cases -1e-19 "zero" value
         nonzero_var_arr[ i_nonzero++ ] = diag_term;
+
+      else
+        zero_j_arr[ i_zero++ ] = j;
     }
 
   if (i_zero > 0  &&  i_nonzero > 0)
     {
       T fallback_var = fallback_factor
         * median_inplace( nonzero_var_arr[ 0..i_nonzero ] );
-
-      debug assert( fallback_var > 0 );
-
+      
+      debug assert( fallback_var > 0
+                    , "i_nonzero: "~to!string(i_nonzero)
+                    ~", fallback_var:"~to!string(fallback_var)
+                    ~", data:"~to!string(data) );
+      
       foreach (j; zero_j_arr)
         data[ j ] = fallback_var;
     }

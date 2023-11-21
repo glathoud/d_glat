@@ -19,11 +19,11 @@ import std.math;
 
 
 
-T corr(T)( in T[] x, in T[] y ) pure @safe
+T corr(T)( in T[] x, in T[] y ) @safe
 // functional shortcut
 {
-  scope m_x = MatrixT!T( [0,1], x );
-  scope m_y = MatrixT!T( [0,1], y );
+  scope m_x = MatrixT!T( [0,1], x.dup );
+  scope m_y = MatrixT!T( [0,1], y.dup );
   scope m_c = corr_one( m_x, m_y );
   return m_c.data[ 0 ];
 }
