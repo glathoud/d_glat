@@ -51,7 +51,7 @@ unittest
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
 
-  immutable verbose = true;
+  immutable verbose = false;
   
   import std.random;
   import std.algorithm;
