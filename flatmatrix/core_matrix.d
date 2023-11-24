@@ -37,6 +37,8 @@ alias MaybeMSTT( T ) = Nullable!(MatrixStringTransformfunT!T);
 
 alias Matrix = MatrixT!double;
 
+MatrixT!T deepcopy(T)( in ref MatrixT!T other ) { return MatrixT!T( other ); }
+
 struct MatrixT( T )
 {
   size_t[] dim;
@@ -50,7 +52,7 @@ struct MatrixT( T )
 
   // --- API: Constructors
 
-  this( MatrixT!T other ) pure nothrow @safe
+  this( in MatrixT!T other ) pure nothrow @safe
     { set( other.dim.dup, other.data.dup ); }
   
   this( size_t[] dim, T[] data ) pure nothrow @safe @nogc
