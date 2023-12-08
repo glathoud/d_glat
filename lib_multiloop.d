@@ -27,11 +27,19 @@ import std.array : join, replicate;
   The Boost license applies to this file, as described in ./LICENSE
  */
 
-string multiloopC( in string[] /*to loop:*/paramname_arr, in string v_arr_of_paramname, in string fname ) pure
+string multiloopC( in string[] /*to loop:*/paramname_arr, in string v_arr_of_paramname, in string fname, in bool with_counts = false ) pure
 {
-  return (paramname_arr
-          .map!((pn) => "foreach (ref "~pn~"; "~v_arr_of_paramname~"[\""~pn~"\"]){")
-          .join("")
-          )~fname~"("~(paramname_arr.join(','))~");"
-    ~replicate("}",paramname_arr.length);
+  return "{"
+    ~(with_counts  ?  "size_t __mltlpC_i = 0; immutable __mltlpC_ntotal = "
+      ~(paramname_arr.map!((pn) => v_arr_of_paramname~"[\""~pn~"\"].length").join( "*" ))
+      ~";"
+      :  ""
+      )
+    ~(paramname_arr
+      .map!((pn) => "foreach (ref "~pn~"; "~v_arr_of_paramname~"[\""~pn~"\"]){")
+      .join("")
+      )~fname~"("~((paramname_arr~(with_counts  ?  ["__mltlpC_i++","__mltlpC_ntotal"]  :  [])
+                    ).join(','))~");"
+    ~replicate("}",paramname_arr.length)
+    ~"}";
 }
