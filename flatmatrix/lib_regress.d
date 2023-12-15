@@ -1,7 +1,9 @@
 module d_glat.flatmatrix.lib_regress;
 
+public import d_glat.flatmatrix.lib_octave_exec; // isOctaveSupported()
+
 import d_glat.flatmatrix.core_matrix;
-import d_glat.flatmatrix.lib_octave_exec;
+
 
 const(MatrixT!T) get_X1_of_X(T)( in MatrixT!T X )
 {
@@ -38,6 +40,15 @@ MatrixT!T linpred_apply(T)( in MatrixT!T beta, in MatrixT!T X )
   # in octave:
   # pkg install -forge io
   # pkg install -forge statistics
+
+
+  With the Lubeck library you could achieve a similar result
+  (at least on the unittest) along those lines:
+
+  auto mir_y  = y.data.sliced( y.nrow, y.restdim );
+  auto mir_X1 = X1.data.sliced( X1.nrow, X1.restdim );
+  auto mir_b  = mldivide( mir_X1, mir_y );
+  
   
   By Guillaume Lathoud, 2023
   glat@glat.info
@@ -150,7 +161,8 @@ unittest  // --------------------------------------------------
             
             if (verbose)
               {
-                writeln( mixin(_HERE_C), "ypred: ", y );
+                writeln( mixin(_HERE_C), "y: ", y );
+                writeln( mixin(_HERE_C), "ypred: ", ypred );
                 writeln( mixin(_HERE_C), "ydelta: ", ydelta );
               }
 
