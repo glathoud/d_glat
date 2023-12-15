@@ -41,24 +41,27 @@ T[] arr_of_mstr(T = double/*typically float or double*/)( in string s )
 
 
 
-string mstr_of_mat(T/*typically float or double*/)( in MatrixT!T m )
+string mstr_of_mat(T/*typically float or double*/)( in MatrixT!T m, bool newlines = false )
+// newlines: false better when passing code to an octave instance
+// newlines: true better e.g. for .m file output, to have something humanly readable
 {
   immutable nrow = m.nrow;
   immutable rd   = m.restdim;
-  return "["~(m.data.chunks( rd ).map!((ch) => format("%(%.14g %)", ch)).join( ";" ))~"]";
+  immutable snl  = newlines ? "\n" : "";
+  return "["~snl~(m.data.chunks( rd ).map!((ch) => format("%(%.14g %);", ch)).join( snl ))~snl~"]";
 }
 
 
 
-string mstr_of_mact_arr( MAction[] mact_arr )
+string mstr_of_mact_arr( MAction[] mact_arr, in bool newlines = false )
 {
-  return mact_arr.map!`a.getCode~'\n'`.join("");
+  return mact_arr.map!((a) => a.getCode( newlines )~'\n').join("");
 }
 
 
 // ---------- Generic actions to generate code, used e.g. by ./lib_octave_exec.d ---------- 
 
-abstract class MAction { abstract string getCode() const; }
+abstract class MAction { abstract string getCode( in bool newline = false ) const; }
 
 
 immutable mClearAll = cast(immutable(MExec))( mExec( "clear('all');" ) );
@@ -71,7 +74,7 @@ class MExec : MAction
   
   this( in string action ) { this.action = action; }
 
-  override string getCode() const { return action; }
+  override string getCode( in bool newlines = false ) const { return action; }
 }
 
 
@@ -89,7 +92,10 @@ class MSetT(T) : MAction
     this.m = m;             mixin(alwaysAssertStderr!`m.dim.length == 2`);
   }
 
-  override string getCode() const { return vname~"="~mstr_of_mat( m )~";"; }
+  override string getCode( in bool newlines = false ) const
+  {
+    return vname~"="~mstr_of_mat( m, newlines )~";";
+  }
 }
 
 
@@ -103,5 +109,9 @@ class MPrintMatrixT(T) : MAction
 
   this( in string vname ) { this.vname = vname; mixin(alwaysAssertStderr!`0 < vname.length`); }
 
-  override string getCode() const { return "disp(sprintf('%d ',size("~vname~")));format long g;disp("~vname~");disp(\"\\n\")"; }
+  override string getCode( in bool newlines = false ) const
+  {
+    immutable snl = newlines ? "\n" : "";
+    return "disp(sprintf('%d ',size("~vname~")));"~snl~"format long g;"~snl~"disp("~vname~");"~snl~"disp(\"\\n\")";
+  }
 }
