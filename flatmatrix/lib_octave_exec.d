@@ -9,8 +9,10 @@ import d_glat.flatmatrix.core_matrix;
 import std.algorithm : canFind, countUntil, endsWith, filter, map;
 import std.array : appender, array, join, replicate, split;
 import std.conv : parse, to;
-import std.datetime : dur;
+import std.datetime : dur, MonoTime;
 import std.exception : assertThrown, basicExceptionCtors;
+import std.file;
+import std.format : format;
 import std.functional : memoize;
 import std.path : baseName;
 import std.process : executeShell, kill, pipeShell, ProcessPipes, Redirect;
@@ -57,20 +59,53 @@ bool isOctaveSupported() { return _isOctaveSupported(); }
 
 alias octaveExec = octaveExecT!double;
 
-MatrixT!T octaveExecT(T)( in MAction[] mact_arr )
+enum OCTAVE_VERBOSE_DEFAULT = true;
+
+MatrixT!T octaveExecT(T)( in MAction[] mact_arr, in bool verbose = OCTAVE_VERBOSE_DEFAULT )
 // Common case: single output
 {
   MatrixT!T ret;
-  octaveExecT!double( mact_arr, ret );
+  octaveExecT!double( mact_arr, verbose, ret );
   return ret;
 }
 
-void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
+private enum _PROFILE = false;
+
+private enum _init_vtC = q{
+  static if (_PROFILE)
+    {
+      MonoTime start_time;
+      long     prev_msecs = 0;
+      if (verbose) start_time = MonoTime.currTime;
+    }
+};
+
+private enum _vtC = q{
+  static if (_PROFILE)
+    {
+      if (verbose)
+        {
+          auto _at_msecs = (MonoTime.currTime - start_time).total!"msecs";
+          auto _d_prev   = _at_msecs - prev_msecs;
+          prev_msecs = _at_msecs;
+          writeln(__FILE__.split("/")[$-1]/*~"@line:" ~ to!string( __LINE__ )*/~" : "~format( "d:%s (at:%s) msecs", _d_prev, _at_msecs ));
+        }
+    }
+};
+
+void octaveExecT(T, A...)( in MAction[] mact_arr, in bool verbose, ref A a )
 // General case: multiple outputs
 {
-  auto octave_code = mact_arr.map!"a.getCode()".join("");
-  scope auto output = octaveExecRaw( octave_code );
+  mixin(_init_vtC);
+  
+  auto octave_code = mact_arr.map!"a.getCode()".join('\n'); // xxx \n
 
+  mixin(_vtC);
+  
+  scope auto output = octaveExecRaw( octave_code, verbose );
+
+  mixin(_vtC);
+  
   scope oarr_0 = output.split( "\n\n" ).map!"a.strip".filter!"0<a.length".array;
 
   scope oarr_warning = oarr_0.filter!`a.toLower.startsWith("warning:")`.array;
@@ -78,18 +113,23 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
 
   if (0 < oarr_warning.length)
     {
-      foreach (i_warning, warning; oarr_warning)
+      if (verbose)
         {
-          stderr.flush;
-          stderr.writeln;
-          stderr.writeln(__FILE__.split("/")[$-1]~"@line:"~to!string(__LINE__)~":i_warning:"
-                         ~to!string(i_warning)~":\n"~warning);
-          stderr.flush;
+          foreach (i_warning, warning; oarr_warning)
+            {
+              stderr.flush;
+              stderr.writeln;
+              stderr.writeln(__FILE__.split("/")[$-1]~"@line:"~to!string(__LINE__)~":i_warning:"
+                             ~to!string(i_warning)~":\n"~warning);
+              stderr.flush;
+            }
         }
     }
   
   mixin(alwaysAssertStderr(`oarr.length == a.length`
                            , `to!string([oarr.length, a.length])~'\n'~output.idup`));
+
+  mixin(_vtC);
 
   foreach (k, ref one; a)
     {
@@ -116,6 +156,8 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
         }
     }
 
+  mixin(_vtC);
+  
   /*
     Initial design: so we'll probably end up (1) for now pass data as
     strings (roughly fast as fast as saving/loading octave text files)
@@ -133,10 +175,22 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
     Elapsed time is 0.00398898 seconds.
 
     tic; load mybinfile.mat A; toc; quit
-    Elapsed time is 0.000192881 seconds.
+    Elapsed time is 0.000192881 seconds.  (/ 0.00398898 0.000192881) ; 20.6
 
+    % Another comparison
+
+    A=[1:5080800]; tic; save myfile.mat A; toc; tic; save -binary mybinfile.mat; toc; quit    
+    Elapsed time is 2.32702 seconds.
+    Elapsed time is 0.0386701 seconds.
+
+    tic; load myfile.mat A; toc; quit
+    Elapsed time is 1.99817 seconds.
+
+    tic; load mybinfile.mat A; toc; quit
+    Elapsed time is 0.0266678 seconds.  (/ 1.99817 0.0266678) ; 74.9
+    
     ---------- tmpfs
-
+    
     Now let us compare with "fake" disk accesses, i.e. a RAM disk
     mounted via tmpfs:
 
@@ -157,6 +211,21 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
     tic; load mybinfile.mat A; toc; quit
     Elapsed time is 0.000158072 seconds. # (/ 0.000192881 0.000158072) ; 1.2x speed + sparse disk I/O
 
+    % Another comparison
+
+    A=[1:5080800]; tic; save myfile.mat A; toc; tic; save -binary mybinfile.mat; toc; quit    
+    Elapsed time is 2.20873 seconds.
+    Elapsed time is 0.029743 seconds.   # similar speed
+
+    tic; load myfile.mat A; toc; quit
+    Elapsed time is 2.03506 seconds.   # similar speed
+    
+    tic; load mybinfile.mat A; toc; quit
+    Elapsed time is 0.0280299 seconds.  # similar speed
+    
+
+    # cleanup in bash
+
     cd
     sudo umount /tmp/tmpfs
     rmdir  /tmp/tmpfs
@@ -171,11 +240,20 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, ref A a )
 
     ... similar speed result as tmpfs (expectable, but good to check).
 
+    # cleanup in bash
+
+    cd
+    sudo umount /tmp/ramfs
+    rmdir  /tmp/ramfs
+
   */
 }
 
 
-char[] octaveExecRaw( in string mCode ) { return _callOctave( mCode ); }
+char[] octaveExecRaw( in string mCode, in bool verbose = false )
+{
+  return _callOctave( mCode, verbose );
+}
 
 
 
@@ -237,14 +315,15 @@ immutable QUIT = "__.<lib_octave_exec:QUIT>.__";
 
 static class OctaveException : Exception { mixin basicExceptionCtors; }
 
-char[] _callOctave( in string mCode )
+char[] _callOctave( in string mCode, in bool verbose = false )
 {
+  mixin(_init_vtC);
+
   immutable is_quit = mCode == QUIT;
 
   _ensureOctaveRunning();
 
-  import std.datetime;
-  auto xxx_start_time = Clock.currTime;
+  mixin(_vtC);
   
   scope auto pipes = maybe_o_pipes.get;
 
@@ -267,6 +346,8 @@ char[] _callOctave( in string mCode )
       return ret;
     }
   
+  mixin(_vtC);
+
   scope auto out_app = appender!(char[]);
   bool has_error = false;
   {
@@ -288,6 +369,8 @@ char[] _callOctave( in string mCode )
           
           out_app.put( c_out[ 0 ] );
         }
+        
+        mixin(_vtC);
         
         if (out_app.data.endsWith( DONE_LF ))
           {
@@ -311,7 +394,9 @@ char[] _callOctave( in string mCode )
     ||  out_app.data.canFind( BEGINERROR )
     ||  out_app.data.canFind( ENDERROR );
 
-  
+
+  mixin(_vtC);
+
   // writeln(mixin(_HERE_C), ": out_app.data: ", out_app.data);
   
   if (!has_error)
@@ -324,6 +409,8 @@ char[] _callOctave( in string mCode )
       _killOctave();
     }
   
+  mixin(_vtC);
+
   {
     auto output = out_app.data;
     char[] error;
