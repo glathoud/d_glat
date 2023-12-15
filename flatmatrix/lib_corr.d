@@ -16,7 +16,7 @@ public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_profile_acc;
 import std.math;
-
+import std.stdio;
 
 
 T corr(T)( in T[] x, in T[] y ) @safe
@@ -224,7 +224,7 @@ void corr_one_inplace( T )
       double tmp = x - many_mean[ i_mod_d ];
       many_var[ i_mod_d ] += tmp * tmp;
 
-      corr[ i_mod_d ] += x * x_one;
+      corr[ i_mod_d ] += tmp * (x_one - one_mean); // have to remove the mean right away because of some issues with number precision in at least (*) Particular case (see below in the unittest)
 
       // Prepare the next sample
 
@@ -244,8 +244,6 @@ void corr_one_inplace( T )
   // Implement the formula
 
   corr[] *= one_over_n_dbl;
-  
-  corr[] -= one_mean * many_mean[];
   
   foreach (i,v; many_var)
     corr[ i ] /= sqrt( one_var * v );
@@ -303,6 +301,8 @@ unittest
     /*
       Octave used to generate this slightly noisy data, and its
       correlation values:
+
+      pkg load statistics
 
       orig = [1.0;2.0;3.0;4.0];
 
@@ -572,6 +572,39 @@ unittest
     
     assert( isNaN( m_corr.data[ 2 ] ) );
   }
+
+  {
+    // (*) Particular case, where we have to be careful with issues
+    // about number precision - otherwise we get a wild result >1.0
+    import std.conv : to;
+    import std.file;
+    import std.path : buildPath, dirName;
+    import std.string : strip;
     
+    const double[] one = to!(double[])((cast(string)( std.file.read(buildPath(dirName(__FILE__),"lib_corr__unittest__data_one.txt")))).strip );
+    const double[] other = to!(double[])((cast(string)( std.file.read(buildPath(dirName(__FILE__),"lib_corr__unittest__data_other.txt")))).strip );
+
+    /*
+      For comparison, in Octave:
+
+      a=eval(textread("lib_corr__unittest__data_one.txt","%s"){1});
+      b=eval(textread("lib_corr__unittest__data_other.txt","%s"){1});
+      sprintf("%.20g",var(a))
+      sprintf("%.20g",var(b))
+      sprintf("%.20g",corr(a,b))
+      
+     */
+    
+    if (verbose) writeln("one.length:", one.length, ", one[0..20]: ", one[0..20]);
+    if (verbose) writeln("other.length:", other.length, ", other[0..20]: ", other[0..20]);
+
+    immutable c = corr( one, other );
+
+    assert( 1e-12 > abs( c ), to!string( c ) );
+    
+    if (verbose) writeln("corr: ", c );
+  }
+
+  
   writeln( "unittest passed: "~__FILE__ );
 }
