@@ -56,7 +56,7 @@ MatrixT!T linpred_apply(T)( in MatrixT!T beta, in MatrixT!T X )
   The Boost License applies, as described in file ../LICENSE
 */
 
-MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1 )
+MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, in bool verbose = false )
 // `regress` function similar to that of Octave (6.4.0) but only
 // returns `beta` for the model `y = X1*beta + error`
 //

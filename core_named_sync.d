@@ -70,10 +70,11 @@ string NAMED_SYNC_DO( in string name, in string what )
 {
   return `{
     auto __named_silo__ = add_user( ` ~ name ~ ` );
+    scope (exit) { remove_user( ` ~ name ~ ` ); }
     synchronized( __named_silo__ )
     {
       ` ~ what ~ `;
 	}
-    remove_user( ` ~ name ~ ` );
+
   }`;
 }
