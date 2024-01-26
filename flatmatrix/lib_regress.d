@@ -1,8 +1,93 @@
 module d_glat.flatmatrix.lib_regress;
 
+import d_glat.core_array;
+import d_glat.core_math;
 import d_glat.flatmatrix.core_matrix;
+import d_glat.lib_regress_theilsen;
+import std.algorithm : fold;
+import std.stdio;
 
 public import d_glat.flatmatrix.lib_octave_exec; // public: isOctaveSupported()
+
+/*
+  Various linear regression methods.
+
+  By Guillaume Lathoud, 2024
+  glat@glat.info
+
+  The Boost license applies to this file, as described in ./LICENSE
+ */
+
+// ---------- TheilSen linear regression (median-based, robust to outliers)
+
+MatrixT!T mat_regress_theilsen(T)( in MatrixT!T Y, in MatrixT!T X )
+/* Input: Y:dim:[n,1]  X:dim:[n,d]
+   Output: MB:=[m0, m1, ... md; b0, b1 ... bd;]
+   so that `Y` is close to `mat_apply_theilsen( X, MB )`
+
+   Based on the median and should thus be robust to outliers.
+   See also: ../lib_regress_theilsen.d
+*/
+{
+  if (Y.dim == X.dim) // both 1-D
+    {
+      T m, b;
+      regress_theilsen( Y.data, X.data, m, b );
+      return MatrixT!T( [2,1], [m
+                                , b]);
+    }
+  else // multidimensional
+    {
+      immutable n = Y.data.length;
+      immutable d = X.data.length / n;
+
+      debug assert( Y.nrow == n );
+      debug assert( Y.nrow == X.nrow );
+      debug assert( Y.nrow == Y.data.length ); // Y: 1-D
+      debug assert( d * n == X.data.length ); // X: multidimensional
+      
+      auto ret = new T[ d<<1 ];
+      scope m_arr = ret[0..d];
+      scope b_arr = ret[d..$];
+      regress_theilsen_multi!T( Y.data, X.data, m_arr, b_arr );
+
+      return MatrixT!T( [2, 0], ret );
+    }
+}
+
+MatrixT!T mat_apply_theilsen(T)( in MatrixT!T X, in MatrixT!T MB ) pure nothrow @safe
+{
+  scope T[] buff;
+  MatrixT!T Y_estim;
+  mat_apply_theilsen_inplace!T( X, MB, buff, Y_estim );
+  return Y_estim;
+}
+
+void mat_apply_theilsen_inplace(T)( in MatrixT!T X, in MatrixT!T MB
+                                    , /*intermediary*/ref T[] buff
+                                    , /*output*/ref MatrixT!T Y_estim
+                                    ) pure nothrow @safe
+{
+  immutable d = MB.data.length >> 1;
+  arr_ensure_length( d, buff );
+  Y_estim.setDim( [X.nrow, 1] );
+  mat_apply_theilsen_inplace_nogc!T( X, MB
+                                     , buff, Y_estim );
+}
+
+void mat_apply_theilsen_inplace_nogc(T)( in MatrixT!T X, in MatrixT!T MB
+                                         , /*intermediary*/ref T[] buff
+                                         , /*output*/ref MatrixT!T Y_estim
+                                         ) pure nothrow @safe @nogc
+{
+  immutable d = MB.dim[ 1 ];
+
+  apply_theilsen_multi_inplace_nogc( X.data, MB.data[ 0..d ], MB.data[ d..$ ], buff, Y_estim.data );
+}
+
+
+
+// ---------- Octave-based linear regression
 
 const(MatrixT!T) get_X1_of_X(T)( in MatrixT!T X )
 {
@@ -79,11 +164,15 @@ enum _HERE_WR_C=`{writeln(`~_HERE_C~`);stdout.flush;}`;
 
 unittest  // --------------------------------------------------
 {
-  import std.math : approxEqual;
+  import std.algorithm : map, max;
+  import std.array;
+  import std.math : abs, approxEqual, isClose;
   import std.conv : to;
   import std.datetime : Clock;
+  import std.exception;
   import std.stdio;
   import std.path : baseName;
+  import std.random;
   import std.string : strip;
   
   enum verbose = false;
@@ -91,6 +180,287 @@ unittest  // --------------------------------------------------
   writeln;
   writeln( "unittest starts: "~__FILE__~", isOctaveSupported():", isOctaveSupported() );
 
+  // ---------- Theil-Sen linear regression
+
+  { // 1-D
+    
+    auto rnd = MinstdRand0(42);
+
+    immutable true_m = 2.345;
+    immutable true_b = 7.987;
+
+    immutable x = [1.0,  9.0, 7.0, 3.0, -5.0, 6.0, 11.1, 7.77];
+    immutable n = x.length;
+    immutable true_y = (){
+      auto tmp = x.dup;
+      tmp[] = x[] * true_m + true_b;
+      return assumeUnique( tmp );
+    }();
+
+    if (verbose)
+      writeln("1-D x: ", x);
+
+    auto noisy_x = x.map!((x) => x + uniform( -0.01, +0.01, rnd )).array;
+    auto noisy_y = true_y.map!((x) => x + uniform( -0.1, +0.1, rnd )).array;
+    
+    auto Y = Matrix( [n,0], noisy_y );
+    auto X = Matrix( [n,0], noisy_x );
+
+    auto MB = mat_regress_theilsen( Y, X );
+
+    if (verbose)
+      {
+        writeln("1-D: MB:", MB );
+        writeln("1-D true_m true_b: ", true_m, ", ",true_b);
+      }
+
+    assert( MB.data.isClose( [true_m, true_b], 0.03 ) );
+    
+    auto Y_estim = mat_apply_theilsen( X, MB );
+
+    auto delta = Y_estim.direct_sub( Y );
+    
+    if (verbose)
+      {
+        writeln( "[Y_estim, Y]: ", concatcol( [Y_estim, Y ] ) );
+        writeln( "delta: ", delta );
+      }
+
+    assert( 1.0 > delta.data.map!abs.fold!max( -double.infinity ) );
+  }
+  
+
+  { // N-D
+    
+    auto rnd = MinstdRand0(42);
+
+    immutable true_m = [2.345, -30.11, +231.0];
+    immutable true_b = [7.987, +13.23,  +73.4];
+
+    immutable v0 = [1.0,  9.0, 7.0, 3.0, -5.0, 6.0, 11.1, 7.77];
+    immutable n  = v0.length;
+    immutable true_y = (){
+      auto tmp = v0.dup;
+      tmp[] = v0[] * true_m[ 0 ] + true_b[ 0 ];
+      return assumeUnique( tmp );
+    }();
+
+    immutable v1 = (){
+      auto tmp = true_y.dup;
+      tmp[] = (true_y[] - true_b[ 1 ]) / true_m[ 1 ];
+      return assumeUnique( tmp );
+    }();
+  
+    immutable v2 = (){
+      auto tmp = true_y.dup;
+      tmp[] = (true_y[] - true_b[ 2 ]) / true_m[ 2 ];
+      return assumeUnique( tmp );
+    }();
+
+    immutable x = (){
+      auto tmp = new double[ n*3 ];
+      size_t j = 0;
+      foreach (i; 0..n)
+      {
+        tmp[ j++ ] = v0[ i ];
+        tmp[ j++ ] = v1[ i ];
+        tmp[ j++ ] = v2[ i ];
+      }
+      return assumeUnique( tmp );
+    }();
+
+    if (verbose)
+      writeln("N-D x: ", x);
+
+    auto noisy_x = x.map!((x) => x + uniform( -0.01, +0.01, rnd )).array;
+    auto noisy_y = true_y.map!((x) => x + uniform( -0.1, +0.1, rnd )).array;
+
+    {
+      auto Y = Matrix( [n,0], noisy_y );
+      auto X = Matrix( [n,0], noisy_x );
+
+      auto MB = mat_regress_theilsen( Y, X );
+
+      auto expected_MB = true_m~true_b;
+
+      if (verbose)
+        {
+          writeln( "N-D MB: ", MB );
+          writeln( "expected_MB: ", expected_MB );
+          writeln( "true_m: ", true_m );
+          writeln( "true_b: ", true_b );
+          stdout.flush;
+        }
+
+      assert( MB.data.isClose( expected_MB, 0.03 ) );
+
+      auto Y_estim = mat_apply_theilsen( X, MB );
+
+      auto delta = Y_estim.direct_sub( Y );
+    
+      if (verbose)
+        {
+          writeln( "[Y_estim, Y]: ", concatcol( [Y_estim, Y ] ) );
+          writeln( "delta: ", delta );
+        }
+
+      assert( 1.0 > delta.data.map!abs.fold!max( -double.infinity ) );
+
+      if (verbose)
+        {
+          // Let use compare with a more usual linear regression.
+          if (isOctaveSupported())
+            {
+              auto X1 = get_X1_of_X( X );
+              auto o_B = regress( Y, X1 );
+              auto o_Y_estim = X1.dot( o_B );
+              auto o_delta = o_Y_estim.direct_sub( Y );
+
+              writeln( "[o_Y_estim, Y]: ", concatcol( [o_Y_estim, Y ] ) );
+              writeln( "o_delta: ", o_delta );
+
+              writeln( "o_B.data: ", o_B.data);
+              writeln( "expected_MB: ", expected_MB);
+
+            }
+        }
+    }
+    
+    // However, what about when y is noisy AND has outliers
+    
+    auto noisy_y_outliers = (){
+      auto tmp = noisy_y.dup;
+      tmp[ 1 ] += 100.0;
+      tmp[ 4 ] += 1000.0;
+      return tmp;
+    }();
+
+    {
+      auto Y = Matrix( [n,0], noisy_y_outliers );
+      auto X = Matrix( [n,0], noisy_x );
+
+      auto MB = mat_regress_theilsen( Y, X );
+
+      auto expected_MB = true_m~true_b;
+      
+      if (verbose)
+        {
+          writeln( "nyo N-D MB: ", MB );
+          writeln( "nyo expected_MB: ", expected_MB );
+          writeln( "nyo true_m: ", true_m );
+          writeln( "nyo true_b: ", true_b );
+
+          stdout.flush;
+        }
+
+      // Fundamental structure well estimated
+      assert( MB.data.isClose( expected_MB, 0.03 ) );
+      
+      auto Y_estim = mat_apply_theilsen( X, MB );
+
+      auto delta = Y_estim.direct_sub( Y );
+    
+      if (verbose)
+        {
+          writeln( "nyo [Y_estim, Y]: ", concatcol( [Y_estim, Y ] ) );
+          writeln( "nyo delta: ", delta );
+        }
+
+      // outliers anyway!
+      assert( 10.0 < delta.data.map!abs.fold!max( -double.infinity ) );
+      
+      
+      if (verbose)
+        {
+          // Let use compare with a more usual linear regression.
+          if (isOctaveSupported())
+            {
+              auto X1 = get_X1_of_X( X );
+              auto o_B = regress( Y, X1 );
+              auto o_Y_estim = X1.dot( o_B );
+              auto o_delta = o_Y_estim.direct_sub( Y );
+
+              writeln( "nyo [o_Y_estim, Y]: ", concatcol( [o_Y_estim, Y ] ) );
+              writeln( "nyo o_delta: ", o_delta );
+              
+              writeln( "nyo o_B.data: ", o_B.data);
+              writeln( "nyo expected_MB: ", expected_MB);
+            }
+        }
+    }
+
+
+
+    // And now, what about when x is noisy AND has outliers
+    
+    auto noisy_x_outliers = (){
+      auto tmp = noisy_x.dup;
+      tmp[ 1 ] += 100.0;
+      tmp[ 13 ] -= 233.0;
+      tmp[ 17 ] += 342.123;
+      tmp[ 21 ] -= 700.0;
+      return tmp;
+    }();
+
+    {
+      auto Y = Matrix( [n,0], noisy_y );
+      auto X = Matrix( [n,0], noisy_x_outliers );
+
+      auto MB = mat_regress_theilsen( Y, X );
+
+      auto expected_MB = true_m~true_b;
+      
+      if (verbose)
+        {
+          writeln( "nxo N-D MB: ", MB );
+          writeln( "nxo expected_MB: ", expected_MB );
+          writeln( "nxo true_m: ", true_m );
+          writeln( "nxo true_b: ", true_b );
+
+          stdout.flush;
+        }
+
+      // Fundamental structure still well estimated
+      assert( MB.data.isClose( expected_MB, 0.1 ) );
+      
+      auto Y_estim = mat_apply_theilsen( X, MB );
+
+      auto delta = Y_estim.direct_sub( Y );
+    
+      if (verbose)
+        {
+          writeln( "nxo [Y_estim, Y]: ", concatcol( [Y_estim, Y ] ) );
+          writeln( "nxo delta: ", delta );
+        }
+
+      // outliers anyway...but the median in the application compensates quite a bit
+      assert( 3.0 > delta.data.map!abs.fold!max( -double.infinity ) );
+      
+      
+      if (verbose)
+        {
+          // Let use compare with a more usual linear regression.
+          if (isOctaveSupported())
+            {
+              auto X1 = get_X1_of_X( X );
+              auto o_B = regress( Y, X1 );
+              auto o_Y_estim = X1.dot( o_B );
+              auto o_delta = o_Y_estim.direct_sub( Y );
+
+              writeln( "nxo [o_Y_estim, Y]: ", concatcol( [o_Y_estim, Y ] ) );
+              writeln( "nxo o_delta: ", o_delta );
+
+              writeln( "nxo o_B.data: ", o_B.data);
+              writeln( "nxo expected_MB: ", expected_MB);
+              // much worse on all accounts
+            }
+        }
+    }
+
+  }
+  
+  // ---------- Octave-based linear regression
+  
   if (isOctaveSupported())
     {
       {
