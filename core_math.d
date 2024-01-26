@@ -244,6 +244,14 @@ T mean_of_arr(T)( in T[] arr )
   return arr.reduce!"a+b" / cast(T)( arr.length );
 }
 
+double stddev_of_arr(bool unbiased = true,T)( in T[] arr )
+{
+  double v_mean, v_stddev;
+  mean_stddev_inplace!(unbiased, T)( arr, v_mean, v_stddev );
+  return v_stddev;
+}
+
+
 void mean_stddev_inplace(bool unbiased = true, T)( in T[] arr, ref T v_mean, ref T v_stddev )
 {
   immutable N = arr.length;
@@ -260,6 +268,14 @@ T median( T )( in T[] arr )
 pure nothrow @safe
 {
   return median_inplace( arr.dup );
+}
+
+T symlog7(T)( in T x ) { return symlog( x, 1e7 ); }
+T symlog(T)( in T x, in T one_div_eps )
+// Symmetric logarithm. Visually:
+// http://glat.info/plot/#x%3Dt%2F100%2Cone_div_eps%3D1e7%2C(x%20%3C%200.0%20%3F%20%20-1.0%20%20%3A%20%20%2B1.0)%20*log(%201.0%20%2Babs(%20x%20)%20*one_div_eps)
+{
+  return (x < 0.0 ?  -1.0  :  +1.0) *log( 1.0 +abs( x ) *one_div_eps);
 }
 
 T undefined(T)()
