@@ -30,6 +30,24 @@ void regress_theilsen(T)( in T[] y, in T[] x
   b = median( tmp );
 }
 
+void regress_theilsen_delta(T)( in T[] y, in T[] x
+                                , /*outputs:*/ref T m, ref T b, ref T[] delta )
+/*
+  TheilSen linear regression (i.e. median-based i.e. robust to outliers)
+
+  Set output values for `m` and `b` so that `y` close to `x * m + b`.
+  Also output `delta := y - (m * x + b)`
+ */
+{
+  regress_theilsen!T( y, x, m );
+  
+  delta = y.dup;
+  delta[] -= m * x[];
+  b = median( delta );
+  delta[] -= b;
+}
+
+
 
 void regress_theilsen(T)( in T[] y, in T[] x
                           , /*output:*/ref T m )
@@ -277,6 +295,33 @@ unittest
       
       assert( isClose( m3, true_m, 0.03 ) );
       assert( isClose( b3, true_b, 0.03 ) );
+
+
+      {
+        double m3d, b3d;
+        double[] delta3d;
+        regress_theilsen_delta( noisy_y_outliers, x, m3d, b3d, delta3d );
+
+        if (verbose)
+          writeln("[m3d, true_m, b3d, true_b]:",[m3d, true_m, b3d, true_b]);
+      
+        assert( isClose( m3d, true_m, 0.03 ) );
+        assert( isClose( b3d, true_b, 0.03 ) );
+
+        assert( isClose( m3d, m3 ) );
+        assert( isClose( b3d, b3 ) );
+        {
+          double[] tmp3d = noisy_y_outliers.dup;
+          tmp3d[] -= m3d * x[] + b3d;
+          if (verbose)
+          {
+            writeln( "tmp3d: ", tmp3d );
+            writeln( "delta3d: ", delta3d );
+          }
+
+          assert( isClose( tmp3d, delta3d ) );
+        }
+      }
     }
   }
 
