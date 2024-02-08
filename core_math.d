@@ -7,7 +7,7 @@ import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat : MatrixT, mean_cov_inplace_dim;
 import std.algorithm : reduce, sort;
 import std.exception : enforce;
-import std.traits : hasMember, isArray;
+import std.traits : hasMember, isArray, isCallable;
 
 /*
   A few mathematical tool functions.
@@ -270,12 +270,47 @@ pure nothrow @safe
   return median_inplace( arr.dup );
 }
 
-T symlog7(T)( in T x ) { return symlog( x, 1e7 ); }
-T symlog(T)( in T x, in T one_div_eps )
+T ratio_finite(T, alias final_modif = false)( in T num, in T denom ) pure nothrow @safe @nogc
+{
+  immutable r0 = 0.0 == denom
+    ?  (0.0   < num  ?  +T.max
+        : 0.0 > num  ?  -T.max
+        : 0.0)
+    :  num / denom
+    ;
+
+  static if (isCallable!final_modif)
+    return final_modif( r0 );
+  else
+    return r0;
+}
+
+T ratio_finite_symlog7(T)( in T num, in T denom ) pure nothrow @safe @nogc
+{
+  return ratio_finite!(T, symlog7!T)( num, denom );
+}
+
+
+
+T symlog7(T)( in T x ) pure nothrow @safe @nogc { return symlog( x, 1e7 ); }
+T symlog(T)( in T x, in T one_div_eps ) pure nothrow @safe @nogc
 // Symmetric logarithm. Visually:
 // http://glat.info/plot/#x%3Dt%2F100%2Cone_div_eps%3D1e7%2C(x%20%3C%200.0%20%3F%20%20-1.0%20%20%3A%20%20%2B1.0)%20*log(%201.0%20%2Babs(%20x%20)%20*one_div_eps)
 {
-  return (x < 0.0 ?  -1.0  :  +1.0) *log( 1.0 +abs( x ) *one_div_eps);
+  immutable y0 = 1.0 + abs( x ) * one_div_eps;
+  static if (__traits( isFloating, T ))
+    {
+      immutable y =
+        y0 == T.infinity  ?  T.max
+        :  y0 == -T.infinity  ?  -T.max
+        :  y0;
+    }
+  else
+    {
+      alias y = y0;
+    }
+  
+  return (x < 0.0 ?  -1.0  :  +1.0) * log( y );
 }
 
 T undefined(T)()
