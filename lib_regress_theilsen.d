@@ -230,16 +230,18 @@ unittest
 
   immutable verbose = false;
 
-  import std.random;
   import std.algorithm;
+  import std.datetime.stopwatch;
   import std.exception;
+  import std.mathspecial;
+  import std.random;
   import std.range;
 
   // ---------- 1-D
-
+  
   {
     auto rnd = MinstdRand0(42);
-
+  
     immutable true_m = 2.345;
     immutable true_b = 7.987;
 
@@ -551,7 +553,37 @@ unittest
           writeln( "N-D 4 true_y:           ", true_y );
         }
     }
+  }
+  
+  // ---------- 1-D: Playing with bigger amounts of data, and some noise
+  
+  {
+    auto rnd = MinstdRand0(42);
+  
+    immutable N = 100;
+    immutable true_m = 2.345, true_b = -7.11;
+    immutable x_arr = iota(N).map!((_) => -10.0 + 20.0 * uniform01( rnd )).array;
+    immutable y_arr = x_arr.map!((x) => cast(double)( true_b + true_m * x + normalDistributionInverse(uniform01( rnd )))).array;
     
+    double m,b;
+
+    auto sw = StopWatch( AutoStart.yes );
+    regress_theilsen( y_arr, x_arr, m, b );
+    sw.stop();
+    
+    if (verbose)
+      {
+        writeln("m,b,true_m,true_b: ", [m,b,true_m,true_b]);
+        immutable duration = 1e-3*(cast(double)(sw.peek.total!"msecs"));
+        writeln("N: ", N, ", duration (secs): ", duration, ", N/duration: ", (cast(double)(N))/duration);
+        /*
+          N: 100, duration (secs): 0.001, N/duration: 100000
+          N: 500, duration (secs): 0.035, N/duration: 14285.7
+          N: 1000, duration (secs): 0.148, N/duration: 6756.76
+          N: 5000, duration (secs): 4.247, N/duration: 1177.3
+          N: 10000, duration (secs): 18.68, N/duration: 535.332
+         */
+      }
   }
     
   writeln( "unittest passed: ", baseName( __FILE__ ) );
