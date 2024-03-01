@@ -34,7 +34,7 @@ import std.conv : to;
 
 alias FixedPerm = FixedPermT!size_t;
 
-struct FixedPermT( T )
+struct FixedPermT( T, bool infinite = false, size_t i_out_init = 0 )
 {
   immutable T n;
 
@@ -62,9 +62,17 @@ struct FixedPermT( T )
   }
   
 
-  size_t length() const pure @safe @nogc { return cast(size_t)( n ); }
+  static if (!infinite)
+    {
+      size_t length() const pure @safe @nogc { return cast(size_t)( n ); }
+    }
   
-  bool empty() const pure @safe @nogc { return i_in >= n; }
+  bool empty() const pure @safe @nogc {
+    static if (infinite)
+      return false;
+    else
+      return i_in >= n;
+  }
 
   T front() const pure @safe @nogc { return i_out; }
 
@@ -74,6 +82,15 @@ struct FixedPermT( T )
       step  = (1 + step) % next_pow_2;
     } while (i_out >= n);
     ++i_in;
+
+    static if (infinite)
+      {
+        if (0 == (i_in % n))
+          {
+            i_out = i_out_init;
+            step = 1;
+          }
+      }
   }
 
   T getAtForward( in T i ) pure @safe
@@ -90,10 +107,13 @@ struct FixedPermT( T )
       }
      */
   {
-    if (i < i_in)
-      assert( false, "lib_math_fixedperm: getAtForward( i ) requires i to be in the present or the future, not in the past. i: "~to!string( i )~", i_in: "~to!string( i_in ) );
+    static if (!infinite)
+      {
+        if (i < i_in)
+          assert( false, "lib_math_fixedperm: getAtForward( i ) requires i to be in the present or the future, not in the past. i: "~to!string( i )~", i_in: "~to!string( i_in ) );
+      }
 
-    while (i > i_in)
+    while (i != i_in)
       popFront();
 
     return front();
@@ -102,7 +122,7 @@ struct FixedPermT( T )
   private:
 
   immutable T next_pow_2;
-  T i_in = 0, step = 1, i_out = 0;
+  T i_in = 0, step = 1, i_out = i_out_init;
 
 }
 
@@ -131,8 +151,11 @@ unittest
       auto rfp = FixedPerm( N );
 
       assert(rfp.empty == (N == 0));
-    
-      foreach (i; rfp) {}
+
+      size_t c = 0;
+      foreach (i; rfp) { ++c; }
+
+      assert( c == N );
       
       if (verbose)
         {
@@ -141,6 +164,32 @@ unittest
         }
     }
 
+    if (0 < N)
+    {
+      auto rfp = FixedPermT!(size_t, /*infinite:*/true)( N );
+
+      assert(!rfp.empty);
+
+      const arr = rfp.take( 3*N ).array;
+
+      assert(!rfp.empty);
+
+      if (verbose)
+        {
+          if (N < 6)
+            {
+              writeln("(infinite) N ", N);
+              writeln("(infinite) arr ", arr);
+            }
+        }
+      
+      assert( arr[0..N] == arr[N..(2*N)] );
+      assert( arr[(2*N)..(3*N)] == arr[N..(2*N)] );
+
+      assert( arr[0..N].dup.sort.array == iota(N).array ); 
+    }
+
+    
     {
       auto rfp = FixedPerm( N );
       
