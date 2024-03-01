@@ -27,7 +27,7 @@ void regress_theilsen(T)( in T[] y, in T[] x
   
   scope tmp = y.dup;
   tmp[] -= m * x[];
-  b = median( tmp );
+  b = median_inplace( tmp );
 }
 
 void regress_theilsen_delta(T)( in T[] y, in T[] x
@@ -75,7 +75,7 @@ void regress_theilsen(T)( in T[] y, in T[] x
       }
     debug assert( i_s == slopes.length );
   }
-  m = median( slopes );
+  m = median_inplace( slopes );
 }
 
 T[] apply_theilsen_multi(T)( in T[] x, in T[] m_arr, in T[] b_arr ) pure nothrow @safe
@@ -159,7 +159,7 @@ void regress_theilsen_multi(T)( in T[] y, in T[] x
 
   regress_theilsen_multi!T( y, x, m_arr );
 
-  T[] tmp;
+  scope T[] tmp;
   foreach (a; 0..d)
     {
       immutable m = m_arr[ a ];
@@ -171,7 +171,7 @@ void regress_theilsen_multi(T)( in T[] y, in T[] x
           tmp[ i ] -= m * x[ ix ];
         }
         
-      b_arr[ a ] = median( tmp );
+      b_arr[ a ] = median_inplace( tmp );
     }
 }
 
@@ -214,7 +214,7 @@ void regress_theilsen_multi(T)( in T[] y, in T[] x
           }
         debug assert( i_s == slopes.length );
       }
-      m_arr[ a ] = median( slopes );
+      m_arr[ a ] = median_inplace( slopes );
     }
 }
 
