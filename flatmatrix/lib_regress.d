@@ -1,10 +1,15 @@
 module d_glat.flatmatrix.lib_regress;
 
 import d_glat.core_array;
+import d_glat.core_assert;
 import d_glat.core_math;
+import d_glat.core_string;
 import d_glat.flatmatrix.core_matrix;
 import d_glat.lib_regress_theilsen;
-import std.algorithm : fold;
+import d_glat.lib_tmpfilename;
+import std.algorithm : fold, map;
+import std.array : array, join;
+import std.file : remove;
 import std.stdio;
 
 public import d_glat.flatmatrix.lib_octave_exec; // public: isOctaveSupported()
@@ -146,17 +151,118 @@ MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, in bool verbose = OCTAVE_
 //
 // Typically the first column of X1 contains only ones.
 {
-  return octaveExec ([
-                      mClearAll
-                      , mExec( `pkg('load','statistics');`)
-                      , mSetT!T( "Y", Y )
-                      , mSetT!T( "X1", X1 )
-                      , mExec( "b = regress( Y, X1 );" )
-                      , mPrintMatrixT!T( "b" )
-                      ]
-                     , verbose );
+  scope char[][] oarr_warning;
+  return regress!T( Y, X1, oarr_warning, verbose );
 }
 
+
+enum REGRESS_N_RETRY = 10; // in case octave crashes (rare but might happen). Regress idempotent so we can use retry.
+
+MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
+                      , in bool verbose = OCTAVE_VERBOSE_DEFAULT )
+/* `regress` function similar to that of Octave (6.4.0) but only
+   returns `beta` for the model `y = X1*beta + error`
+   
+   Typically the first column of X1 contains only ones.
+
+   For performance, for bigger data sizes you may want to prefer
+   passing data through temporary files: regress_tmpf 
+*/
+{
+  return octaveExecT!T([
+                        mClearAll
+                        , mExec( `pkg('load','statistics');`)
+                        , mSetT!T( "Y", Y )
+                        , mSetT!T( "X1", X1 )
+                        , mExec( "b = regress( Y, X1 );" )
+                        , mPrintMatrixT!T( "b" )
+                        ]
+                       , oarr_warning
+                       , verbose
+                       , REGRESS_N_RETRY );
+}
+
+
+MatrixT!T regress_tmpf(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
+                           , in bool verbose = OCTAVE_VERBOSE_DEFAULT )
+/* `regress` function similar to that of Octave (6.4.0) but only
+   returns `beta` for the model `y = X1*beta + error`
+   
+   Typically the first column of X1 contains only ones.
+
+   Implementation: passing data through temporary files, for
+   much better performance than regress!T on large data.
+   
+   (you *might* want to try tmpfs/ramfs)
+*/
+{
+  immutable in_y_fn  = get_tmpfilename( ".y.data" );
+  immutable in_x1_fn = get_tmpfilename( ".x1.data" );
+  immutable out_b_fn = get_tmpfilename( ".b.data" );
+
+  immutable nr = Y.nrow;
+  immutable nc1 = X1.restdim;
+
+  mixin(alwaysAssertStderr!`nr == X1.nrow`);
+
+  {
+    scope auto f_y = File( in_y_fn, "w" );
+    f_y.rawWrite( Y.data );
+  }
+
+  {
+    scope auto f_x1 = File( in_x1_fn, "w" );
+    // Octave has columns first
+    foreach (c; 0..nc1)
+      {
+        size_t i = c;
+        foreach (r; 0..nr)
+          {
+            f_x1.rawWrite( X1.data[ i..(1+i) ] ); // xxx performance? Can't we just write a double?
+            i += nc1;
+          }
+      }
+  }
+  
+  scope auto octCode_arr =
+    [
+     mClearAll
+     , mExec( `pkg('load','statistics');`) // xxx stg like 0.06 sec the first time, consider keeping a hot octave instance
+     , mExec( mixin(_tli!`nr = ${nr};`) )
+     , mExec( mixin(_tli!`nc1 = ${nc1};`) )
+     , mExec( mixin(_tli!`in_y_fn = "${in_y_fn}";`) )
+     , mExec( mixin(_tli!`in_x1_fn = "${in_x1_fn}";`) )
+     , mExec( mixin(_tli!`out_b_fn = "${out_b_fn}";`) )
+     ]
+    ~mExecArr_freadT!T( `in_y_fn`, `y`, `[nr, 1]` )
+    ~mExecArr_freadT!T( `in_x1_fn`, `x1`, `[nr, nc1]` )
+    ~[mExec( `b = regress( y, x1 );` )]
+    ~mExecArr_fwriteT!T( `out_b_fn`, `b` )
+    ;
+
+  static if (false) // xxx only to debug
+    {
+      if (verbose)
+        {
+          writeln("lib_regress: octCode_arr:" );
+          writeln(octCode_arr.map!((a) => a.getCode).array.join('\n'));
+          stdout.flush;
+        }
+    }
+  
+  octaveExecNoOutputT!T(octCode_arr, oarr_warning, verbose, REGRESS_N_RETRY);
+
+  auto b_data = (){
+    scope auto f_b = File( out_b_fn, "r" );
+    return f_b.rawRead( new T[ nc1 ] );
+  }();
+
+  remove( in_y_fn );
+  remove( in_x1_fn );
+  remove( out_b_fn );
+  
+  return MatrixT!T( [nc1, 1], b_data );
+}
 
 private:
 enum _HERE_C=`baseName(__FILE__)~':'~to!string(__LINE__)`;

@@ -11,6 +11,7 @@ module d_glat.flatmatrix.core_octave_code;
  */
 
 import d_glat.core_assert;
+import d_glat.core_string;
 import d_glat.flatmatrix.core_matrix;
 import d_glat.lib_json;
 import std.algorithm : map;
@@ -19,6 +20,44 @@ import std.format : format;
 import std.json;
 import std.range : chunks;
 import std.string : replace;
+
+alias mExecArr_fread = mExecArr_freadT!double;
+auto mExecArr_freadT(T)( in string fnC, in string vC, in string sizeC/*e.g. `[nr, nc]`*/
+                         , in string archC = "'"~mstr_arch~"'" )
+// see ./lib_regress.d for an example of use
+{
+  immutable fidC = "__"~fnC~"_fid__";
+  return [ mExec( mixin(_tli!`${fidC} = fopen( ${fnC}, 'r', ${archC} );`) )
+           , mExec( mixin(_tli!`${vC} = fread( ${fidC}, ${sizeC}, '${T.stringof}');`) )
+           , mExec( mixin(_tli!`fclose( ${fidC} );`) )
+           ];
+}
+
+alias mExecArr_fwrite = mExecArr_fwriteT!double;
+auto mExecArr_fwriteT(T)( in string fnC, in string vC, in string archC = "'"~mstr_arch~"'" )
+// see ./lib_regress.d for an example of use
+{
+  immutable fidC = "__"~fnC~"_fid__";
+  return [ mExec( mixin(_tli!`${fidC} = fopen( ${fnC}, 'w', ${archC} );`) )
+           , mExec( mixin(_tli!`fwrite( ${fidC}, ${vC}, '${T.stringof}');`) )
+           , mExec( mixin(_tli!`fclose( ${fidC} );`) )
+           ];
+}
+
+string mstr_arch() pure @safe
+{
+  version (LittleEndian)
+    {
+      return "ieee-le";
+    }
+  else
+    {
+      version (BigEndian)
+        return "ieee-be";
+    }
+  assert( false, "unsupported endianess" );
+}
+
 
 string mstr_of_arr(T/*typically float or double*/)( in T[] arr )
 {

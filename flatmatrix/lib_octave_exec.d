@@ -57,16 +57,45 @@ string getOctaveVersion() { return _getOctaveVersion(); }
 
 bool isOctaveSupported() { return _isOctaveSupported(); }
 
-alias octaveExec = octaveExecT!double;
+//alias octaveExec = octaveExecT!double;
 
 enum OCTAVE_VERBOSE_DEFAULT = true;
 
 MatrixT!T octaveExecT(T)( in MAction[] mact_arr, in bool verbose = OCTAVE_VERBOSE_DEFAULT )
 // Common case: single output
 {
+  scope char[][] oarr_warning;
+  return octaveExecT!double( mact_arr, oarr_warning, verbose );
+}
+
+MatrixT!T octaveExecT(T)( in MAction[] mact_arr, ref char[][] oarr_warning
+                          , in bool verbose = OCTAVE_VERBOSE_DEFAULT
+                          , in size_t n_retry = 0 // in case of a (rare) Octave crash. Use if `mact_arr` implements an idempotent process
+                          )
+// Common case: single output+warning output
+{
   MatrixT!T ret;
-  octaveExecT!double( mact_arr, verbose, ret );
+  doOctaveExecT!double( mact_arr, oarr_warning, verbose, n_retry, ret );
   return ret;
+}
+
+void octaveExecNoOutputT(T)( in MAction[] mact_arr
+                             , in bool verbose = OCTAVE_VERBOSE_DEFAULT
+                             , in size_t n_retry = 0 // in case of a (rare) Octave crash. Use if `mact_arr` implements an idempotent process
+                             )
+// No output
+{
+  scope char[][] oarr_warning;
+  octaveExecNoOutputT!double( mact_arr, oarr_warning, verbose, n_retry );
+}
+
+void octaveExecNoOutputT(T)( in MAction[] mact_arr, ref char[][] oarr_warning
+                             , in bool verbose = OCTAVE_VERBOSE_DEFAULT
+                             , in size_t n_retry = 0 // in case of a (rare) Octave crash. Use if `mact_arr` implements an idempotent process
+                             )
+// No output
+{
+  doOctaveExecT!double( mact_arr, oarr_warning, verbose, n_retry );
 }
 
 private enum _PROFILE = false;
@@ -93,7 +122,8 @@ private enum _vtC = q{
     }
 };
 
-void octaveExecT(T, A...)( in MAction[] mact_arr, in bool verbose, ref A a )
+void doOctaveExecT(T, A...)
+  ( in MAction[] mact_arr, ref char[][] oarr_warning, in bool verbose, in size_t n_retry, ref A a)
 // General case: multiple outputs
 {
   mixin(_init_vtC);
@@ -102,14 +132,14 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, in bool verbose, ref A a )
 
   mixin(_vtC);
   
-  scope auto output = octaveExecRaw( octave_code, verbose );
+  scope auto output = octaveExecRaw( octave_code, verbose, n_retry );
 
   mixin(_vtC);
   
   scope oarr_0 = output.split( "\n\n" ).map!"a.strip".filter!"0<a.length".array;
 
-  scope oarr_warning = oarr_0.filter!`a.toLower.startsWith("warning:")`.array;
-  scope oarr         = oarr_0.filter!`!a.toLower.startsWith("warning:")`.array;
+  oarr_warning = oarr_0.filter!`a.toLower.startsWith("warning:")`.array;
+  scope oarr   = oarr_0.filter!`!a.toLower.startsWith("warning:")`.array;
 
   if (0 < oarr_warning.length)
     {
@@ -250,9 +280,9 @@ void octaveExecT(T, A...)( in MAction[] mact_arr, in bool verbose, ref A a )
 }
 
 
-char[] octaveExecRaw( in string mCode, in bool verbose = false )
+char[] octaveExecRaw( in string mCode, in bool verbose = false, in size_t n_retry = 0 )
 {
-  return _callOctave( mCode, verbose );
+  return _callOctave( mCode, verbose, n_retry );
 }
 
 
@@ -315,7 +345,10 @@ immutable QUIT = "__.<lib_octave_exec:QUIT>.__";
 
 static class OctaveException : Exception { mixin basicExceptionCtors; }
 
-char[] _callOctave( in string mCode, in bool verbose = false )
+char[] _callOctave( in string mCode
+                    , in bool verbose = false
+                    , in size_t n_retry = 0
+                    )
 {
   mixin(_init_vtC);
 
@@ -388,7 +421,7 @@ char[] _callOctave( in string mCode, in bool verbose = false )
 
   // writeln("xxx ---------- duration:", Clock.currTime - xxx_start_time);
 
-  // writeln(mixin(_HERE_C), ": has_error: ", has_error);
+  /*xxx*/writeln(mixin(_HERE_C), ": has_error: ", has_error);
   
   has_error = has_error
     ||  out_app.data.canFind( BEGINERROR )
@@ -402,13 +435,19 @@ char[] _callOctave( in string mCode, in bool verbose = false )
   if (!has_error)
     return out_app.data;
 
+  /*xxx*/writeln(mixin(_HERE_C), ": has_error: ", has_error, maybe_o_pipes.isNull );
+
   // --- Error case
 
   if (!maybe_o_pipes.isNull)
     {
+      /*xxx*/writeln(mixin(_HERE_C), ": pid:", maybe_o_pipes.get.pid.processID);
+      
       _killOctave();
     }
   
+  /*xxx*/writeln(mixin(_HERE_C), ": has_error: ", has_error);
+
   mixin(_vtC);
 
   {
@@ -423,9 +462,12 @@ char[] _callOctave( in string mCode, in bool verbose = false )
 
     auto ex_str = mixin(_HERE_C)~": main octave loop correctly caught an error, (error,output)==("~error.idup~"\n,\n"~output.idup~")\n----- input to octave was:\n "~to_send~"\n";
 
-    writeln(mixin(_HERE_C), ": ex_str: ", ex_str);
-    
-    throw new OctaveException( ex_str );
+    writeln(mixin(_HERE_C), ": ex_str: ", ex_str); stdout.flush;
+
+    if (0 < n_retry)
+      return _callOctave( mCode, verbose, n_retry - 1 );
+    else
+      throw new OctaveException( ex_str );
   }
 }
 
@@ -433,10 +475,10 @@ char[] _callOctave( in string mCode, in bool verbose = false )
 void _ensureOctaveRunning()
 {
   _ensureOctaveSupported();
-  
+
   if (maybe_o_pipes.isNull)
     {
-      immutable cmd = OCTAVE~" -q --persist --no-gui --no-history --no-init-file --no-line-editing --no-site-file --no-window-system --norc --eval=\"while (1); lasterror('reset'); try; s=input('','s'); if (strcmp(s,'"~QUIT~"')) break; endif; eval(s); fflush(stdout); catch; end_try_catch; if (0 < length(lasterror.message)) disp('"~BEGINERROR~"'); disp( lasterror.message ); disp( '"~ENDERROR~"'); fflush( stdout ); endif; endwhile; quit(0,'force'); \" 2>&1";
+      immutable cmd = OCTAVE~" -q --persist --no-gui --no-history --no-init-file --no-line-editing --no-site-file --no-window-system --norc --eval=\"crash_dumps_octave_core( 0 ); sighup_dumps_octave_core( 0 ); sigterm_dumps_octave_core( 0 ); while (1); lasterror('reset'); try; s=input('','s'); if (strcmp(s,'"~QUIT~"')) break; endif; eval(s); fflush(stdout); catch; end_try_catch; if (0 < length(lasterror.message)) disp('"~BEGINERROR~"'); disp( lasterror.message ); disp( '"~ENDERROR~"'); fflush( stdout ); endif; endwhile; quit(0,'force'); \" 2>&1";
 
       static if (false)
         {
@@ -463,6 +505,24 @@ void _killOctave()
   // Safer to kill it to ensure a restart next time to make sure that the top loop runs
   try
     {
+      // first make sure it is running
+      if (!maybe_o_pipes.isNull)
+        {
+          scope s_pid = to!string(maybe_o_pipes.get.pid.processID);
+          /*xxx*/writeln(mixin(_HERE_C)~":s_pid:"~s_pid);
+          auto tmp = executeShell("ps --no-headers -Aq "~s_pid);
+          mixin(alwaysAssertStderr(`tmp.status == 0`, `to!string(tmp)` ));
+          /*xxx*/writeln(mixin(_HERE_C)~":tmp:"~to!string( tmp ));
+          if (!tmp.output.canFind( s_pid )
+              ||  tmp.output.canFind( "<defunct>" ))
+            {
+              /*xxx*/writeln( "lib_octave_exec: could not find Octave process by pid "~s_pid
+                              ~", it probably crashed/died/exited prematurely."
+                              ~" Taking that into account." );
+              maybe_o_pipes.nullify;
+            }
+        }
+      
       _callOctave(QUIT);
     }
   catch (OctaveException oe)
