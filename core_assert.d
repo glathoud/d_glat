@@ -13,12 +13,12 @@ public import std.stdio : stderr;
 
 import std.array : replace;
 
-string alwaysAssertStderr(string testcode)() // template!`shortcut`
+string alwaysAssertStderr(string testcode)() pure nothrow @safe // template!`shortcut`
 {
   return alwaysAssertStderr( testcode );
 }
 
-string alwaysAssertStderr( in string testcode, in string msgcode_0="" )
+string alwaysAssertStderr( in string testcode, in string msgcode_0="" ) pure nothrow @safe
 // to use with `mixin`. *always* asserts (in release mode as well)
 // e.g:  mixin(alwaysAssertStderr(`a<b`, `"a<b not verified for a:"~to!string(a)~" and b:"~to!string(b)`))
 {
