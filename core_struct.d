@@ -14,11 +14,18 @@ import std.string : strip;
   The Boost license applies to this file, as described in ./LICENSE
  */
 
+string set_thisC(string csv_0)() pure
+{ return set_thisC( csv_0 ); }
+  
 string set_thisC( in string csv_0 ) pure
 {
   return set_structC( "this", csv_0 );
 }
 
+
+string set_structC(string sname, string csv_0)() pure
+{ return set_structC( sname, csv_0 ); }
+  
 string set_structC( in string sname, in string csv_0 ) pure
 {
   auto csv = csv_0.strip;
