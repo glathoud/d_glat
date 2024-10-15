@@ -191,6 +191,7 @@ struct GmmT( T )
     {
       if (_b_allocated)
         {
+          _b_allocated = false;
           destroy( _b_inv_inplace );
           destroy( _b_det );
         }
