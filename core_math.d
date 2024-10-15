@@ -258,9 +258,18 @@ void mean_stddev_inplace(bool unbiased = true, T)( in T[] arr, ref T v_mean, ref
   scope auto m      = MatrixT!T( [N, 1], cast(T[])( arr ) );
   scope auto m_mean = MatrixT!T( [1, 1] );
   scope auto m_cov  = MatrixT!T( [1, 1] );
-  mean_cov_inplace_dim!(unbiased, /*diag_only:*/true, T)( m, m_mean, m_cov );
-  v_mean   = m_mean.data[ 0 ];
-  v_stddev = sqrt( m_cov .data[ 0 ] );
+
+  if (1 == arr.length)
+    {
+      v_mean   = arr[ 0 ];
+      v_stddev = cast(T)( 0 );
+    }
+  else
+    {
+      mean_cov_inplace_dim!(unbiased, /*diag_only:*/true, T)( m, m_mean, m_cov );
+      v_mean   = m_mean.data[ 0 ];
+      v_stddev = sqrt( m_cov .data[ 0 ] );
+    }
 }
 
 
