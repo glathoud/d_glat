@@ -45,7 +45,7 @@ import std.stdio : stdout, writeln, writefln;
   
   // top-level
   enum PROFILE_ACC = true; // switch to false to deactivate profiling
-  mixin(PROFILE_SHORTCUTS);
+  mixin(P_ACC_SHORTCUTS);
 
   ...
 
