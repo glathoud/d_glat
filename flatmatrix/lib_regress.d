@@ -9,7 +9,7 @@ import d_glat.lib_regress_theilsen;
 import d_glat.lib_tmpfilename;
 import std.algorithm : fold, map;
 import std.array : array, join;
-import std.file : remove;
+import std.file : remove, tempDir;
 import std.stdio;
 
 public import d_glat.flatmatrix.lib_octave_exec; // public: isOctaveSupported()
@@ -96,7 +96,7 @@ void mat_apply_theilsen_inplace_nogc(T)( in MatrixT!T X, in MatrixT!T MB
 
 const(MatrixT!T) get_X1_of_X(T)( in MatrixT!T X )
 {
-  return concatcol( [mat_ones( [X.nrow, 1] ), X] );
+  return concatcol_parallel( [mat_ones( [X.nrow, 1] ), X] );
 }
 
 
@@ -138,6 +138,12 @@ MatrixT!T linpred_apply(T)( in MatrixT!T beta, in MatrixT!T X )
    auto mir_X1 = X1.data.sliced( X1.nrow, X1.restdim );
    auto mir_b  = mldivide( mir_X1, mir_y );
 
+
+  Usage note: before using this, consider checking that Octave is
+  excluded from apport, e.g. this way:
+
+  checkApportBlacklistOctaveOrExit();
+  
   
   By Guillaume Lathoud, 2023
   glat@glat.info
@@ -156,7 +162,7 @@ MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, in bool verbose = OCTAVE_
 }
 
 
-enum REGRESS_N_RETRY = 10; // in case octave crashes (rare but might happen). Regress idempotent so we can use retry.
+enum REGRESS_N_RETRY = 3; // in case octave crashes (rare but might happen). Regress idempotent so we can use retry.
 
 MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
                       , in bool verbose = OCTAVE_VERBOSE_DEFAULT )
@@ -167,6 +173,10 @@ MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
 
    For performance, for bigger data sizes you may want to prefer
    passing data through temporary files: regress_tmpf 
+
+   might throw OctaveException (e.g. if octave crashes, even after
+   REGRESS_N_RETRY - typically when X1 is too big and has too many
+   columns).
 */
 {
   return octaveExecT!T([
@@ -183,8 +193,12 @@ MatrixT!T regress(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
 }
 
 
-MatrixT!T regress_tmpf(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
-                           , in bool verbose = OCTAVE_VERBOSE_DEFAULT )
+MatrixT!T regress_tmpf(T, alias do_remove_tmpf=true)
+( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
+  , in bool verbose = OCTAVE_VERBOSE_DEFAULT
+  , in string tmpdir = tempDir() // good alternative: ramfs
+  )
+
 /* `regress` function similar to that of Octave (6.4.0) but only
    returns `beta` for the model `y = X1*beta + error`
    
@@ -194,11 +208,15 @@ MatrixT!T regress_tmpf(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_wa
    much better performance than regress!T on large data.
    
    (you *might* want to try tmpfs/ramfs)
+
+   might throw OctaveException (e.g. if octave crashes, even after
+   REGRESS_N_RETRY - typically when X1 is too big and has too many
+   columns).
 */
 {
-  immutable in_y_fn  = get_tmpfilename( ".y.data" );
-  immutable in_x1_fn = get_tmpfilename( ".x1.data" );
-  immutable out_b_fn = get_tmpfilename( ".b.data" );
+  immutable in_y_fn  = get_tmpfilename( ".y.data",  tmpdir );
+  immutable in_x1_fn = get_tmpfilename( ".x1.data", tmpdir );
+  immutable out_b_fn = get_tmpfilename( ".b.data",  tmpdir );
 
   immutable nr = Y.nrow;
   immutable nc1 = X1.restdim;
@@ -257,9 +275,12 @@ MatrixT!T regress_tmpf(T)( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_wa
     return f_b.rawRead( new T[ nc1 ] );
   }();
 
-  remove( in_y_fn );
-  remove( in_x1_fn );
-  remove( out_b_fn );
+  static if (do_remove_tmpf)
+    {
+      remove( in_y_fn );
+      remove( in_x1_fn );
+      remove( out_b_fn );
+    }
   
   return MatrixT!T( [nc1, 1], b_data );
 }

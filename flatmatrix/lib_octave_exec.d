@@ -9,7 +9,7 @@ import d_glat.flatmatrix.core_matrix;
 import std.algorithm : canFind, countUntil, endsWith, filter, map;
 import std.array : appender, array, join, replicate, split;
 import std.conv : parse, to;
-import std.datetime : dur, MonoTime;
+import std.datetime : Clock, dur, MonoTime, SysTime;
 import std.exception : assertThrown, basicExceptionCtors;
 import std.file;
 import std.format : format;
@@ -19,7 +19,12 @@ import std.process : executeShell, kill, pipeShell, ProcessPipes, Redirect;
 import std.range : iota;
 import std.regex : matchFirst;
 import std.stdio : stdout, writeln;
+import std.string : strip;
 import std.typecons : Nullable;
+
+
+static class OctaveException : Exception { mixin basicExceptionCtors; }
+
 
 /*
   Execute code in an Octave instance. Either raw (octaveExecRaw) or
@@ -46,12 +51,57 @@ import std.typecons : Nullable;
   Octave's standard input and output. A faster alternative might be
   to write/load binary files, at the cost of having disk I/O - unless
   we use a RAM disk like tmpfs to exchange files.
+
+  
+  Usage note: for (rare) Octave crashes, on some platforms
+  (e.g. Ubuntu) if you don't want to wait forever, deactivate apport
+  for Octave, by creating e.g. a file /etc/apport/blacklist.d/octave:
+
+  cd /etc/apport/blacklist.d 
+  cat octave
+  /usr/bin/octave
+  /usr/bin/octave-cli
+  
   
   The Boost License applies, see file ./LICENSE
-
+  
   By Guillaume Lathoud, 2023 and later
   glat@glat.info
 */
+
+void checkApportBlacklistOctaveOrExit()
+{
+  mixin(alwaysAssertStderr( `checkApportBlacklistOctave()`, `"\n"~usageApportBlacklistOctave()`));
+}
+
+
+bool checkApportBlacklistOctave()
+{
+  scope tmp0 = executeShell( `which "`~OCTAVE~`"` );
+  if (tmp0.status != 0)
+    return false;
+
+  immutable grep_cmd = `grep "`~tmp0.output.strip~`" /etc/apport/blacklist.d/octave`;
+
+  scope tmp1 = executeShell( grep_cmd );
+  if (tmp1.status != 0)
+    return false;
+
+  return tmp1.output.canFind( OCTAVE );
+}
+
+
+string usageApportBlacklistOctave()
+{
+  scope tmp0 = executeShell( `which "`~OCTAVE~`"` );
+  immutable octave = tmp0.status == 0  ?  tmp0.output.strip  :  "/path/to/octave-cli<you need to install octave>";
+
+  return `Please write/edit a file:
+    /etc/apport/blacklist.d/octave
+    containing the following line:
+    `~octave;
+}
+
 
 string getOctaveVersion() { return _getOctaveVersion(); }
 
@@ -289,7 +339,7 @@ char[] octaveExecRaw( in string mCode, in bool verbose = false, in size_t n_retr
 
 private: // -------------------- lower-level: summon and use octave, kill only when necessary --------------------
 
-immutable OCTAVE = "octave";
+immutable OCTAVE = "octave-cli";
 
 string _getOctaveVersion() { mixin(alwaysAssertStderr!`_isOctaveSupported()`); return _octaveVersion;}
 
@@ -342,8 +392,6 @@ immutable ENDERROR    = "__._lib_octave_exec:ENDERROR_.__";
 immutable ENDERROR_LF = ENDERROR~'\n';
 
 immutable QUIT = "__.<lib_octave_exec:QUIT>.__";
-
-static class OctaveException : Exception { mixin basicExceptionCtors; }
 
 char[] _callOctave( in string mCode
                     , in bool verbose = false
@@ -419,10 +467,20 @@ char[] _callOctave( in string mCode
       }
   }
 
+  // Make sure to restart Octave once in a while, so as to avoid
+  // triggering rare bugs.
+
+  if (!_maybe_last_octave_start_sysTime.isNull
+      &&  dur!"minutes"(20) < (Clock.currTime - _maybe_last_octave_start_sysTime.get)
+      )
+    {
+      _maybe_last_octave_start_sysTime.nullify;
+      _killOctave( verbose );
+      _ensureOctaveRunning();
+    }
+    
   // writeln("xxx ---------- duration:", Clock.currTime - xxx_start_time);
 
-  /*xxx*/writeln(mixin(_HERE_C), ": has_error: ", has_error);
-  
   has_error = has_error
     ||  out_app.data.canFind( BEGINERROR )
     ||  out_app.data.canFind( ENDERROR );
@@ -435,18 +493,18 @@ char[] _callOctave( in string mCode
   if (!has_error)
     return out_app.data;
 
-  /*xxx*/writeln(mixin(_HERE_C), ": has_error: ", has_error, maybe_o_pipes.isNull );
-
   // --- Error case
 
   if (!maybe_o_pipes.isNull)
     {
-      /*xxx*/writeln(mixin(_HERE_C), ": pid:", maybe_o_pipes.get.pid.processID);
+      if (verbose)
+        writeln(mixin(_HERE_C), ": pid:", maybe_o_pipes.get.pid.processID);
       
-      _killOctave();
+      _killOctave( verbose );
     }
-  
-  /*xxx*/writeln(mixin(_HERE_C), ": has_error: ", has_error);
+
+  if (verbose)
+    writeln(mixin(_HERE_C), ": has_error: ", has_error);
 
   mixin(_vtC);
 
@@ -467,27 +525,21 @@ char[] _callOctave( in string mCode
     if (0 < n_retry)
       return _callOctave( mCode, verbose, n_retry - 1 );
     else
-      throw new OctaveException( ex_str );
+      throw new OctaveException( mixin(_HERE_C)~":[exhausted n_retry]: "~ex_str );
   }
 }
 
-
+private Nullable!SysTime _maybe_last_octave_start_sysTime;
 void _ensureOctaveRunning()
 {
   _ensureOctaveSupported();
 
   if (maybe_o_pipes.isNull)
     {
-      immutable cmd = OCTAVE~" -q --persist --no-gui --no-history --no-init-file --no-line-editing --no-site-file --no-window-system --norc --eval=\"crash_dumps_octave_core( 0 ); sighup_dumps_octave_core( 0 ); sigterm_dumps_octave_core( 0 ); while (1); lasterror('reset'); try; s=input('','s'); if (strcmp(s,'"~QUIT~"')) break; endif; eval(s); fflush(stdout); catch; end_try_catch; if (0 < length(lasterror.message)) disp('"~BEGINERROR~"'); disp( lasterror.message ); disp( '"~ENDERROR~"'); fflush( stdout ); endif; endwhile; quit(0,'force'); \" 2>&1";
-
-      static if (false)
-        {
-          writeln; // xxx
-          writeln("______________________________ cmd:");
-          writeln(cmd);
-          writeln;
-        }
+      _maybe_last_octave_start_sysTime = Clock.currTime;
       
+      immutable cmd = OCTAVE~" -q --persist --no-gui --no-history --no-init-file --no-line-editing --no-site-file --no-window-system --norc --eval=\"octave_core_file_limit( 0 ); crash_dumps_octave_core( 0 ); sighup_dumps_octave_core( 0 ); sigterm_dumps_octave_core( 0 ); while (1); lasterror('reset'); try; s=input('','s'); if (strcmp(s,'"~QUIT~"')) break; endif; eval(s); fflush(stdout); catch; end_try_catch; if (0 < length(lasterror.message)) disp('"~BEGINERROR~"'); disp( lasterror.message ); disp( '"~ENDERROR~"'); fflush( stdout ); endif; endwhile; quit(0,'force'); \" 2>&1";
+
       maybe_o_pipes = pipeShell( cmd, Redirect.all );
     }
 }
@@ -500,7 +552,7 @@ void _ensureOctaveSupported()
 
 
 
-void _killOctave()
+void _killOctave( in bool verbose = false )
 {
   // Safer to kill it to ensure a restart next time to make sure that the top loop runs
   try
@@ -509,21 +561,33 @@ void _killOctave()
       if (!maybe_o_pipes.isNull)
         {
           scope s_pid = to!string(maybe_o_pipes.get.pid.processID);
-          /*xxx*/writeln(mixin(_HERE_C)~":s_pid:"~s_pid);
+
+          if (verbose)
+            writeln(mixin(_HERE_C)~":s_pid:"~s_pid);
+          
           auto tmp = executeShell("ps --no-headers -Aq "~s_pid);
           mixin(alwaysAssertStderr(`tmp.status == 0`, `to!string(tmp)` ));
-          /*xxx*/writeln(mixin(_HERE_C)~":tmp:"~to!string( tmp ));
+
+          if (verbose)
+            writeln(mixin(_HERE_C)~":tmp:"~to!string( tmp ));
+          
           if (!tmp.output.canFind( s_pid )
               ||  tmp.output.canFind( "<defunct>" ))
             {
-              /*xxx*/writeln( "lib_octave_exec: could not find Octave process by pid "~s_pid
-                              ~", it probably crashed/died/exited prematurely."
-                              ~" Taking that into account." );
+              if (verbose)
+                {
+                  writeln( "lib_octave_exec: could not find Octave process by pid "~s_pid
+                           ~", it probably crashed/died/exited prematurely."
+                           ~" Taking that into account." );
+                }
               maybe_o_pipes.nullify;
             }
+
+          _maybe_last_octave_start_sysTime.nullify;
         }
-      
-      _callOctave(QUIT);
+
+      if (!maybe_o_pipes.isNull)
+        _callOctave(QUIT);
     }
   catch (OctaveException oe)
     {

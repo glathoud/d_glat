@@ -21,7 +21,8 @@ import std.conv : to;
 import std.exception : enforce;
 import std.format : format;
 import std.math;
-import std.range : enumerate;
+import std.parallelism;
+import std.range : enumerate, iota;
 import std.stdio : writeln;
 import std.string : split;
 import std.typecons : Nullable;
@@ -548,8 +549,11 @@ void clone_inplace_nogc( T )
 }
 
 
-alias concatcol         = interleave;
-alias concatcol_inplace = interleave_inplace;
+alias concatcol          = interleave;
+alias concatcol_parallel = interleave_parallel;
+
+alias concatcol_inplace          = interleave_inplace;
+alias concatcol_inplace_parallel = interleave_inplace_parallel;
 
 
 
@@ -851,14 +855,28 @@ pure nothrow @safe
   return m_out;
 }
 
+MatrixT!T interleave_parallel( T )( in MatrixT!T[] m_arr )
+// Functional wrapper around `interleave_inplace_parallel`
+{
+  
+  MatrixT!T m_out;
 
-void interleave_inplace( T )( in MatrixT!T[] m_arr
-                              , ref MatrixT!T m_out
-                              , ref size_t[] buffer )
-pure nothrow @safe
+  interleave_inplace_parallel!T( m_arr, m_out );
+
+  return m_out;
+}
+
+
+void interleave_inplace(T)( in MatrixT!T[] m_arr
+                            , ref MatrixT!T m_out
+                            , ref size_t[] buffer
+                            )
+ pure @safe nothrow
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
   auto first_dim = m_arr[ 0 ].dim;
+  
+  immutable malen = m_arr.length;
   
   scope size_t[] restdim_arr;
   size_t   restdim_total = 0;
@@ -886,13 +904,15 @@ pure nothrow @safe
   // Fill `m_out` with interleaved data
 
   scope auto   m_out_data = m_out.data;
-  size_t i_out = 0;
-  size_t i_end = m_out_data.length;
 
-  ensure_length( m_arr.length, buffer );
+  immutable size_t i_end = m_out_data.length;
   
+  size_t i_out = 0;
+      
+  ensure_length( malen, buffer );
+      
   buffer[] = 0;
-  
+      
   while (i_out < i_end)
     {
       foreach (i_m,m; m_arr)
@@ -912,6 +932,84 @@ pure nothrow @safe
         }
     }
 }
+
+
+
+
+
+void interleave_inplace_parallel(T)( in MatrixT!T[] m_arr
+                                     , ref MatrixT!T m_out
+                                     )
+// Calls m_out.setDim() and fills it with m_arr's concatenated rows
+{
+  auto first_dim = m_arr[ 0 ].dim;
+  
+  immutable malen = m_arr.length;
+  
+  scope size_t[] restdim_arr;
+  size_t   restdim_total = 0;
+
+  foreach (i,m; m_arr)
+    {
+      // Read
+                  
+      auto restdim = m.restdim;
+      auto dim = m.dim;
+
+      // Write
+                  
+      restdim_arr ~= restdim;
+      restdim_total += restdim;
+
+      // Check
+                  
+      debug if (0 < i)
+        _check_dim_match( i, first_dim, dim );
+    }
+
+  m_out.setDim( first_dim[ 0..max(1,$-1) ] ~ [ restdim_total] );
+              
+  // Fill `m_out` with interleaved data
+
+  scope auto   m_out_data = m_out.data;
+
+  immutable size_t i_end = m_out_data.length;
+  
+  mixin(alwaysAssertStderr(`0 == i_end % restdim_total`, `to!string([i_end, restdim_total])`));
+      
+  immutable nrow = i_end / restdim_total;
+      
+  immutable ntask = min( nrow, 1+taskPool.size );
+  
+  immutable ceil_nrow_per_task =
+    cast(size_t)( ceil( (cast(double)( nrow )) / (cast(double)( ntask )) ) );
+
+  foreach (itask; parallel( iota( ntask ), /*workUnitSize:*/1 ))
+    {
+      immutable tsk_i_row = itask * ceil_nrow_per_task;
+      
+      size_t cumsum_rd = 0;
+      foreach (i_m,m; m_arr)
+        {
+          immutable rd = restdim_arr[ i_m ];
+          size_t tsk_i_in = tsk_i_row * rd;
+          size_t tsk_i_out = tsk_i_row * restdim_total + cumsum_rd;
+          cumsum_rd += rd;
+              
+          immutable tsk_i_end = min( i_end, tsk_i_out + ceil_nrow_per_task * restdim_total );
+          
+          for (; tsk_i_out < tsk_i_end; tsk_i_out += restdim_total)
+            {
+              immutable next_tsk_i_in = tsk_i_in + rd;
+
+              m_out_data[ tsk_i_out..(tsk_i_out + rd) ][] = m.data[ tsk_i_in..next_tsk_i_in ][];
+                  
+              tsk_i_in = next_tsk_i_in;
+            }
+        }
+    }
+}
+
 
 
 
@@ -1892,6 +1990,85 @@ unittest  // ------------------------------
                 ]));
 
   }
+
+
+
+  {
+    auto A = Matrix( [ 4, 1 ], [ 0.1,
+                                 0.3,
+                                 0.5,
+                                 0.7 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+    Matrix C;
+
+    interleave_inplace_parallel( [ A, B, A ], C, buffer );
+
+    assert( C == Matrix
+            ([4, 5]
+             ,[ +0.1, +1, +2, +3, +0.1,
+                +0.3, +4, +5, +6, +0.3,
+                +0.5, +7, +8, +9, +0.5,
+                +0.7, +10, +11, +12, +0.7,
+                ]));
+
+  }
+
+  {
+    auto A = Matrix( [ 4 ], [ 0.1,
+                              0.3,
+                              0.5,
+                              0.7 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+    Matrix C;
+
+    interleave_inplace_parallel( [ A, B, A ], C, buffer );
+
+    assert( C == Matrix
+            ([4, 5]
+             ,[ +0.1, +1, +2, +3, +0.1,
+                +0.3, +4, +5, +6, +0.3,
+                +0.5, +7, +8, +9, +0.5,
+                +0.7, +10, +11, +12, +0.7,
+                ]));
+
+  }
+
+  {
+    auto A = Matrix( [ 4, 2 ], [ 0.1, 0.2,
+                                 0.3, 0.4,
+                                 0.5, 0.6,
+                                 0.7, 0.8 ] );
+    
+    auto B = Matrix( [ 4, 3 ], [ 1, 2, 3,
+                                 4, 5, 6,
+                                 7, 8, 9,
+                                 10, 11, 12 ] );
+    Matrix C;
+    
+    interleave_inplace_parallel( [ A, B, A ], C, buffer );
+
+    assert( C == Matrix
+            ([4, 7]
+             ,[ +0.1, +0.2, +1, +2, +3, +0.1, +0.2,
+                +0.3, +0.4, +4, +5, +6, +0.3, +0.4,
+                +0.5, +0.6, +7, +8, +9, +0.5, +0.6,
+                +0.7, +0.8, +10, +11, +12, +0.7, +0.8,
+                ]));
+
+  }
+
+
+
+
+
 
 
   {
