@@ -4,24 +4,29 @@ public import d_glat.flatmatrix.core_octave_code;
 
 import core.sys.posix.signal : SIGTERM, SIGKILL;
 import core.thread : Thread;
+import core.thread.threadbase : thread_joinAll;
 import d_glat.core_assert;
+import d_glat.core_string;
 import d_glat.flatmatrix.core_matrix;
 import std.algorithm : canFind, countUntil, endsWith, filter, map;
 import std.array : appender, array, join, replicate, split;
+import std.concurrency;
 import std.conv : parse, to;
-import std.datetime : Clock, dur, MonoTime, SysTime;
+import std.datetime : Clock, Duration, dur, MonoTime, SysTime;
 import std.exception : assertThrown, basicExceptionCtors;
 import std.file;
 import std.format : format;
 import std.functional : memoize;
 import std.path : baseName;
-import std.process : executeShell, kill, pipeShell, ProcessPipes, Redirect;
+import std.process : execute, executeShell, kill, pipeShell, ProcessPipes, Redirect;
 import std.range : iota;
 import std.regex : matchFirst;
-import std.stdio : stdout, writeln;
-import std.string : strip;
+import std.stdio : stdout, writefln, writeln;
+import std.string : lineSplitter, strip;
 import std.typecons : Nullable;
 
+
+enum OCTAVE_AUTORESTART = dur!"minutes"( 10 );
 
 static class OctaveException : Exception { mixin basicExceptionCtors; }
 
@@ -132,20 +137,24 @@ MatrixT!T octaveExecT(T)( in MAction[] mact_arr, ref char[][] oarr_warning
 void octaveExecNoOutputT(T)( in MAction[] mact_arr
                              , in bool verbose = OCTAVE_VERBOSE_DEFAULT
                              , in size_t n_retry = 0 // in case of a (rare) Octave crash. Use if `mact_arr` implements an idempotent process
+                             , in Duration timeout = Duration.zero // 0 means deactivated
                              )
 // No output
 {
+  writeln(mixin(_HERE_C)~": timeout: ", timeout);
+  
   scope char[][] oarr_warning;
-  octaveExecNoOutputT!double( mact_arr, oarr_warning, verbose, n_retry );
+  octaveExecNoOutputT!double( mact_arr, oarr_warning, verbose, n_retry, timeout );
 }
 
 void octaveExecNoOutputT(T)( in MAction[] mact_arr, ref char[][] oarr_warning
                              , in bool verbose = OCTAVE_VERBOSE_DEFAULT
                              , in size_t n_retry = 0 // in case of a (rare) Octave crash. Use if `mact_arr` implements an idempotent process
+                             , in Duration timeout = Duration.zero // 0 means deactivated
                              )
 // No output
 {
-  doOctaveExecT!double( mact_arr, oarr_warning, verbose, n_retry );
+  doOctaveExecT!double( mact_arr, oarr_warning, verbose, n_retry, timeout );
 }
 
 private enum _PROFILE = false;
@@ -173,7 +182,9 @@ private enum _vtC = q{
 };
 
 void doOctaveExecT(T, A...)
-  ( in MAction[] mact_arr, ref char[][] oarr_warning, in bool verbose, in size_t n_retry, ref A a)
+  ( in MAction[] mact_arr, ref char[][] oarr_warning, in bool verbose, in size_t n_retry
+    , in Duration timeout // 0 means deactivated
+    , ref A a)
 // General case: multiple outputs
 {
   mixin(_init_vtC);
@@ -182,7 +193,7 @@ void doOctaveExecT(T, A...)
 
   mixin(_vtC);
   
-  scope auto output = octaveExecRaw( octave_code, verbose, n_retry );
+  scope auto output = octaveExecRaw( octave_code, verbose, n_retry, timeout );
 
   mixin(_vtC);
   
@@ -330,9 +341,9 @@ void doOctaveExecT(T, A...)
 }
 
 
-char[] octaveExecRaw( in string mCode, in bool verbose = false, in size_t n_retry = 0 )
+char[] octaveExecRaw( in string mCode, in bool verbose = false, in size_t n_retry = 0, in Duration timeout = Duration.zero )
 {
-  return _callOctave( mCode, verbose, n_retry );
+  return _callOctave( mCode, verbose, n_retry, timeout );
 }
 
 
@@ -361,7 +372,16 @@ bool _isOctaveSupportedImpl()
   return true;
 }
 
+alias _isSystemdRunSupported = memoize!_isSystemdRunSupportedImpl;
+bool _isSystemdRunSupportedImpl()
+{
+  auto tmp = executeShell( "systemd-run --version" );
+  if (tmp.status != 0  ||  tmp.output.matchFirst( r"\bsystemd\b" ).empty)
+    return false;
 
+  return true;
+}
+  
 
 
 
@@ -396,6 +416,7 @@ immutable QUIT = "__.<lib_octave_exec:QUIT>.__";
 char[] _callOctave( in string mCode
                     , in bool verbose = false
                     , in size_t n_retry = 0
+                    , in Duration timeout = Duration.zero // 0 means no timeout
                     )
 {
   mixin(_init_vtC);
@@ -429,49 +450,47 @@ char[] _callOctave( in string mCode
   
   mixin(_vtC);
 
-  scope auto out_app = appender!(char[]);
-  bool has_error = false;
-  {
-    scope auto c = new char[ 1 ];
-    while (true)
-      {
-        {
-          scope auto c_out = pipes.stdout.rawRead( c );
-          // writeln(mixin(_HERE_C)~": c_out: ", c_out);
-          if (c_out.length < 1)
-            {
-              has_error = true;
-              mixin(_HERE_WR_C);
-              out_app.put( mixin(_HERE_C)~": strange, c_out.length == 0. Most likely an unexpected failure in the top octave loop, not supposed to happen. About to kill octave to ensure an octave restart next time." );
-              break;
-            }
-          
-          assert( c_out.length == 1);
-          
-          out_app.put( c_out[ 0 ] );
-        }
-        
-        mixin(_vtC);
-        
-        if (out_app.data.endsWith( DONE_LF ))
-          {
-            out_app.shrinkTo( out_app.data.length - DONE_LF.length );
-            break;
-          }
+  // in a separate thread so that we can implement timeout
 
-        if (out_app.data.endsWith( ENDERROR_LF ))
-          {
-            has_error = true;
-            break;
-          }
-      }
+  {
+    auto pp_ptr = cast(ulong)( &pipes );
+    auto this_tid = thisTid;
+    // writefln("caller  pp_ptr %d  this_tid %s", pp_ptr, this_tid );
+  
+    _maybe_octave_communication_worker.get.send( pp_ptr, this_tid );
   }
+   
+  char[] octave_result;
+  immutable received = (){
+    if (Duration.zero < timeout)
+      {
+        return receiveTimeout( timeout
+                               , (string message) {
+                                 writeln(mixin(_HERE_C), ": message receive in spite of timeout : ", message);
+                                 octave_result = message.dup;
+                               }
+                               );
+      }
+    else
+      {
+        receive( (string message) {
+            writeln(mixin(_HERE_C), ": message received : ", message);
+            octave_result = message.dup;
+          } );
+        return true;
+      }
+  }();
+
+  if (verbose  ||  !received)
+    writeln(mixin(_HERE_C), ": received (false may indicate a timeout): ", received);
 
   // Make sure to restart Octave once in a while, so as to avoid
   // triggering rare bugs.
 
-  if (!_maybe_last_octave_start_sysTime.isNull
-      &&  dur!"minutes"(20) < (Clock.currTime - _maybe_last_octave_start_sysTime.get)
+  if (!received // timeout
+      ||  (!_maybe_last_octave_start_sysTime.isNull
+           &&  OCTAVE_AUTORESTART < (Clock.currTime - _maybe_last_octave_start_sysTime.get)
+           )
       )
     {
       _maybe_last_octave_start_sysTime.nullify;
@@ -479,19 +498,19 @@ char[] _callOctave( in string mCode
       _ensureOctaveRunning();
     }
     
-  // writeln("xxx ---------- duration:", Clock.currTime - xxx_start_time);
-
-  has_error = has_error
-    ||  out_app.data.canFind( BEGINERROR )
-    ||  out_app.data.canFind( ENDERROR );
+  // Error detection
+  
+  bool has_error = !received
+    ||  octave_result.canFind( BEGINERROR )
+    ||  octave_result.canFind( ENDERROR );
 
 
   mixin(_vtC);
 
-  // writeln(mixin(_HERE_C), ": out_app.data: ", out_app.data);
+  // writeln(mixin(_HERE_C), ": octave_result: ", octave_result);
   
   if (!has_error)
-    return out_app.data;
+    return octave_result;
 
   // --- Error case
 
@@ -509,7 +528,7 @@ char[] _callOctave( in string mCode
   mixin(_vtC);
 
   {
-    auto output = out_app.data;
+    auto output = received  ?  octave_result  :  (BEGINERROR~" received:"~to!string(received)~" probably timeout ("~to!string(timeout)~")").dup;
     char[] error;
     auto ind = output.countUntil( BEGINERROR );
     if (-1 < ind)
@@ -523,13 +542,72 @@ char[] _callOctave( in string mCode
     writeln(mixin(_HERE_C), ": ex_str: ", ex_str); stdout.flush;
 
     if (0 < n_retry)
-      return _callOctave( mCode, verbose, n_retry - 1 );
+      {
+        _killOctave( verbose ); // in case Octave is in a repetitively buggy situation
+        return _callOctave( mCode, verbose, n_retry - 1, timeout );
+      }
     else
-      throw new OctaveException( mixin(_HERE_C)~":[exhausted n_retry]: "~ex_str );
+      {
+        throw new OctaveException( mixin(_HERE_C)~":[exhausted n_retry]: "~ex_str );
+      }
   }
 }
 
+void octaveReceiverFunc()
+{
+  while (true)
+    {
+      auto msg = receiveOnly!(ulong, Tid);
+      scope pp_ptr     = msg[ 0 ];
+      scope caller_tid = msg[ 1 ];
+
+      if (pp_ptr == 0UL)
+        break; // my work is finished
+      
+      
+      auto pipes = cast(ProcessPipes*)( pp_ptr ); // ugly but okay, only once per main thread
+      scope auto out_app = appender!(char[]);
+      {
+        scope auto c = new char[ 1 ];
+        while (true)
+          {
+            {
+              scope auto c_out = pipes.stdout.rawRead( c );
+              // writeln(mixin(_HERE_C)~": c_out: ", c_out);
+              if (c_out.length < 1)
+                {
+                  mixin(_HERE_WR_C);
+                  out_app.put( mixin(_HERE_C)~": strange, c_out.length == 0. Most likely an unexpected failure in the top octave loop, not supposed to happen. About to kill octave to ensure an octave restart next time." );
+                  out_app.put( '\n' );
+                  out_app.put( mixin(_HERE_C)~": "~ENDERROR_LF );
+                  break;
+                }
+          
+              assert( c_out.length == 1);
+          
+              out_app.put( c_out[ 0 ] );
+            }
+        
+            mixin(_vtC);
+        
+            if (out_app.data.endsWith( DONE_LF ))
+              {
+                out_app.shrinkTo( out_app.data.length - DONE_LF.length );
+                break;
+              }
+
+            if (out_app.data.endsWith( ENDERROR_LF ))
+              break;
+          }
+      }
+      auto tosend = out_app.data.idup;
+
+      caller_tid.send( tosend );
+    }
+}
+
 private Nullable!SysTime _maybe_last_octave_start_sysTime;
+private Nullable!Tid     _maybe_octave_communication_worker;
 void _ensureOctaveRunning()
 {
   _ensureOctaveSupported();
@@ -537,10 +615,53 @@ void _ensureOctaveRunning()
   if (maybe_o_pipes.isNull)
     {
       _maybe_last_octave_start_sysTime = Clock.currTime;
+
+      // try not to let octave eat the whole system and indirectly kill us 
+      immutable maybe_s_prefix = _isSystemdRunSupported()
+        ?  "systemd-run -q --scope -p CPUQuota=200% -p MemoryMax=20% -p MemoryHigh=17% -p MemorySwapMax=0% --user "
+        :  ""
+        ;
       
-      immutable cmd = OCTAVE~" -q --persist --no-gui --no-history --no-init-file --no-line-editing --no-site-file --no-window-system --norc --eval=\"octave_core_file_limit( 0 ); crash_dumps_octave_core( 0 ); sighup_dumps_octave_core( 0 ); sigterm_dumps_octave_core( 0 ); while (1); lasterror('reset'); try; s=input('','s'); if (strcmp(s,'"~QUIT~"')) break; endif; eval(s); fflush(stdout); catch; end_try_catch; if (0 < length(lasterror.message)) disp('"~BEGINERROR~"'); disp( lasterror.message ); disp( '"~ENDERROR~"'); fflush( stdout ); endif; endwhile; quit(0,'force'); \" 2>&1";
+      immutable cmd = maybe_s_prefix~OCTAVE~" -q --persist --no-gui --no-history --no-init-file --no-line-editing --no-site-file --no-window-system --norc --eval=\"octave_core_file_limit( 0 ); crash_dumps_octave_core( 0 ); sighup_dumps_octave_core( 0 ); sigterm_dumps_octave_core( 0 ); while (1); lasterror('reset'); try; s=input('','s'); if (strcmp(s,'"~QUIT~"')) break; endif; eval(s); fflush(stdout); catch; end_try_catch; if (0 < length(lasterror.message)) disp('"~BEGINERROR~"'); disp( lasterror.message ); disp( '"~ENDERROR~"'); fflush( stdout ); endif; endwhile; quit(0,'force'); \" 2>&1";
 
       maybe_o_pipes = pipeShell( cmd, Redirect.all );
+
+      // Try to ensure that in an Out Of Memory case, these octave
+      // children processes will be killed first.
+      
+      {
+        scope s_pid = to!string(maybe_o_pipes.get.pid.processID);
+
+        // First grab the list of PIDs
+        scope const c_pid_list = (){
+          scope tmp = executeShell( mixin(_tli!`ps ax --format pid,ppid | grep ${s_pid} | grep -v grep`) );
+          mixin(alwaysAssertStderr(`tmp.status == 0`, `to!string(tmp.status)~':'~tmp.output`));
+
+          scope auto c_pid_app = appender!(string[]);
+          c_pid_app.put( s_pid );
+          
+          foreach (line; tmp.output.lineSplitter)
+          {
+            scope auto tt = line.strip.split( ' ' ).map!"a.strip".filter!"0<a.length".array;
+            if (1 < tt.length  &&  tt[ 1 ] == s_pid)
+              c_pid_app.put( tt[ 0 ] );
+          }    
+
+          return c_pid_app.data;
+        }();
+
+        // Second increase their OOM score => more chances that they will be killed first
+        foreach (ref c_pid; c_pid_list)
+          {
+            immutable cmd_oom = mixin(_tli!"choom -p ${c_pid} -n 1000");
+            
+            scope tmp = executeShell( cmd_oom );
+            
+            mixin(alwaysAssertStderr(`tmp.status == 0`,`to!string(tmp.status)~':'~tmp.output`));
+          }
+      }
+      
+      _maybe_octave_communication_worker = spawn( &octaveReceiverFunc ); 
     }
 }
 
@@ -554,6 +675,13 @@ void _ensureOctaveSupported()
 
 void _killOctave( in bool verbose = false )
 {
+  // Cut the communication first
+  if (!_maybe_octave_communication_worker.isNull)
+    {
+      _maybe_octave_communication_worker.get.send( /*means work_is_done:*/0UL, thisTid );
+      _maybe_octave_communication_worker.nullify;
+    }
+
   // Safer to kill it to ensure a restart next time to make sure that the top loop runs
   try
     {

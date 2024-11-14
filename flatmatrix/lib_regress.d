@@ -9,7 +9,8 @@ import d_glat.lib_regress_theilsen;
 import d_glat.lib_tmpfilename;
 import std.algorithm : fold, map;
 import std.array : array, join;
-import std.file : remove, tempDir;
+import std.datetime : Duration, dur;
+import std.file : exists, remove, tempDir;
 import std.stdio;
 
 public import d_glat.flatmatrix.lib_octave_exec; // public: isOctaveSupported()
@@ -197,6 +198,7 @@ MatrixT!T regress_tmpf(T, alias do_remove_tmpf=true)
 ( in MatrixT!T Y, in MatrixT!T X1, ref char[][] oarr_warning
   , in bool verbose = OCTAVE_VERBOSE_DEFAULT
   , in string tmpdir = tempDir() // good alternative: ramfs
+  , in Duration timeout = dur!"minutes"( 1 )
   )
 
 /* `regress` function similar to that of Octave (6.4.0) but only
@@ -214,9 +216,25 @@ MatrixT!T regress_tmpf(T, alias do_remove_tmpf=true)
    columns).
 */
 {
-  immutable in_y_fn  = get_tmpfilename( ".y.data",  tmpdir );
-  immutable in_x1_fn = get_tmpfilename( ".x1.data", tmpdir );
-  immutable out_b_fn = get_tmpfilename( ".b.data",  tmpdir );
+  // If regress earlier failed, and the exception was caught, then
+  // *now* cleanup the files, to prevent disk/ramfs usage increase.
+  //
+  // *now*: this way, if regress earlier failed, and the exception was
+  // not caught, the files are still available for direct debugging in
+  // Octave.
+  static string prev_in_y_fn, prev_in_x1_fn, prev_out_b_fn;
+  static foreach( PREV_VARNAME; ["prev_in_y_fn", "prev_in_x1_fn", "prev_out_b_fn"])
+    mixin(mixin(_tli!q{
+          if (0 < ${PREV_VARNAME}.length  &&  exists( ${PREV_VARNAME} ))
+            {
+              remove( ${PREV_VARNAME} );
+              ${PREV_VARNAME} = "";
+            }
+        }));
+  
+  immutable in_y_fn  = prev_in_y_fn  = get_tmpfilename( ".y.data",  tmpdir );
+  immutable in_x1_fn = prev_in_x1_fn = get_tmpfilename( ".x1.data", tmpdir );
+  immutable out_b_fn = prev_out_b_fn = get_tmpfilename( ".b.data",  tmpdir );
 
   immutable nr = Y.nrow;
   immutable nc1 = X1.restdim;
@@ -268,7 +286,7 @@ MatrixT!T regress_tmpf(T, alias do_remove_tmpf=true)
         }
     }
   
-  octaveExecNoOutputT!T(octCode_arr, oarr_warning, verbose, REGRESS_N_RETRY);
+  octaveExecNoOutputT!T(octCode_arr, oarr_warning, verbose, REGRESS_N_RETRY, timeout);
 
   auto b_data = (){
     scope auto f_b = File( out_b_fn, "r" );
