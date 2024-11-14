@@ -187,7 +187,7 @@ struct MatrixT( T )
     
     scope auto apdr = appender(&data);
     
-    foreach (v; newdata)
+    foreach (ref v; newdata)
       apdr.put( v );
        
     if (0 != data.length % rd)
@@ -848,9 +848,8 @@ pure nothrow @safe
 {
   
   MatrixT!T m_out;
-  scope size_t[]  buffer;
 
-  interleave_inplace!T( m_arr, m_out, buffer );
+  interleave_inplace!T( m_arr, m_out );
 
   return m_out;
 }
@@ -867,10 +866,14 @@ MatrixT!T interleave_parallel( T )( in MatrixT!T[] m_arr )
 }
 
 
-void interleave_inplace(T)( in MatrixT!T[] m_arr
-                            , ref MatrixT!T m_out
-                            , ref size_t[] buffer
-                            )
+void interleave_inplace(T)( in MatrixT!T[] m_arr, ref MatrixT!T m_out, ref size_t[] buffer )
+ pure @safe nothrow
+// old API (with now-unused buffer) - left for backward compatibility
+{
+  interleave_inplace!T( m_arr, m_out );
+}
+
+void interleave_inplace(T)( in MatrixT!T[] m_arr, ref MatrixT!T m_out )
  pure @safe nothrow
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
@@ -881,7 +884,7 @@ void interleave_inplace(T)( in MatrixT!T[] m_arr
   scope size_t[] restdim_arr;
   size_t   restdim_total = 0;
 
-  foreach (i,m; m_arr)
+  foreach (i,ref m; m_arr)
     {
       // Read
                   
@@ -906,29 +909,26 @@ void interleave_inplace(T)( in MatrixT!T[] m_arr
   scope auto   m_out_data = m_out.data;
 
   immutable size_t i_end = m_out_data.length;
-  
-  size_t i_out = 0;
-      
-  ensure_length( malen, buffer );
-      
-  buffer[] = 0;
-      
-  while (i_out < i_end)
+
+  assertWrap( 0 == i_end % restdim_total, () => to!string([i_end, restdim_total]) );
+
+  immutable nrow = i_end / restdim_total;
+
+  size_t cumsum_rd = 0;
+  foreach (i_m,ref m; m_arr)
     {
-      foreach (i_m,m; m_arr)
+      immutable rd = restdim_arr[ i_m ];
+      size_t i_in  = 0;
+      size_t i_out = cumsum_rd;
+      cumsum_rd += rd;
+              
+      for (; i_out < i_end; i_out += restdim_total)
         {
-          auto rd = restdim_arr[ i_m ];
+          immutable next_i_in = i_in + rd;
 
-          auto next_i_out = i_out + rd;
-
-          auto i_in = buffer[ i_m ];
-          auto next_i_in = i_in + rd;
-                      
-          m_out_data[ i_out..next_i_out ][] =
-            m.data[ i_in..next_i_in ][];
-
-          buffer[ i_m ] = next_i_in;
-          i_out = next_i_out;
+          m_out_data[ i_out..(i_out + rd) ][] = m.data[ i_in..next_i_in ][];
+                  
+          i_in = next_i_in;
         }
     }
 }
@@ -937,9 +937,7 @@ void interleave_inplace(T)( in MatrixT!T[] m_arr
 
 
 
-void interleave_inplace_parallel(T)( in MatrixT!T[] m_arr
-                                     , ref MatrixT!T m_out
-                                     )
+void interleave_inplace_parallel(T)( in MatrixT!T[] m_arr, ref MatrixT!T m_out )
 // Calls m_out.setDim() and fills it with m_arr's concatenated rows
 {
   auto first_dim = m_arr[ 0 ].dim;
@@ -949,7 +947,7 @@ void interleave_inplace_parallel(T)( in MatrixT!T[] m_arr
   scope size_t[] restdim_arr;
   size_t   restdim_total = 0;
 
-  foreach (i,m; m_arr)
+  foreach (i,ref m; m_arr)
     {
       // Read
                   
@@ -989,7 +987,7 @@ void interleave_inplace_parallel(T)( in MatrixT!T[] m_arr
       immutable tsk_i_row = itask * ceil_nrow_per_task;
       
       size_t cumsum_rd = 0;
-      foreach (i_m,m; m_arr)
+      foreach (i_m,ref m; m_arr)
         {
           immutable rd = restdim_arr[ i_m ];
           size_t tsk_i_in = tsk_i_row * rd;
@@ -2005,7 +2003,7 @@ unittest  // ------------------------------
                                  10, 11, 12 ] );
     Matrix C;
 
-    interleave_inplace_parallel( [ A, B, A ], C, buffer );
+    interleave_inplace_parallel( [ A, B, A ], C );
 
     assert( C == Matrix
             ([4, 5]
@@ -2029,7 +2027,7 @@ unittest  // ------------------------------
                                  10, 11, 12 ] );
     Matrix C;
 
-    interleave_inplace_parallel( [ A, B, A ], C, buffer );
+    interleave_inplace_parallel( [ A, B, A ], C );
 
     assert( C == Matrix
             ([4, 5]
@@ -2053,7 +2051,7 @@ unittest  // ------------------------------
                                  10, 11, 12 ] );
     Matrix C;
     
-    interleave_inplace_parallel( [ A, B, A ], C, buffer );
+    interleave_inplace_parallel( [ A, B, A ], C );
 
     assert( C == Matrix
             ([4, 7]
