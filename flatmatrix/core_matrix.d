@@ -1429,6 +1429,13 @@ MatrixT!T transpose( T )
   return ret;
 }
 
+void transpose_inplace( T )
+  ( in MatrixT!T A, ref MatrixT!T B ) pure nothrow @safe
+{
+  B.setDim( [A.ncol, A.nrow] );
+  transpose_inplace_nogc( A, B );
+}
+
 void transpose_inplace_nogc( T )
   ( in ref MatrixT!T A
     , ref MatrixT!T ret ) pure nothrow @safe @nogc
@@ -1456,6 +1463,70 @@ void transpose_inplace_nogc( T )
         ij_ret = 1 + (ij_ret - rc);
     }
 }
+
+
+
+
+
+MatrixT!T transpose_parallel( T )
+( in MatrixT!T A ) 
+{
+  auto ret = MatrixT!T( [A.ncol, A.nrow] );
+  transpose_inplace_noSetDim_parallel( A, ret );
+  return ret;
+}
+
+void transpose_inplace_parallel( T )
+  ( in MatrixT!T A, ref MatrixT!T B ) 
+{
+  B.setDim( [A.ncol, A.nrow] );
+  transpose_inplace_noSetDim_parallel( A, B );
+}
+
+void transpose_inplace_noSetDim_parallel( T )
+  ( in ref MatrixT!T A
+    , ref MatrixT!T ret ) 
+{
+  debug
+    {
+      assert( A.ndim == 2 );
+      assert( ret.ndim == 2 );
+      assert( ret.dim == [A.ncol, A.nrow] );
+    }
+
+  scope auto ret_data = ret.data;
+  immutable ret_delta = ret.ncol;
+  immutable rc = ret.data.length;
+
+  immutable ncpu = totalCPUs;
+
+  immutable ncol_A = A.ncol;
+  immutable nrow_A = A.nrow;
+  immutable row_step_A =
+    max( 1, cast(size_t)( ceil( (cast(double)( nrow_A )) / (cast(double)( ncpu )) ) ) );
+
+  foreach (row_begin; parallel( iota( 0, nrow_A, row_step_A )))
+    {
+      immutable row_end = min( nrow_A, row_begin + row_step_A );
+      
+      size_t ij_ret = row_begin; // `row_begin` becomes a column index in `ret`
+
+      immutable a_begin = row_begin*ncol_A;
+      immutable a_end   = row_end*ncol_A;
+      
+      foreach (const va; A.data[ a_begin..a_end ])
+        {
+          ret.data[ ij_ret ] = va;
+          
+          ij_ret += ret_delta;
+          
+          if (ij_ret >= rc)
+            ij_ret = 1 + (ij_ret - rc);
+        }
+    }
+}
+
+
 
 
 
@@ -1836,6 +1907,30 @@ unittest  // ------------------------------
                                       1e5, 1e6, 1e7, 1e8,
                                       1e9, 1e10, 1e11, 1e12 ] ) );
 
+    auto mc = Matrix( [2, 4] );
+
+    dot_inplace_YT_nogc( ma, mbT, mc );
+    
+    assert( mc
+            == Matrix
+            ( [2, 4],
+              [ 3000200010.0, 30002000100.0, 300020001000.0, 3000200010000.0,
+                6000500040.0, 60005000400.0, 600050004000.0, 6000500040000.0 ]
+              )
+            );
+  }
+
+
+  
+  {
+    auto ma = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                                4.0, 5.0, 6.0 ] );
+
+    auto mbT = transpose_parallel( Matrix( [3, 4]
+                                           , [ 1e1, 1e2, 1e3, 1e4,
+                                               1e5, 1e6, 1e7, 1e8,
+                                               1e9, 1e10, 1e11, 1e12 ] ) );
+    
     auto mc = Matrix( [2, 4] );
 
     dot_inplace_YT_nogc( ma, mbT, mc );
@@ -2514,6 +2609,18 @@ unittest  // ------------------------------
                      );
 
     assert( transpose( A )
+            == Matrix( [3, 2], [ 1.0, 4.0,
+                                 2.0, 5.0,
+                                 3.0, 6.0 ] )
+            );
+  } 
+
+  {
+    auto A = Matrix( [2, 3], [ 1.0, 2.0, 3.0,
+                               4.0, 5.0, 6.0 ]
+                     );
+
+    assert( transpose_parallel( A )
             == Matrix( [3, 2], [ 1.0, 4.0,
                                  2.0, 5.0,
                                  3.0, 6.0 ] )
