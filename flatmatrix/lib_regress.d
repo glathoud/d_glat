@@ -109,6 +109,26 @@ MatrixT!T linpred_apply(T)( in MatrixT!T beta, in MatrixT!T X )
 
 
 
+const(MatrixT!T) get_X1_of_X_transp(T)( in MatrixT!T X ) pure nothrow @safe
+{
+  return concatrow( mat_ones( [1, X.restdim] ), X );
+}
+
+void get_X1_of_X_transp_inplace(T)( in MatrixT!T X, ref MatrixT!T X1 ) pure nothrow @safe
+{
+  X1.setDim( [1 + X.nrow]~X.dim[ 1..$ ] );
+  get_X1_of_X_transp_inplace_nogc!T( X, X1 );
+}
+
+void get_X1_of_X_transp_inplace_nogc(T)( in MatrixT!T X, ref MatrixT!T X1 ) pure nothrow @safe @nogc
+{
+  immutable nc = X1.restdim;
+  X1.data[ 0..nc ] = 1;
+  X1.data[ nc..$ ] = X.data[];
+}
+
+
+
 /*
   `regress` function similar to that of Octave: Multiple Linear
      Regression using Least Squares Fit of Y on X with the model 'y =
@@ -302,6 +322,112 @@ MatrixT!T regress_tmpf(T, alias do_remove_tmpf=true)
   
   return MatrixT!T( [nc1, 1], b_data );
 }
+
+
+
+MatrixT!T regresstransp_tmpf(T, alias do_remove_tmpf=true)
+( in MatrixT!T Y, in MatrixT!T X1_transp, ref char[][] oarr_warning
+  , in bool verbose = OCTAVE_VERBOSE_DEFAULT
+  , in string tmpdir = tempDir() // good alternative: ramfs
+  , in Duration timeout = dur!"minutes"( 1 )
+  )
+
+/* `regress` function similar to that of Octave (6.4.0) but only
+   returns `beta` for the model `y = beta*X1_transp + error`
+   
+   Typically the first row of X1 contains only ones.
+
+   Implementation: passing data through temporary files, for
+   much better performance than regress!T on large data.
+   
+   (you *might* want to try tmpfs/ramfs)
+
+   might throw OctaveException (e.g. if octave crashes, even after
+   REGRESS_N_RETRY - typically when X1 is too big and has too many
+   columns).
+*/
+{
+  // If regress earlier failed, and the exception was caught, then
+  // *now* cleanup the files, to prevent disk/ramfs usage increase.
+  //
+  // *now*: this way, if regress earlier failed, and the exception was
+  // not caught, the files are still available for direct debugging in
+  // Octave.
+  static string prev_in_y_fn, prev_in_x1_fn, prev_out_b_fn;
+  static foreach( PREV_VARNAME; ["prev_in_y_fn", "prev_in_x1_fn", "prev_out_b_fn"])
+    mixin(mixin(_tli!q{
+          if (0 < ${PREV_VARNAME}.length  &&  exists( ${PREV_VARNAME} ))
+            {
+              remove( ${PREV_VARNAME} );
+              ${PREV_VARNAME} = "";
+            }
+        }));
+  
+  immutable in_y_fn  = prev_in_y_fn  = get_tmpfilename( ".y.data",  tmpdir );
+  immutable in_x1_fn = prev_in_x1_fn = get_tmpfilename( ".x1.data", tmpdir );
+  immutable out_b_fn = prev_out_b_fn = get_tmpfilename( ".b.data",  tmpdir );
+
+  // Octave column-first
+  immutable nr = X1_transp.restdim;
+  immutable nc1 = X1_transp.nrow;
+
+  mixin(alwaysAssertStderr!`nr == X1_transp.restdim`);
+
+  {
+    scope auto f_y = File( in_y_fn, "w" );
+    f_y.rawWrite( Y.data );
+  }
+
+  {
+    scope auto f_x1 = File( in_x1_fn, "w" );
+    // Octave has columns first X1_transp.data corresponds, so we can
+    // do a direct write
+    f_x1.write( X1_transp.data );
+  }
+  
+  scope auto octCode_arr =
+    [
+     mClearAll
+     , mExec( `pkg('load','statistics');`) // xxx stg like 0.06 sec the first time, consider keeping a hot octave instance
+     , mExec( mixin(_tli!`nr = ${nr};`) )
+     , mExec( mixin(_tli!`nc1 = ${nc1};`) )
+     , mExec( mixin(_tli!`in_y_fn = "${in_y_fn}";`) )
+     , mExec( mixin(_tli!`in_x1_fn = "${in_x1_fn}";`) )
+     , mExec( mixin(_tli!`out_b_fn = "${out_b_fn}";`) )
+     ]
+    ~mExecArr_freadT!T( `in_y_fn`, `y`, `[nr, 1]` )
+    ~mExecArr_freadT!T( `in_x1_fn`, `x1`, `[nr, nc1]` )
+    ~[mExec( `b = regress( y, x1 );` )]
+    ~mExecArr_fwriteT!T( `out_b_fn`, `b` )
+    ;
+
+  static if (false) // xxx only to debug
+    {
+      if (verbose)
+        {
+          writeln("lib_regress: octCode_arr:" );
+          writeln(octCode_arr.map!((a) => a.getCode).array.join('\n'));
+          stdout.flush;
+        }
+    }
+  
+  octaveExecNoOutputT!T(octCode_arr, oarr_warning, verbose, REGRESS_N_RETRY, timeout);
+
+  auto b_data = (){
+    scope auto f_b = File( out_b_fn, "r" );
+    return f_b.rawRead( new T[ nc1 ] );
+  }();
+
+  static if (do_remove_tmpf)
+    {
+      remove( in_y_fn );
+      remove( in_x1_fn );
+      remove( out_b_fn );
+    }
+  
+  return MatrixT!T( [nc1, 1], b_data );
+}
+
 
 private:
 enum _HERE_C=`baseName(__FILE__)~':'~to!string(__LINE__)`;
