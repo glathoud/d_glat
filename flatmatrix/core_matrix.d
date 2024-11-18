@@ -556,6 +556,75 @@ alias concatcol_inplace          = interleave_inplace;
 alias concatcol_inplace_parallel = interleave_inplace_parallel;
 
 
+MatrixT!T concatrow( T )( in MatrixT!T a, in MatrixT!T b ) pure nothrow @safe
+{
+  assert( a.restdim == b.restdim );
+  auto c = MatrixT!T( [a.nrow + b.nrow, a.restdim] );
+  concatrow_inplace_nogc!T( a, b, c );
+  return c;
+}
+
+void concatrow_inplace( T )( in MatrixT!T a, in MatrixT!T b, ref MatrixT!T c ) pure nothrow @safe
+{
+  assert( a.restdim == b.restdim );
+  c.setDim( [a.nrow + b.nrow, a.restdim] );
+  concatrow_inplace_nogc!T( a, b, c );
+}
+
+void concatrow_inplace_nogc( T )( in MatrixT!T a, in MatrixT!T b, ref MatrixT!T c ) pure nothrow @safe @nogc
+{
+  debug
+    {
+      assert( a.restdim == b.restdim );
+      assert( a.nrow + b.nrow == c.nrow );
+    }
+  c.data[ 0..a.data.length ][] = a.data[];
+  c.data[ a.data.length..$ ][] = b.data[];
+}
+
+
+
+MatrixT!T concatrow( T )( in MatrixT!T[] m_arr ) pure nothrow @safe
+{
+  MatrixT!T ret;
+  concatrow_inplace!T( m_arr, ret );
+  return ret;
+}
+
+void concatrow_inplace( T )( in MatrixT!T[] m_arr, ref MatrixT!T ret ) pure nothrow @safe
+{
+  auto m0 = m_arr[ 0 ];
+
+  immutable nrow = (){
+    
+    size_t nrow = m0.nrow;
+    foreach (ref m; m_arr[ 1..$ ])
+    {
+      nrow += m.nrow;
+      assert( m.restdim == m0.restdim );
+    }
+
+    return nrow;
+  }();
+
+  ret.setDim( [nrow]~m0.dim[ 1..$ ] );
+  concatrow_inplace_nogc!T( m_arr, ret );
+}
+
+void concatrow_inplace_nogc( T )( in MatrixT!T[] m_arr, ref MatrixT!T ret ) pure nothrow @safe @nogc
+{
+  size_t i = 0;
+  foreach (ref m; m_arr)
+    {
+      const mn = m.data.length;
+      ret.data[ i..(i+mn) ][] = m.data[];
+      i += mn;
+    }
+}
+
+
+
+  
 
 MatrixT!T diag( T )( in T[] x ) pure nothrow @safe
 {
@@ -1424,6 +1493,9 @@ MatrixT!T subset_row_mapfilter
 MatrixT!T transpose( T )
 ( in MatrixT!T A ) pure nothrow @safe
 {
+  if (0 == A.data.length)
+    return MatrixT!T( [A.ncol, A.nrow], [] );
+  
   auto ret = MatrixT!T( [A.ncol, A.nrow] );
   transpose_inplace_nogc( A, ret );
   return ret;
@@ -1471,6 +1543,9 @@ void transpose_inplace_nogc( T )
 MatrixT!T transpose_parallel( T )
 ( in MatrixT!T A ) 
 {
+  if (A.data.length == 0)
+    return MatrixT!T( [A.ncol, A.nrow], [] );
+  
   auto ret = MatrixT!T( [A.ncol, A.nrow] );
   transpose_inplace_noSetDim_parallel( A, ret );
   return ret;
