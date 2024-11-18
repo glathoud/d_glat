@@ -23,6 +23,7 @@ import std.algorithm : all, max;
 import std.array : appender, array;
 import std.conv : to;
 import std.math;
+import std.parallelism;
 import std.range : iota;
 import std.string : split;
 
@@ -45,9 +46,12 @@ struct GmmT( T )
     cast( T )( log( 2 ) + log( PI ) );
 
   private MatrixT!T m_x, m_xmm, m_xmmT
-    , m_invcov_t_xmm, m_xmm_t_invcov_xmm;
+    , m_invcov_t_xmm, m_xmm_t_invcov_t_xmm;
 
-
+  // Same, for parallel implementations
+  private MatrixT!T[] m_x_arr, m_xmm_arr, m_xmmT_arr
+    , m_invcov_t_xmm_arr, m_xmm_t_invcov_t_xmm_arr;
+  
   MatrixT!T ll( in ref MatrixT!T m_feature ) pure @safe
   {
     debug assert( dim == m_feature.restdim );
@@ -137,12 +141,12 @@ struct GmmT( T )
 
             dot_inplace_nogc( invcov_j, m_xmmT, m_invcov_t_xmm );
             dot_inplace_nogc( m_xmm, m_invcov_t_xmm
-                              , m_xmm_t_invcov_xmm );
+                              , m_xmm_t_invcov_t_xmm );
             
-            debug assert( m_xmm_t_invcov_xmm.data.length == 1 );
+            debug assert( m_xmm_t_invcov_t_xmm.data.length == 1 );
             
             ll_data[ i_out++ ] = logfactor_arr[ j ]
-              - cast( T )( 0.5 ) * m_xmm_t_invcov_xmm.data[ 0 ];
+              - cast( T )( 0.5 ) * m_xmm_t_invcov_t_xmm.data[ 0 ];
           }
         
         i_f = next_i_f;
@@ -152,6 +156,141 @@ struct GmmT( T )
     debug assert( i_out == ll_data.length );
   }
 
+
+
+
+  MatrixT!T ll_transp( in ref MatrixT!T m_feature_transp )
+  {
+    debug assert( dim == m_feature_transp.nrow );
+
+    immutable npoints = m_feature_transp.restdim;
+    auto m_ll_transp = Matrix( [n, npoints] );
+
+    ll_transp_inplace_nogc( m_feature_transp, m_ll_transp );
+
+    return m_ll_transp;
+  }
+
+  
+  void ll_transp_inplace_dim(bool do_parallel=false)
+    ( in ref MatrixT!T m_feature_transp
+      , /*output:*/ref MatrixT!T m_ll_transp
+      )
+    /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
+
+       Input:  m_feature_transp (gmm.dim * npoints)
+       Output: m_ll_transp      (gmm.n   * npoints)
+
+       m_ll_transp will be automatically redimensionned if necessary.
+    */
+  {
+    debug assert( dim == m_feature_transp.nrow );
+    
+    immutable npoints = m_feature_transp.restdim;
+    m_ll_transp.setDim( [n, npoints] );
+
+    ll_transp_inplace_nogc!(do_parallel)( m_feature_transp, m_ll_transp );
+  }
+
+  
+  void ll_transp_inplace_nogc(bool do_parallel=false)
+    ( in ref MatrixT!T m_feature_transp
+      , /*output:*/ref MatrixT!T m_ll_transp
+      )
+  /* Log-likelihoods of each Gaussian, at each point of `m_feature`.
+
+       Input:  m_feature (gmm.dim * npoints)
+       Output: m_ll      (gmm.n * npoints)
+
+       m_ll_transp will NOT be automatically redimensionned, it must
+       have the right dimension.  (that is the price of @nogc)
+    */
+  {
+    debug
+      {
+        assert( dim == m_feature_transp.nrow );
+        assert( n   ==      m_ll_transp.nrow );
+      }
+
+    immutable npoints = m_feature_transp.restdim;
+
+    debug assert( npoints == m_ll_transp.restdim );
+    
+    /* Implementation note: we could consider moving to a Cholesky
+       factorization-based implementation, see:
+       https://octave.sourceforge.io/statistics/function/mvnpdf.html
+       
+       That said, the implementation does not look *that* simple at
+       first sight:
+       http://octave.org/doxygen/4.0/da/d25/chol_8cc_source.html
+
+       ...and the current flatmatrix implementation has in at least 
+       one numerical case a *better* precision than the octave chol-based
+       implementation, see the `m12` use case further below (-Inf overflow
+       in the case of octave, whereas flatmatrix does not overflow).
+
+       => leave covinv as it is.
+    */
+    
+    scope auto feature_transp_data = m_feature_transp.data;
+    scope auto      ll_transp_data = m_ll_transp.data;
+
+    immutable ntask = min( npoints, do_parallel  ?  get_max_ntask  :  1 );
+    
+    immutable ceil_npoints_per_task =
+      cast(size_t)( ceil( (cast(double)( npoints )) / (cast(double)( ntask )) ) );
+    
+    foreach (itask; parallel( iota( ntask ), /*workUnitSize:*/1 ))
+      {
+        // all these are preallocated
+        auto _m_x_i    = m_x_arr[ itask ]
+          ,  _m_xmm_i  = m_xmm_arr[ itask ]
+          ,  _m_xmmT_i = m_xmmT_arr[ itask ]
+          ,  _m_invcov_t_xmm_i     = m_invcov_t_xmm_arr[ itask ]
+          ,  _m_xmm_t_invcov_t_xmm_i = m_xmm_t_invcov_t_xmm_arr[ itask ]
+          ;
+        
+        immutable i_p_0 = itask * ceil_npoints_per_task;
+        immutable i_p_1 = min( npoints, i_p_0 + ceil_npoints_per_task );
+        foreach (i_p; i_p_0..i_p_1)
+          {
+            {
+              size_t i2_f = i_p;
+              foreach (d; 0..dim)
+                {
+                  _m_x_i.data[ d ] = feature_transp_data[ i2_f ];
+                  i2_f += npoints;
+                }
+            }
+
+            {
+              size_t i2_out = i_p;
+          
+              foreach (j; 0..n)
+                {
+                  direct_sub_inplace_nogc( _m_x_i, m_mean_arr[ j ], _m_xmm_i );
+              
+                  scope auto invcov_j = m_invcov_arr[ j ];
+              
+                  dot_inplace_nogc( invcov_j, _m_xmmT_i, _m_invcov_t_xmm_i );
+                  dot_inplace_nogc( _m_xmm_i, _m_invcov_t_xmm_i
+                                    , _m_xmm_t_invcov_t_xmm_i );
+              
+                  debug assert( _m_xmm_t_invcov_t_xmm_i.data.length == 1 );
+              
+                  ll_transp_data[ i2_out ] = logfactor_arr[ j ]
+                    - cast( T )( 0.5 ) * _m_xmm_t_invcov_t_xmm_i.data[ 0 ];
+
+                  i2_out += npoints;
+                }
+            }
+          }
+      }
+  }
+
+
+
+  
   void reset()
     nothrow @safe
   {
@@ -164,7 +303,7 @@ struct GmmT( T )
     m_invcov_arr = [];
     logfactor_arr = [];
 
-    static foreach (NAME; "m_x, m_xmm, m_xmmT, m_invcov_t_xmm, m_xmm_t_invcov_xmm".split( ", " ).array)
+    static foreach (NAME; "m_x, m_xmm, m_xmmT, m_invcov_t_xmm, m_xmm_t_invcov_t_xmm".split( ", " ).array)
     {{
         mixin(NAME~`.setDim([1,1]);`);
       }}
@@ -307,6 +446,8 @@ struct GmmT( T )
 
  private:
 
+  size_t get_max_ntask() pure nothrow @safe @nogc { return totalCPUs; }
+  
   void _resize() pure nothrow @safe
   {
     if (is_finite_arr.length != n)
@@ -341,7 +482,25 @@ struct GmmT( T )
     m_xmmT.data = m_xmm.data;
     
     m_invcov_t_xmm.setDim( [dim, 1] );
-    m_xmm_t_invcov_xmm.setDim( [1, 1] );
+    m_xmm_t_invcov_t_xmm.setDim( [1, 1] );
+
+    // Same for parallel computations
+
+    immutable max_ntask = get_max_ntask;
+
+    m_x_arr.length = m_xmm_arr.length = m_xmmT_arr.length = m_invcov_t_xmm_arr.length
+      = m_xmm_t_invcov_t_xmm_arr.length = max_ntask;
+
+    foreach (itask; 0..max_ntask)
+      {
+        m_x_arr[ itask ]   .setDim( m_x.dim );
+        m_xmm_arr[ itask ] .setDim( m_xmm.dim );
+        m_xmmT_arr[ itask ].setDim( m_xmmT.dim );
+        m_xmmT_arr[ itask ].data = m_xmm_arr[ itask ].data;
+        
+        m_invcov_t_xmm_arr[ itask ]      .setDim( m_invcov_t_xmm.dim );
+        m_xmm_t_invcov_t_xmm_arr[ itask ].setDim( m_xmm_t_invcov_t_xmm.dim );
+      }
   }
 }
 
@@ -479,11 +638,28 @@ unittest  // ------------------------------
 
     // "write" some log-likelihood
 
-    Matrix m_ll;
+    {
+      Matrix m_ll;
+      
+      gmm.ll_inplace_dim( m_data, m_ll );
+      
+      assert( m_ll.approxEqual( m_ll_truth, 1e-10, 1e-10 ) );
+    }
 
-    gmm.ll_inplace_dim( m_data, m_ll );
+    foreach (do_parallel; [false, true])
+    {
+      scope const m_data_transp = m_data.transpose_parallel;
 
-    assert( m_ll.approxEqual( m_ll_truth, 1e-10, 1e-10 ) );
+      scope Matrix m_ll_transp;
+
+      if (do_parallel)
+        gmm.ll_transp_inplace_dim!true( m_data_transp, m_ll_transp );
+      else
+        gmm.ll_transp_inplace_dim!false( m_data_transp, m_ll_transp );
+      
+      assert( m_ll_transp.transpose_parallel.approxEqual( m_ll_truth, 1e-10, 1e-10 ) );
+    }
+    
   }
 
   /* octave
@@ -756,6 +932,36 @@ unittest  // ------------------------------
             .all!( vt => isClose(vt[0],vt[1],1e-10,1e-10)
                    || vt[1] == -double.infinity && vt[0] < -1000.0 )
             );
+
+    foreach (do_parallel; [false, true])
+    {
+      scope auto m_data12_transp = m_data12.transpose_parallel;
+
+      scope Matrix m_ll12_transp;
+
+      if (do_parallel)
+        gmm.ll_transp_inplace_dim!true( m_data12_transp, m_ll12_transp );
+      else
+        gmm.ll_transp_inplace_dim!false( m_data12_transp, m_ll12_transp );
+
+      if (verbose)
+        writeln("m_ll12_transp: ", m_ll12_transp );
+
+      // In this case we seem to have better precision than octave
+      // finite numbers where octave outputs -Inf. Deal with this.
+
+      if (verbose)
+        writeln(m_ll12_transp.dim, [gmm.n, m_data12_transp.restdim]);
+      
+      assert( m_ll12_transp.dim == [gmm.n, m_data12_transp.restdim]);
+      assert( m_ll12_transp.dim == m_ll12_truth.dim.dup.reverse );
+
+      assert( zip(m_ll12_transp.transpose_parallel.data, m_ll12_truth.data)
+              .all!( vt => isClose(vt[0],vt[1],1e-10,1e-10)
+                     || vt[1] == -double.infinity && vt[0] < -1000.0 )
+              );
+    }
+
     
   }
   
