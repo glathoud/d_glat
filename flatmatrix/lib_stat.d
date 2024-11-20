@@ -382,7 +382,6 @@ void mean_cov_inplace_dim
     , in size_t[] subset
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov )
-pure nothrow @safe
 {
   static if (transposed_data)
     {
@@ -403,7 +402,6 @@ void mean_cov_inplace_nogc
     , in size_t[] subset
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov )
-pure nothrow @safe @nogc
 {
   static if (transposed_data)
     {
@@ -455,8 +453,7 @@ pure nothrow @safe @nogc
             // diagonal
             foreach (i_mean; parallel( iota( nfeat )))
               {
-                immutable im = i_mean * nsample;
-                immutable next_im = im + nsample;
+                immutable im = i_mean * nsample_0;
 
                 immutable off_cov = i_mean * nfeat;
                 
@@ -490,9 +487,9 @@ pure nothrow @safe @nogc
                     immutable a = ab[ 0 ];
                     immutable b = ab[ 1 ];
 
-                    immutable am_0 = a * nsample;
+                    immutable am_0 = a * nsample_0;
 
-                    immutable bm_0 = b * nsample;
+                    immutable bm_0 = b * nsample_0;
 
                     auto acc_nondiag = cast(T)( 0.0 );
                     foreach (iss; subset)
