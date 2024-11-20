@@ -244,6 +244,15 @@ T mean_of_arr(T)( in T[] arr )
   return arr.reduce!"a+b" / cast(T)( arr.length );
 }
 
+T prod(T)( in T[] arr ) pure nothrow @safe @nogc 
+// just to be able to write @nogc, i.e. not using fold
+{
+  auto p = cast(T)( 1 );
+  foreach (d; arr)
+    p *= d;
+  return p;
+}
+
 double stddev_of_arr(bool unbiased = true,T)( in T[] arr )
 {
   double v_mean, v_stddev;
@@ -266,7 +275,7 @@ void mean_stddev_inplace(bool unbiased = true, T)( in T[] arr, ref T v_mean, ref
     }
   else
     {
-      mean_cov_inplace_dim!(unbiased, /*diag_only:*/true, T)( m, m_mean, m_cov );
+      mean_cov_inplace_dim!(unbiased, /*diag_only:*/true)( m, m_mean, m_cov );
       v_mean   = m_mean.data[ 0 ];
       v_stddev = sqrt( m_cov .data[ 0 ] );
     }

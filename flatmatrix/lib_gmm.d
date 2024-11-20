@@ -345,7 +345,12 @@ struct GmmT( T )
     @safe
   {
     n   = group_arr.length;
-    dim = m_feature.restdim;
+    
+    static if (transposed_data)
+      dim = prod( m_feature.dim[ 0..$-1 ] );
+    else
+      dim = m_feature.restdim; // i.e. prod( ...[1..$] )
+    
     immutable dim_T = cast( T )( dim );
 
     _resize();

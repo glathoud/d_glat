@@ -13,6 +13,7 @@ module d_glat.flatmatrix.lib_stat;
 
 public import d_glat.flatmatrix.core_matrix;
 
+import d_glat.core_math;
 import std.math : sqrt;
 
 void mean_inplace_nogc( T )( in ref MatrixT!T m
@@ -116,16 +117,6 @@ pure nothrow @safe @nogc
 }
 
 
-private size_t _get_prod( in size_t[] arr ) pure nothrow @safe @nogc 
-// just to be able to write @nogc, i.e. not using fold
-{
-  size_t p = 1;
-  foreach (d; arr)
-    p *= d;
-  return p;
-}
-
-
 void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, bool transposed_data = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
@@ -135,8 +126,8 @@ pure nothrow @safe
 {
   static if (transposed_data)
     {
-      m_mean.setDim( [1UL]                         ~ m.dim[ 0..$-1 ] );
-      m_cov .setDim( [_get_prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
+      m_mean.setDim( [1UL]                     ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( [prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -156,7 +147,7 @@ pure nothrow @safe @nogc
   static if (transposed_data)
     {
       immutable nsample = m.dim[ $-1 ];
-      immutable nfeat   = _get_prod( m.dim[ 0..$-1 ] );
+      immutable nfeat   = prod( m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -336,8 +327,8 @@ pure nothrow @safe
 {
   static if (transposed_data)
     {
-      m_mean.setDim( [1UL]                         ~ m.dim[ 0..$-1 ] );
-      m_cov .setDim( [_get_prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
+      m_mean.setDim( [1UL]                     ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( [prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -358,7 +349,7 @@ pure nothrow @safe @nogc
   static if (transposed_data)
     {
       immutable nsample_0 = m.dim[ $-1 ];
-      immutable nfeat     = _get_prod( m.dim[ 0..$-1 ] );
+      immutable nfeat     = prod( m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -426,7 +417,7 @@ pure nothrow @safe @nogc
               size_t k = i_mean + 1;
               for (size_t qm = next_im; qm < n; )
                 {
-                  debug immutable next_qm = qm + nsample_0;
+                  immutable next_qm = qm + nsample_0;
 
                   auto acc_nondiag = cast(T)( 0.0 );
                   foreach (iss; subset)
