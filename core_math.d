@@ -244,14 +244,26 @@ T mean_of_arr(T)( in T[] arr )
   return arr.reduce!"a+b" / cast(T)( arr.length );
 }
 
+
 T prod(T)( in T[] arr ) pure nothrow @safe @nogc 
 // just to be able to write @nogc, i.e. not using fold
 {
   auto p = cast(T)( 1 );
-  foreach (d; arr)
-    p *= d;
+  foreach (x; arr)
+    p *= x;
   return p;
 }
+
+T sum(T)( in T[] arr ) pure nothrow @safe @nogc 
+// just to be able to write @nogc, i.e. not using fold
+{
+  auto s = cast(T)( 0 );
+  foreach (x; arr)
+    s += x;
+  return s;
+}
+
+
 
 double stddev_of_arr(bool unbiased = true,T)( in T[] arr )
 {

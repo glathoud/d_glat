@@ -206,9 +206,7 @@ void corr_one_inplace( T )
      Progressively build `corr` using, for each dimension, the
      formula:
 
-     r_xy = 
-     (sum_i(x_i * y_i) / n - mean_x * mean_y) 
-     / sqrt(var_x * var_y)
+     r_xy = mean_i( (x_i - mean_x) * (y_i - mean_y) ) / sqrt( var_x * var_y )
   */
   many_var[] = 0.0;
   corr[] = 0.0;
@@ -248,6 +246,227 @@ void corr_one_inplace( T )
   foreach (i,v; many_var)
     corr[ i ] /= sqrt( one_var * v );
 }
+
+
+
+
+void corr_one_inplace_transp(bool do_parallel=fase, T)
+  ( in   ref MatrixT!T m_one
+    , in ref MatrixT!T m_many_transp
+    ,    ref MatrixT!T m_corr
+    ,    ref Buffer_corr_one_inplaceT!T buffer
+    ) pure nothrow @safe
+/*
+  (in "transposed space": rows of m_one_transp are
+  features/dimensions, columns are samples)
+
+  Corration of `m_one` (vector) with each dimension of `m_many`.
+  In-place computations for speed.
+
+  Input dimensions (n is the number of samples):
+
+  `m_one`:  `[1,n]` or `[n,1]`
+  `m_many`: `[d,n]`
+
+  Output dimensions:
+
+  `m_corr`: `[d,1]`
+
+  Boost license, as described in file ../LICENSE
+
+  By Guillaume Lathoud
+  glat@glat.info
+*/
+{
+  immutable d = m_many_transp.nrow;
+
+  buffer.m_many_mean.setDim( [ d, 1 ] );
+  buffer.m_many_var .setDim( [ d, 1 ] );
+
+  m_corr.setDim( [d, 1] );
+  
+  corr_one_inplace_transp!(do_parallel,T)( m_one, m_many_transp, m_corr
+                                           , buffer.m_many_mean, buffer.m_many_var 
+                                           );
+}
+
+
+void corr_one_inplace_transp(bool do_parallel,T)
+( /* inputs: */
+ in   ref MatrixT!T m_one
+ , in ref MatrixT!T m_many_transp
+ /* outputs: */
+ ,    ref MatrixT!T m_corr
+ ,    ref MatrixT!T m_many_mean
+ ,    ref MatrixT!T m_many_var
+  ) pure nothrow @safe @nogc
+/*
+  (in "transposed space": rows of m_one_transp are
+  features/dimensions, columns are samples)
+
+  Corration of `m_one` (vector) with each dimension of `m_many`.
+  In-place computations for speed.  
+
+  We also output `m_many_mean`, and `m_many_var` (uncorrected
+  variance).
+
+  Input dimensions (n is the number of samples):
+
+  `m_one`:  `[1,n]` or `[n,1]`
+  `m_many`: `[d,n]`
+
+  Output dimensions:
+
+  `m_corr`:      `[d,1]`
+  `m_many_mean`: `[d,1]`
+  `m_many_var`:  `[d,1]`
+
+  Boost license, as described in file ../LICENSE
+
+  By Guillaume Lathoud
+  glat@glat.info
+*/
+{
+  immutable n = m_one.data.length;
+  immutable d = m_many_transp.nrow;
+
+  debug
+    {
+      assert( m_one.dim.length == 1  &&  m_one.dim[ 0 ] == n
+              ||
+              m_one.dim.length == 2
+              &&  (m_one.dim[ 0 ] == n  &&  m_one.dim[ 1 ] == 1
+                   ||  m_one.dim[ 0 ] == 1  &&  m_one.dim[ 1 ] == n
+                   )
+              );
+      
+      assert( m_many_transp.dim.length == 2 );
+      assert( m_many_transp.dim[ 0 ] == d );
+      assert( m_many_transp.dim[ 1 ] == n );
+
+      static foreach (name;
+                      [`m_corr`, `m_many_mean`, `m_many_var`])
+      {
+        mixin
+          ( `assert
+            ( `~name~`.dim.length == 2
+              &&  `~name~`.dim[ 0 ] == d  &&  `~name~`.dim[ 1 ] ==1
+
+              || `~name~`.dim.length == 1
+              &&  `~name~`.dim[ 0 ] == d
+              );`
+            );
+      }
+    }
+
+  // all are `double[]`
+  scope auto one  = m_one .data;
+  scope auto many_transp = m_many_transp.data;
+  scope auto corr = m_corr.data;
+  scope auto many_mean = m_many_mean.data;
+  scope auto many_var  = m_many_var .data;
+
+  immutable one_over_n_dbl = 1.0 / cast( double )( n );
+
+  immutable many_transp_len = many_transp.length;
+
+  debug
+    {
+      assert( corr.length == d );
+      assert( many_transp_len == n * d );
+    }
+  
+  // one
+
+  immutable one_mean = (){ // xxx real performance? can we replace with sum(one)?
+    double acc = 0.0;
+    foreach (x; one)
+    acc += x;
+    return acc * one_over_n_dbl;
+  }();
+
+  immutable one_var = (){
+    double acc = 0;
+    foreach (x; one)
+    {
+      double tmp = x - one_mean;
+      acc += tmp * tmp;
+    }
+    return acc * one_over_n_dbl;
+  }();
+
+  // many
+
+  {
+    size_t id = 0;
+    for (size_t i = 0; i < many_transp_len;)
+      {
+        immutable next_i = i + n;
+
+        double acc = 0; // xxx real performance? can we replace with sum(many_transp[i..next_i])?
+        foreach (j; i..next_i)
+          acc += many_transp[ j ];
+        
+        many_mean[ id++ ] = acc * one_over_n_dbl;
+
+        i = next_i;
+      }
+    debug assert( id == d );
+  }
+  
+  /* one & many
+
+     Progressively build `corr` using, for each dimension, the
+     formula:
+
+     r_xy = mean_i( (x_i - mean_x) * (y_i - mean_y) ) / sqrt( var_x * var_y )
+   */
+  {
+    size_t id = 0;
+  
+    for (size_t i = 0; i < many_transp_len;)
+      {
+        immutable next_i = i + n;
+
+        immutable mean_id = many_mean[ id ];
+      
+        double acc_many_var = 0.0;
+        double acc_corr     = 0.0;
+
+        size_t i_one = 0;
+        foreach (j; i..next_i)
+          {
+            immutable tmp = many_transp[ j ] - mean_id;
+            acc_many_var += tmp * tmp;
+                    
+            immutable tmp_one = one[ i_one++ ] - one_mean;
+            acc_corr     += tmp * tmp_one;
+          }
+        many_var[ id ] = acc_many_var;
+        corr[ id ]     = acc_corr;
+      
+        ++id;
+        i = next_i;
+      }
+  
+    debug assert( id == d );
+  }
+  
+  many_var[] *= one_over_n_dbl; // uncorrected variance
+  
+  // Implement the formula
+
+  corr[] *= one_over_n_dbl;
+  
+  foreach (i,v; many_var)
+    corr[ i ] /= sqrt( one_var * v );
+}
+
+
+
+
+
+
 
 unittest
 {
@@ -604,6 +823,166 @@ unittest
     
     if (verbose) writeln("corr: ", c );
   }
+
+
+
+
+  // ---------- Repeat the tests with the _transp implementation
+
+  {
+    // Noiseless data
+    
+    auto m_one = Matrix( [ 4, 1 ], [ 1.0, 2.0, 3.0, 4.0 ] );
+    auto m_many_transp = Matrix
+      ( [ 4, 0 ]
+        , zip(
+              m_one.data.map!"-1.0+3.0*a"
+              , m_one.data.map!"+12.0-5.0*a"
+              , m_one.data.map!"0.0"
+              )
+        .map!"a.array"
+        .reduce!"a~b"
+        .array
+        ).transpose;
+
+    if (verbose) writeln("one: ", m_one);
+    if (verbose) writeln("many_transp: ", m_many_transp);
+
+    auto m_corr = Matrix( [ 1, 3 ] );
+    corr_one_inplace_transp( m_one, m_many_transp, m_corr, buffer );
+
+    if (verbose) writeln("corr: ", m_corr );
+
+    assert( isClose( +1.0, m_corr.data[ 0 ] ) );
+    assert( isClose( -1.0, m_corr.data[ 1 ] ) );
+    assert( isNaN( m_corr.data[ 2 ] ) );
+  }
+
+
+  {
+    // Some noise
+
+    /*
+      Octave used to generate this slightly noisy data, and its
+      correlation values:
+
+      orig = [1.0;2.0;3.0;4.0];
+
+      m_one=round(1e5*(orig + 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+      a =round(1e5*(-1.0+3.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+      b =round(1e5*(+12.0-5.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5; 
+
+      c=0.0*orig;
+      m_many=[a b c];
+      m_corr = cov(m_one,m_many,1) ./ (std(m_one,1)*std(m_many,1));
+
+      disp(m_one)
+
+      disp(m_many)
+      
+      disp(sprintf( "%.10g, ", m_corr))
+    */
+
+    // for m_one, transpose optional. Still need to test it.
+    auto m_one_transp = Matrix( [ 4, 1 ]
+                                , [ 0.87717,
+                                    2.08774,
+                                    2.86322,
+                                    4.02435
+                                    ]).transpose;
+    
+    auto m_many_transp = Matrix
+      ( [ 4, 0 ]
+        , [
+           2.12938, 7.11666, 0.00000
+           , 5.01599, 1.81814, 0.00000
+           , 7.89512, -2.84041, 0.00000
+           , 11.08435, -8.14922, 0.00000
+           ]
+        ).transpose;
+
+    if (verbose) writeln("one_transp: ", m_one_transp);
+    if (verbose) writeln("many_transp: ", m_many_transp);
+
+    auto m_corr = Matrix( [ 1, 3 ] );
+    corr_one_inplace_transp( m_one_transp, m_many_transp, m_corr, buffer );
+
+    if (verbose) writeln("corr: ", m_corr );
+
+    assert( isClose
+            ( 0.9970257946, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
+    
+    assert( isClose
+            ( -0.9984470896, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
+    
+    assert( isNaN( m_corr.data[ 2 ] ) );
+  }
+
+  
+
+
+  {
+    // More noise
+
+    /*
+      Octave used to generate this more noisy data, and its
+      correlation values:
+
+      orig = [1.0;2.0;3.0;4.0];
+
+      m_one=round(1e5*(orig + 1.0 * stdnormal_rnd([4,1])))/1e5;
+
+      a =round(1e5*(-1.0+3.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+      b =round(1e5*(+12.0-5.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5; 
+
+      c=0.0*orig;
+      m_many=[a b c];
+      m_corr = cov(m_one,m_many,1) ./ (std(m_one,1)*std(m_many,1));
+
+      disp(m_one)
+
+      disp(m_many)
+      
+      disp(sprintf( "%.10g, ", m_corr))
+    */
+    
+    auto m_one = Matrix( [ 4, 1 ]
+                         , [ 0.84571,
+                             2.33270, 
+                             3.12509, 
+                             3.36448 ]);
+    
+    auto m_many_transp = Matrix
+      ( [ 4, 0 ]
+        , [
+           2.01754, 6.88942, 0.00000
+           , 4.95877, 1.88913, 0.00000
+           , 7.94578, -3.07764, 0.00000
+           , 11.03451, -8.04965, 0.00000
+           ]
+        ).transpose;
+
+    if (verbose) writeln("one: ", m_one);
+    if (verbose) writeln("many_transp: ", m_many_transp);
+
+    auto m_corr = Matrix( [ 1, 3 ] );
+    corr_one_inplace_transp( m_one, m_many_transp, m_corr, buffer );
+
+    if (verbose) writeln("corr: ", m_corr );
+
+    assert( isClose
+            ( 0.9448199076, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
+    
+    assert( isClose
+            ( -0.9487419465, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
+    
+    assert( isNaN( m_corr.data[ 2 ] ) );
+  }
+
+  
 
   
   writeln( "unittest passed: "~__FILE__ );

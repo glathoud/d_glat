@@ -13,6 +13,7 @@ module d_glat.flatmatrix.core_matrix;
 import core.memory;
 import d_glat.core_array;
 import d_glat.core_assert;
+import d_glat.core_math : prod;
 import d_glat.core_memory;
 import d_glat.core_runtime;
 import std.algorithm : map, max, min, sort;
@@ -720,12 +721,18 @@ MatrixT!T dot( T )( in MatrixT!T X, in MatrixT!T Y ) pure nothrow @safe
   return ret;
 }
 
+void dot_inplace_dim( T )( in ref MatrixT!T X, in ref MatrixT!T Y
+                           , ref MatrixT!T ret
+                           ) pure nothrow @safe
+{
+  ret.setDim( [X.nrow, Y.ncol] );
+  dot_inplace_nogc!T( X, Y, ret );
+}
+
 void dot_inplace_nogc( T )( in ref MatrixT!T X, in ref MatrixT!T Y
                             , ref MatrixT!T ret
                             ) pure nothrow @safe @nogc
 {
-  
-
   immutable size_t p = X.nrow, q = X.ncol, r = Y.ncol;
   debug
     {
@@ -870,6 +877,41 @@ void extract_ind_inplace_nogc( T )
       ret[ j ] = data[ i ];
     }
 }
+
+
+
+
+auto extract_ind_m_inplace_transp( T )( in MatrixT!T X_transp, in size_t ind
+                                        , ref MatrixT!T Y
+                                        ) pure nothrow @safe
+{
+  immutable nsample = X_transp.dim[ $-1 ];
+  Y.setDim( [nsample, 1] );
+  extract_ind_inplace_transp_nogc!T( X_transp, ind, Y.data );
+}
+
+
+void extract_ind_inplace_transp_nogc( T )
+  ( in MatrixT!T X_transp, in size_t ind
+    , ref T[] ret ) pure nothrow @safe @nogc
+/* Extract "flat column" `ind` and put it into `ret`
+   Note that X_transp == X.transpose
+*/
+{
+  immutable nsample = X_transp.dim[ $-1 ];
+  debug
+    {
+      immutable d = prod( X_transp.dim[ 0..$-1 ] );
+      assert( 0 <= ind );
+      assert( ind < d );
+      assert( ret.length == nsample );
+    }
+
+  immutable i = ind * nsample;
+  ret[] = X_transp.data[ i..i+nsample ][];
+}
+
+
 
 
 T[] fold_rows(alias /*T[] */fun/*( T[], in T[] row )*/, T)
