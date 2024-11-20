@@ -16,6 +16,8 @@ public import d_glat.flatmatrix.core_matrix;
 
 import d_glat.core_profile_acc;
 import std.math;
+import std.parallelism;
+import std.range : iota;
 import std.stdio;
 
 
@@ -250,12 +252,12 @@ void corr_one_inplace( T )
 
 
 
-void corr_one_inplace_transp(bool do_parallel=fase, T)
+void corr_one_inplace_transp(bool do_parallel=false, T)
   ( in   ref MatrixT!T m_one
     , in ref MatrixT!T m_many_transp
     ,    ref MatrixT!T m_corr
     ,    ref Buffer_corr_one_inplaceT!T buffer
-    ) pure nothrow @safe
+    )
 /*
   (in "transposed space": rows of m_one_transp are
   features/dimensions, columns are samples)
@@ -291,7 +293,7 @@ void corr_one_inplace_transp(bool do_parallel=fase, T)
 }
 
 
-void corr_one_inplace_transp(bool do_parallel,T)
+void corr_one_inplace_transp(bool do_parallel=false,T)
 ( /* inputs: */
  in   ref MatrixT!T m_one
  , in ref MatrixT!T m_many_transp
@@ -299,7 +301,7 @@ void corr_one_inplace_transp(bool do_parallel,T)
  ,    ref MatrixT!T m_corr
  ,    ref MatrixT!T m_many_mean
  ,    ref MatrixT!T m_many_var
-  ) pure nothrow @safe @nogc
+  )
 /*
   (in "transposed space": rows of m_one_transp are
   features/dimensions, columns are samples)
@@ -397,22 +399,38 @@ void corr_one_inplace_transp(bool do_parallel,T)
 
   // many
 
-  {
-    size_t id = 0;
-    for (size_t i = 0; i < many_transp_len;)
-      {
-        immutable next_i = i + n;
-
-        double acc = 0; // xxx real performance? can we replace with sum(many_transp[i..next_i])?
-        foreach (j; i..next_i)
-          acc += many_transp[ j ];
+  static if (do_parallel)
+    {
+      foreach (id; parallel( iota( d ) ))
+        {
+          immutable i = id*n;
+          
+          double acc = 0; // xxx real performance? can we replace with sum(many_transp[i..next_i])?
+          foreach (j; i..i+n)
+            acc += many_transp[ j ];
         
-        many_mean[ id++ ] = acc * one_over_n_dbl;
+          many_mean[ id ] = acc * one_over_n_dbl;
+        }
+    }
+  else
+    {
+      {
+        size_t id = 0;
+        for (size_t i = 0; i < many_transp_len;)
+          {
+            immutable next_i = i + n;
 
-        i = next_i;
+            double acc = 0; // xxx real performance? can we replace with sum(many_transp[i..next_i])?
+            foreach (j; i..next_i)
+              acc += many_transp[ j ];
+        
+            many_mean[ id++ ] = acc * one_over_n_dbl;
+
+            i = next_i;
+          }
+        debug assert( id == d );
       }
-    debug assert( id == d );
-  }
+    }
   
   /* one & many
 
@@ -421,36 +439,63 @@ void corr_one_inplace_transp(bool do_parallel,T)
 
      r_xy = mean_i( (x_i - mean_x) * (y_i - mean_y) ) / sqrt( var_x * var_y )
    */
-  {
-    size_t id = 0;
-  
-    for (size_t i = 0; i < many_transp_len;)
-      {
-        immutable next_i = i + n;
 
-        immutable mean_id = many_mean[ id ];
+  static if (do_parallel)
+    {
+      foreach (id; parallel( iota( d ) ))
+        {
+          immutable i = id*n;
+          immutable mean_id = many_mean[ id ];
       
-        double acc_many_var = 0.0;
-        double acc_corr     = 0.0;
+          double acc_many_var = 0.0;
+          double acc_corr     = 0.0;
 
-        size_t i_one = 0;
-        foreach (j; i..next_i)
-          {
-            immutable tmp = many_transp[ j ] - mean_id;
-            acc_many_var += tmp * tmp;
+          size_t i_one = 0;
+          foreach (j; i..i+n)
+            {
+              immutable tmp = many_transp[ j ] - mean_id;
+              acc_many_var += tmp * tmp;
                     
-            immutable tmp_one = one[ i_one++ ] - one_mean;
-            acc_corr     += tmp * tmp_one;
-          }
-        many_var[ id ] = acc_many_var;
-        corr[ id ]     = acc_corr;
-      
-        ++id;
-        i = next_i;
-      }
+              immutable tmp_one = one[ i_one++ ] - one_mean;
+              acc_corr     += tmp * tmp_one;
+            }
+          many_var[ id ] = acc_many_var;
+          corr[ id ]     = acc_corr;
+        }
+    }
+  else
+    {
+      {
+        size_t id = 0;
   
-    debug assert( id == d );
-  }
+        for (size_t i = 0; i < many_transp_len;)
+          {
+            immutable next_i = i + n;
+
+            immutable mean_id = many_mean[ id ];
+      
+            double acc_many_var = 0.0;
+            double acc_corr     = 0.0;
+
+            size_t i_one = 0;
+            foreach (j; i..next_i)
+              {
+                immutable tmp = many_transp[ j ] - mean_id;
+                acc_many_var += tmp * tmp;
+                    
+                immutable tmp_one = one[ i_one++ ] - one_mean;
+                acc_corr     += tmp * tmp_one;
+              }
+            many_var[ id ] = acc_many_var;
+            corr[ id ]     = acc_corr;
+      
+            ++id;
+            i = next_i;
+          }
+  
+        debug assert( id == d );
+      }
+    }
   
   many_var[] *= one_over_n_dbl; // uncorrected variance
   
@@ -982,6 +1027,173 @@ unittest
     assert( isNaN( m_corr.data[ 2 ] ) );
   }
 
+
+
+
+
+
+
+
+
+
+
+  // ---------- Repeat the tests with the _transp implementation and do_parallel
+
+  {
+    enum do_parallel = true;
+    {
+      // Noiseless data
+    
+      auto m_one = Matrix( [ 4, 1 ], [ 1.0, 2.0, 3.0, 4.0 ] );
+      auto m_many_transp = Matrix
+        ( [ 4, 0 ]
+          , zip(
+                m_one.data.map!"-1.0+3.0*a"
+                , m_one.data.map!"+12.0-5.0*a"
+                , m_one.data.map!"0.0"
+                )
+          .map!"a.array"
+          .reduce!"a~b"
+          .array
+          ).transpose;
+
+      if (verbose) writeln("one: ", m_one);
+      if (verbose) writeln("many_transp: ", m_many_transp);
+
+      auto m_corr = Matrix( [ 1, 3 ] );
+      corr_one_inplace_transp!do_parallel( m_one, m_many_transp, m_corr, buffer );
+
+      if (verbose) writeln("corr: ", m_corr );
+
+      assert( isClose( +1.0, m_corr.data[ 0 ] ) );
+      assert( isClose( -1.0, m_corr.data[ 1 ] ) );
+      assert( isNaN( m_corr.data[ 2 ] ) );
+    }
+
+
+    {
+      // Some noise
+
+      /*
+        Octave used to generate this slightly noisy data, and its
+        correlation values:
+
+        orig = [1.0;2.0;3.0;4.0];
+
+        m_one=round(1e5*(orig + 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+        a =round(1e5*(-1.0+3.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+        b =round(1e5*(+12.0-5.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5; 
+
+        c=0.0*orig;
+        m_many=[a b c];
+        m_corr = cov(m_one,m_many,1) ./ (std(m_one,1)*std(m_many,1));
+
+        disp(m_one)
+
+        disp(m_many)
+      
+        disp(sprintf( "%.10g, ", m_corr))
+      */
+
+      // for m_one, transpose optional. Still need to test it.
+      auto m_one_transp = Matrix( [ 4, 1 ]
+                                  , [ 0.87717,
+                                      2.08774,
+                                      2.86322,
+                                      4.02435
+                                      ]).transpose;
+    
+      auto m_many_transp = Matrix
+        ( [ 4, 0 ]
+          , [
+             2.12938, 7.11666, 0.00000
+             , 5.01599, 1.81814, 0.00000
+             , 7.89512, -2.84041, 0.00000
+             , 11.08435, -8.14922, 0.00000
+             ]
+          ).transpose;
+
+      if (verbose) writeln("one_transp: ", m_one_transp);
+      if (verbose) writeln("many_transp: ", m_many_transp);
+
+      auto m_corr = Matrix( [ 1, 3 ] );
+      corr_one_inplace_transp!do_parallel( m_one_transp, m_many_transp, m_corr, buffer );
+
+      if (verbose) writeln("corr: ", m_corr );
+
+      assert( isClose
+              ( 0.9970257946, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
+    
+      assert( isClose
+              ( -0.9984470896, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
+    
+      assert( isNaN( m_corr.data[ 2 ] ) );
+    }
+
+  
+
+
+    {
+      // More noise
+
+      /*
+        Octave used to generate this more noisy data, and its
+        correlation values:
+
+        orig = [1.0;2.0;3.0;4.0];
+
+        m_one=round(1e5*(orig + 1.0 * stdnormal_rnd([4,1])))/1e5;
+
+        a =round(1e5*(-1.0+3.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5;
+
+        b =round(1e5*(+12.0-5.0*orig+ 0.1 * stdnormal_rnd([4,1])))/1e5; 
+
+        c=0.0*orig;
+        m_many=[a b c];
+        m_corr = cov(m_one,m_many,1) ./ (std(m_one,1)*std(m_many,1));
+
+        disp(m_one)
+
+        disp(m_many)
+      
+        disp(sprintf( "%.10g, ", m_corr))
+      */
+    
+      auto m_one = Matrix( [ 4, 1 ]
+                           , [ 0.84571,
+                               2.33270, 
+                               3.12509, 
+                               3.36448 ]);
+    
+      auto m_many_transp = Matrix
+        ( [ 4, 0 ]
+          , [
+             2.01754, 6.88942, 0.00000
+             , 4.95877, 1.88913, 0.00000
+             , 7.94578, -3.07764, 0.00000
+             , 11.03451, -8.04965, 0.00000
+             ]
+          ).transpose;
+
+      if (verbose) writeln("one: ", m_one);
+      if (verbose) writeln("many_transp: ", m_many_transp);
+
+      auto m_corr = Matrix( [ 1, 3 ] );
+      corr_one_inplace_transp!do_parallel( m_one, m_many_transp, m_corr, buffer );
+
+      if (verbose) writeln("corr: ", m_corr );
+
+      assert( isClose
+              ( 0.9448199076, m_corr.data[ 0 ], 1e-8, 1e-8 ) );
+    
+      assert( isClose
+              ( -0.9487419465, m_corr.data[ 1 ], 1e-8, 1e-8 ) );
+    
+      assert( isNaN( m_corr.data[ 2 ] ) );
+    }
+  }
   
 
   

@@ -594,7 +594,7 @@ unittest // ------------------------------
 {
   import std.stdio;
 
-  immutable verbose = true;
+  immutable verbose = false;
   
   writeln;
   writeln( "unittest starts: "~__FILE__ );
