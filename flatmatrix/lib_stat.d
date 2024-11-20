@@ -297,41 +297,48 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
     }
   else
     {
-      for (size_t im = 0; im < n; )
-        {
-          immutable next_im = im + nfeat;
+      static if (do_parallel)
+        {{
+            alert( false, "parallel not implemented, consider transposed+parallel");
+          }}
+      else
+        {{
+            for (size_t im = 0; im < n; )
+              {
+                immutable next_im = im + nfeat;
 
-          size_t i_mean  = 0;
-          size_t off_cov = 0;
+                size_t i_mean  = 0;
+                size_t off_cov = 0;
       
-          while (im < next_im)
-            {
-              immutable vi = m_data[ im ];
+                while (im < next_im)
+                  {
+                    immutable vi = m_data[ im ];
           
-              mean_data[ i_mean ] += vi;
+                    mean_data[ i_mean ] += vi;
 
-              static if (diag_only)
-                {
-                  cov_data[ off_cov + i_mean ] += vi * vi;
-                }
-              else
-                {
-                  size_t jm = im;
-                  foreach (k; i_mean..nfeat)
-                    cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
+                    static if (diag_only)
+                      {
+                        cov_data[ off_cov + i_mean ] += vi * vi;
+                      }
+                    else
+                      {
+                        size_t jm = im;
+                        foreach (k; i_mean..nfeat)
+                          cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
               
-                  debug assert( jm == next_im );
-                }
+                        debug assert( jm == next_im );
+                      }
           
-              ++im;
-              ++i_mean;
-              off_cov += nfeat;
-            }
+                    ++im;
+                    ++i_mean;
+                    off_cov += nfeat;
+                  }
 
-          debug assert( im == next_im );
-          debug assert( i_mean == nfeat );
-          debug assert( off_cov == cov_data.length );
-        }
+                debug assert( im == next_im );
+                debug assert( i_mean == nfeat );
+                debug assert( off_cov == cov_data.length );
+              }
+          }}
     }
   
   immutable double nsample_dbl = cast( double )( nsample );
