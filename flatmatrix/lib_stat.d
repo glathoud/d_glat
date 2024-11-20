@@ -126,6 +126,7 @@ void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, bool tr
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov
     )
+  @safe
 {
   static if (transposed_data)
     {
@@ -145,6 +146,7 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov
     )
+ @trusted
 {
   static if (transposed_data)
     {
@@ -382,6 +384,7 @@ void mean_cov_inplace_dim
     , in size_t[] subset
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov )
+   @safe
 {
   static if (transposed_data)
     {
@@ -401,7 +404,7 @@ void mean_cov_inplace_nogc
   ( in ref MatrixT!T m
     , in size_t[] subset
     , ref MatrixT!T m_mean
-    , ref MatrixT!T m_cov )
+    , ref MatrixT!T m_cov ) @trusted
 {
   static if (transposed_data)
     {
