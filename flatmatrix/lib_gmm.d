@@ -335,8 +335,10 @@ struct GmmT( T )
           destroy( _b_det );
         }
     }
+
+  alias setOfGroupArrTransp = setOfGroupArr!(/*transposed_data:*/true);
   
-  void setOfGroupArr( in ref MatrixT!T m_feature
+  void setOfGroupArr(bool transposed_data=false)( in ref MatrixT!T m_feature
                       , in size_t[][] group_arr
                       , in bool diag_only = false
                       )
@@ -364,13 +366,13 @@ struct GmmT( T )
       {
         if (diag_only)
           {
-            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/true)
+            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/true, transposed_data)
               ( /*Inputs:*/  m_feature, /*subset:*/group
                 /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
           }
         else
           {
-            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/false)
+            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/false, transposed_data)
               ( /*Inputs:*/  m_feature, /*subset:*/group
                 /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
           }

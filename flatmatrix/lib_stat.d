@@ -116,38 +116,63 @@ pure nothrow @safe @nogc
 }
 
 
-void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, T )
+void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, bool transposed_data = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov
     )
 pure nothrow @safe
 {
-  m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
-  m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
-  mean_cov_inplace_nogc!( unbiased, diag_only, T )( m, m_mean, m_cov );
+  static if (transposed_data)
+    {
+      m_mean.setDim( [ 1UL ]                    ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( m.dim[ 0..$-1 ].fold!"a*b" ~ m.dim[ 0..$-1 ] );
+    }
+  else
+    {
+      m_mean.setDim( [ 1UL ]       ~ m.dim[ 1..$ ] );
+      m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
+    }
+  mean_cov_inplace_nogc!( unbiased, diag_only, transposed_data, T )( m, m_mean, m_cov );
 }
 
-void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, T )
+void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool transposed_data = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov
     )
 pure nothrow @safe @nogc
 {
+  static if (transposed_data)
+    {
+      immutable nsample = m.dim[ $-1 ];
+      immutable nfeat   = m.dim[ 0..$-1 ].fold!"a*b";
+    }
+  else
+    {
+      immutable nsample = m.nrow; 
+      immutable nfeat   = m.restdim; // i.e. m.dim[ 1..$ ].fold!"a*b";
+    }
+  
   debug
     {
       assert( m_mean.dim[ 0 ] == 1 );
-      assert( m_mean.dim[ 1..$ ] == m.dim[ 1..$ ] );
 
-      assert( m_cov.dim[ 0 ] == m.restdim );
-      assert( m_cov.dim[ 1..$ ] == m.dim[ 1..$ ] );
+      static if (transposed_data)
+        assert( m_mean.dim[ 1..$ ] == m.dim[ 0..$-1 ] );
+      else
+        assert( m_mean.dim[ 1..$ ] == m.dim[ 1..$ ] );
+
+      assert( m_cov.dim[ 0 ] == nfeat );
+
+      static if (transposed_data)
+        assert( m_cov.dim[ 1..$ ] == m.dim[ 0..$-1 ] );
+      else
+        assert( m_cov.dim[ 1..$ ] == m.dim[ 1..$ ] );
     }
-
+  
   immutable n  = m.data.length;
-  immutable nv = m.dim[ 0 ];
-  immutable rd = m.restdim;
-
+  
   debug assert( n > 1 );
 
   scope auto m_data    = m.data;
@@ -157,82 +182,89 @@ pure nothrow @safe @nogc
   mean_data[] = cast( T )( 0.0 );
   cov_data[]  = cast( T )( 0.0 );
 
-  for (size_t im = 0; im < n; )
+  static if (transposed_data)
     {
-      immutable next_im = im + rd;
-
-      size_t i_mean  = 0;
-      size_t off_cov = 0;
-      
-      while (im < next_im)
-        {
-          immutable vi = m_data[ im ];
-          
-          mean_data[ i_mean ] += vi;
-
-          static if (diag_only)
-            {
-              cov_data[ off_cov + i_mean ] += vi * m_data[ im ];
-            }
-          else
-            {
-              size_t jm = im;
-              foreach (k; i_mean..rd)
-                cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
-              
-              debug assert( jm == next_im );
-            }
-          
-          ++im;
-          ++i_mean;
-          off_cov += rd;
-        }
-
-      debug assert( im == next_im );
-      debug assert( i_mean == rd );
-      debug assert( off_cov == cov_data.length );
+      assert( false, "xxx todo" );
     }
+  else
+    {
+      for (size_t im = 0; im < n; )
+        {
+          immutable next_im = im + nfeat;
 
-  immutable double nv_dbl = cast( double )( nv );
-  mean_data[] /= nv_dbl;
+          size_t i_mean  = 0;
+          size_t off_cov = 0;
+      
+          while (im < next_im)
+            {
+              immutable vi = m_data[ im ];
+          
+              mean_data[ i_mean ] += vi;
+
+              static if (diag_only)
+                {
+                  cov_data[ off_cov + i_mean ] += vi * m_data[ im ];
+                }
+              else
+                {
+                  size_t jm = im;
+                  foreach (k; i_mean..nfeat)
+                    cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
+              
+                  debug assert( jm == next_im );
+                }
+          
+              ++im;
+              ++i_mean;
+              off_cov += nfeat;
+            }
+
+          debug assert( im == next_im );
+          debug assert( i_mean == nfeat );
+          debug assert( off_cov == cov_data.length );
+        }
+    }
+  
+  immutable double nsample_dbl = cast( double )( nsample );
+  mean_data[] /= nsample_dbl;
   
   immutable double r_cov = mixin((){
       if (unbiased)
-        return `1.0 / (nv_dbl - 1.0)`;
+        return `1.0 / (nsample_dbl - 1.0)`;
       else
-        return `1.0 / nv_dbl`;
+        return `1.0 / nsample_dbl`;
     }());
 
   size_t offset = 0;
-  foreach (i; 0..rd)
+  foreach (i; 0..nfeat)
     {
       offset += i;
       
-      foreach (j; i..rd)
+      foreach (j; i..nfeat)
         {
-          debug assert( offset == i * rd + j );
+          debug assert( offset == i * nfeat + j );
           
           auto x
             = cov_data[ offset ]
             = r_cov *
             (cov_data[ offset ]
-             - nv_dbl *  mean_data[ i ] * mean_data[ j ]);
+             - nsample_dbl *  mean_data[ i ] * mean_data[ j ]);
           
           static if (diag_only)
             {
-              offset += rd-i;
+              offset += nfeat-i;
               break;
             }
           else
             {
               if (i < j)
-                cov_data[ j * rd + i ] = x;
+                cov_data[ j * nfeat + i ] = x;
               
               ++offset;
             }
         }
     }
-  debug assert( offset == rd*rd );
+  debug assert( offset == nfeat*nfeat );
 }
 
 
