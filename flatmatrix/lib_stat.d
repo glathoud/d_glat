@@ -329,7 +329,7 @@ pure nothrow @safe @nogc
 
           static if (diag_only)
             {
-              cov_data[ off_cov + i_mean ] += vi * m_data[ im ];
+              cov_data[ off_cov + i_mean ] += vi * vi;
             }
           else
           {
