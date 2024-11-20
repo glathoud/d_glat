@@ -203,7 +203,7 @@ pure nothrow @safe @nogc
 
               static if (diag_only)
                 {
-                  cov_data[ off_cov + i_mean ] += vi * m_data[ im ];
+                  cov_data[ off_cov + i_mean ] += vi * vi;
                 }
               else
                 {
@@ -229,10 +229,10 @@ pure nothrow @safe @nogc
   mean_data[] /= nsample_dbl;
   
   immutable double r_cov = mixin((){
-      if (unbiased)
-        return `1.0 / (nsample_dbl - 1.0)`;
-      else
-        return `1.0 / nsample_dbl`;
+      return unbiased
+        ?  `1.0 / (nsample_dbl - 1.0)`
+        :  `1.0 / nsample_dbl`
+        ;
     }());
 
   size_t offset = 0;
