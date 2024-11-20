@@ -336,12 +336,15 @@ struct GmmT( T )
         }
     }
 
-  alias setOfGroupArrTransp = setOfGroupArr!(/*transposed_data:*/true);
+  alias setOfGroupArrTranspParallel = setOfGroupArr!(/*transposed_data:*/true,/*do_parallel:*/true);
+
+  alias setOfGroupArrTransp = setOfGroupArr!(/*transposed_data:*/true,/*do_parallel:*/false);
   
-  void setOfGroupArr(bool transposed_data=false)( in ref MatrixT!T m_feature
-                      , in size_t[][] group_arr
-                      , in bool diag_only = false
-                      )
+  void setOfGroupArr(bool transposed_data=false, bool do_parallel=false)
+    ( in ref MatrixT!T m_feature
+      , in size_t[][] group_arr
+      , in bool diag_only = false
+      )
     @safe
   {
     n   = group_arr.length;
@@ -371,13 +374,13 @@ struct GmmT( T )
       {
         if (diag_only)
           {
-            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/true, transposed_data)
+            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/true, transposed_data, do_parallel)
               ( /*Inputs:*/  m_feature, /*subset:*/group
                 /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
           }
         else
           {
-            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/false, transposed_data)
+            mean_cov_inplace_dim!(/*unbiased:*/true,/*diag_only:*/false, transposed_data, do_parallel)
               ( /*Inputs:*/  m_feature, /*subset:*/group
                 /*Outputs:*/ , m_mean_arr[ i_g ], m_cov_arr[ i_g ] );
           }
@@ -399,6 +402,7 @@ struct GmmT( T )
                                                   , _zero_j_arr
                                                   );
 
+            // xxx try to parallelize this as well
             success =
               inv_inplace( m_cov_arr[ i_g ], m_invcov_arr[ i_g ]
                            , _b_inv_inplace
