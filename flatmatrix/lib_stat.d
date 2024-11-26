@@ -192,7 +192,7 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
       static if (do_parallel)
         {{
             // diagonal
-            foreach (i_mean; parallel( iota( nfeat )))
+            foreach (i_mean; parallel( iota( nfeat ), /*workUnitSize:*/1))
               {
                 immutable im = i_mean * nsample;
                 immutable next_im = im + nsample;
@@ -224,7 +224,7 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
                     ab_app.put( ab );
                   }
                 
-                foreach (ab; parallel( ab_app.data ))
+                foreach (ab; parallel( ab_app.data, /*workUnitSize:*/1 ))
                   {
                     immutable a = ab[ 0 ];
                     immutable b = ab[ 1 ];
@@ -461,7 +461,7 @@ void mean_cov_inplace_nogc
       static if (do_parallel)
         {{
             // diagonal
-            foreach (i_mean; parallel( iota( nfeat )))
+            foreach (i_mean; parallel( iota( nfeat ), /*workUnitSize:*/1))
               {
                 immutable im = i_mean * nsample_0;
 
@@ -492,7 +492,7 @@ void mean_cov_inplace_nogc
                     ab_app.put( ab );
                   }
                 
-                foreach (ab; parallel( ab_app.data ))
+                foreach (ab; parallel( ab_app.data, /*workUnitSize:*/1 ))
                   {
                     immutable a = ab[ 0 ];
                     immutable b = ab[ 1 ];

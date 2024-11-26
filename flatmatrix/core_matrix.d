@@ -1372,9 +1372,23 @@ MatrixT!T subset_row( T )( in MatrixT!T A, in size_t[] row_arr ) pure nothrow @s
   return B;
 }
 
-void subset_row_inplace_nogc
-( T )( in ref MatrixT!T A, in size_t[] row_arr
-       , ref MatrixT!T B ) pure nothrow @safe @nogc 
+
+void subset_row_inplace(T)
+  ( in MatrixT!T A, in size_t[] row_arr
+    , ref MatrixT!T B )
+  pure nothrow @safe
+{
+  immutable new_nrow = row_arr.length;
+
+  B.setDim( [ new_nrow ] ~ A.dim[ 1..$ ] );
+  
+  subset_row_inplace_nogc!T( A, row_arr, B );
+}
+
+void subset_row_inplace_nogc(T)
+  ( in ref MatrixT!T A, in size_t[] row_arr
+    , ref MatrixT!T B )
+  pure nothrow @safe @nogc 
 {
   debug
     {
@@ -1622,7 +1636,7 @@ void transpose_inplace_noSetDim_parallel( T )
   immutable row_step_A =
     max( 1, cast(size_t)( ceil( (cast(double)( nrow_A )) / (cast(double)( ncpu )) ) ) );
 
-  foreach (row_begin; parallel( iota( 0, nrow_A, row_step_A )))
+  foreach (row_begin; parallel( iota( 0, nrow_A, row_step_A ), /*workUnitSize:*/1))
     {
       immutable row_end = min( nrow_A, row_begin + row_step_A );
       

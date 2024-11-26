@@ -401,7 +401,7 @@ void corr_one_inplace_transp(bool do_parallel=false,T)
 
   static if (do_parallel)
     {
-      foreach (id; parallel( iota( d ) ))
+      foreach (id; parallel( iota( d ), /*workUnitSize:*/1 ))
         {
           immutable i = id*n;
           
@@ -442,7 +442,7 @@ void corr_one_inplace_transp(bool do_parallel=false,T)
 
   static if (do_parallel)
     {
-      foreach (id; parallel( iota( d ) ))
+      foreach (id; parallel( iota( d ), /*workUnitSize:*/1 ))
         {
           immutable i = id*n;
           immutable mean_id = many_mean[ id ];
