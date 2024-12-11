@@ -1382,6 +1382,16 @@ MatrixT!T subset_col(T)( in MatrixT!T A, in size_t[] col_arr ) pure nothrow @saf
   return B;
 }
 
+void subset_col_inplace(T)( in MatrixT!T A, in size_t[] col_arr, ref MatrixT!T B ) pure nothrow @safe
+{
+  immutable nrow     = A.nrow;
+  immutable new_ncol = col_arr.length;
+
+  B.setDim( [nrow, new_ncol] );
+
+  subset_col_inplace_nogc!T( A, col_arr, B );
+}
+
 void subset_col_inplace_nogc(T)( in ref MatrixT!T A, in size_t[] col_arr
                                  , ref MatrixT!T B
                                  ) pure nothrow @safe @nogc
