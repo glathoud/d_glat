@@ -79,6 +79,25 @@ struct MatrixT( T )
       complete_dim();
   }
 
+  void setCopy( in MatrixT!T other ) pure nothrow @safe
+  {
+    setCopy( other.dim, other.data );
+  }
+  
+  
+  void setCopy( in size_t[] dim, in T[] data ) pure nothrow @safe
+  {
+    this.dim = dim.dup;
+
+    arr_ensure_length( data.length, this.data );
+    this.data[] = data[];
+    
+    // One of the `dim[i]` numbers may be `0` => will be
+    // automatically computed
+    complete_dim();
+  }
+
+    
   
   void set( in size_t[] dim, in T init_val ) pure nothrow @safe
   {

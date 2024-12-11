@@ -245,21 +245,23 @@ T mean_of_arr(T)( in T[] arr )
 }
 
 
-T prod(T)( in T[] arr ) pure nothrow @safe @nogc 
+U prod(string E="a",T,U=T)( in T[] arr ) pure nothrow @safe @nogc 
 // just to be able to write @nogc, i.e. not using fold
+// and also E to provide a limited replacement for map
 {
-  auto p = cast(T)( 1 );
-  foreach (x; arr)
-    p *= x;
+  auto p = cast(U)( 1 );
+  foreach (a; arr)
+    p *= mixin(E);
   return p;
 }
 
-T sum(T)( in T[] arr ) pure nothrow @safe @nogc 
+U sum(string E="a",T,U=T)( in T[] arr ) pure nothrow @safe @nogc 
 // just to be able to write @nogc, i.e. not using fold
+// and also E to provide a limited replacement for map
 {
-  auto s = cast(T)( 0 );
-  foreach (x; arr)
-    s += x;
+  auto s = cast(U)( 0 );
+  foreach (a; arr)
+    s += mixin(E);
   return s;
 }
 
