@@ -42,7 +42,7 @@ struct GmmT( T )
   T[]         logfactor_arr; // log(1/sqrt((2*pi)^k * det(m_cov)))
 
   // private stuff for computation
-  private immutable T LOG_TWO_PI =
+  private static immutable T LOG_TWO_PI =
     cast( T )( log( 2 ) + log( PI ) );
 
   private MatrixT!T m_x, m_xmm, m_xmmT
