@@ -112,8 +112,6 @@ string getOctaveVersion() { return _getOctaveVersion(); }
 
 bool isOctaveSupported() { return _isOctaveSupported(); }
 
-//alias octaveExec = octaveExecT!double;
-
 enum OCTAVE_VERBOSE_DEFAULT = true;
 
 MatrixT!T octaveExecT(T)( in MAction[] mact_arr, in bool verbose = OCTAVE_VERBOSE_DEFAULT )
@@ -939,12 +937,12 @@ unittest  // --------------------------------------------------
         auto B = Matrix( [0,3], [ 100.0, 200.0, 300.0,
                                   400.0, 500.0, 600.0] );
     
-        Matrix C = octaveExec([ mClearAll
-                                , mSet( "A", A )
-                                , mSet( "B", B )
-                                , mExec( "C = A + B;" )
-                                , mPrintMatrix( "C" )
-                                ]);
+        Matrix C = octaveExecT!double([ mClearAll
+                                        , mSet( "A", A )
+                                        , mSet( "B", B )
+                                        , mExec( "C = A + B;" )
+                                        , mPrintMatrix( "C" )
+                                        ]);
 
         const C_expected = direct_add( A, B );
 
