@@ -57,56 +57,76 @@ void mean_inplace_nogc( T )( in ref MatrixT!T m
 
 
 
-
-void mean_cov_crosscorr_inplace_dim( bool unbiased = true, bool diag_only = false, T )
+void mean_cov_crosscorr_inplace_dim( bool unbiased = true, bool diag_only = false, bool transposed_data = false, bool do_parallel = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov
     , ref MatrixT!T m_crosscorr
     )
-pure nothrow @safe
 // https://en.wikipedia.org/wiki/Covariance_and_correlation
 {
-  m_mean.setDim( [ 1UL ] ~ m.dim[ 1..$ ] );
-  m_cov .setDim( [ m.restdim ] ~ m.dim[ 1..$ ] );
+  static if (transposed_data)
+    {
+      m_mean.setDim( [1UL]                     ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( [prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
+    }
+  else
+    {
+      m_mean.setDim( [1UL]       ~ m.dim[ 1..$ ] );
+      m_cov .setDim( [m.restdim] ~ m.dim[ 1..$ ] );
+    }
   m_crosscorr.setDim( m_cov.dim );
-  mean_cov_crosscorr_inplace_nogc!( unbiased, diag_only, T )( m, m_mean, m_cov, m_crosscorr );
+  mean_cov_crosscorr_inplace_nogc!(unbiased, diag_only, transposed_data, do_parallel, T)( m, m_mean, m_cov, m_crosscorr );
 }
 
 
-void mean_cov_crosscorr_inplace_nogc( bool unbiased = true, bool diag_only = false, T )
+void mean_cov_crosscorr_inplace_nogc( bool unbiased = true, bool diag_only = false, bool transposed_data = false, bool do_parallel = false, T )
   ( in ref MatrixT!T m
     , ref MatrixT!T m_mean
     , ref MatrixT!T m_cov
     , ref MatrixT!T m_crosscorr
     )
-pure nothrow @safe @nogc
 // https://en.wikipedia.org/wiki/Covariance_and_correlation
 {
+  static if (transposed_data)
+    {
+      immutable nsample = m.dim[ $-1 ];
+      immutable nfeat   = prod( m.dim[ 0..$-1 ] );
+    }
+  else
+    {
+      immutable nsample = m.nrow; 
+      immutable nfeat   = m.restdim; // i.e. m.dim[ 1..$ ].fold!"a*b";
+    }
+
   debug
     {
       assert( m_mean.dim[ 0 ] == 1 );
-      assert( m_mean.dim[ 1..$ ] == m.dim[ 1..$ ] );
 
-      assert( m_cov.dim[ 0 ] == m.restdim );
-      assert( m_cov.dim[ 1..$ ] == m.dim[ 1..$ ] );
+      static if (transposed_data)
+        assert( m_mean.dim[ 1..$ ] == m.dim[ 0..$-1 ] );
+      else
+        assert( m_mean.dim[ 1..$ ] == m.dim[ 1..$ ] );
 
-      assert( m_crosscorr.dim[ 0 ] == m.restdim );
-      assert( m_crosscorr.dim[ 1..$ ] == m.dim[ 1..$ ] );
+      assert( m_cov.dim[ 0 ] == nfeat );
+
+      static if (transposed_data)
+        assert( m_cov.dim[ 1..$ ] == m.dim[ 0..$-1 ] );
+      else
+        assert( m_cov.dim[ 1..$ ] == m.dim[ 1..$ ] );
+
+      assert( m_crosscorr.dim == m_cov.dim );
     }
 
-  mean_cov_inplace_nogc( m, m_mean, m_cov );
+  mean_cov_inplace_nogc!(unbiased, diag_only, transposed_data, do_parallel)( m, m_mean, m_cov );
 
   m_crosscorr.data[] = m_cov.data[];
+
+  auto cov_data = m_cov.data.ptr;
+  auto cc_data  = m_crosscorr.data.ptr;
   
-  immutable rd = m.restdim;
-  
-  auto cov_data = m_cov.data;
-  auto cc_data  = m_crosscorr.data;
-  
-  foreach (i; 0..rd)
-    {
-      immutable diag_ind = i*(rd+1);
+  immutable one_d_C = q{
+      immutable diag_ind = i*(nfeat+1);
       immutable var_i = cov_data[ diag_ind ];
       cc_data[ diag_ind ] /= var_i;
 
@@ -114,9 +134,20 @@ pure nothrow @safe @nogc
         {
           immutable std_i = sqrt( var_i );
           
-          foreach (j; (i+1)..rd)
-            cc_data[ j*rd + i ] = (cc_data[ i*rd + j ] /= (std_i * sqrt( cov_data[ j*(rd+1) ] ) ));
+          foreach (j; (i+1)..nfeat)
+            cc_data[ j*nfeat + i ] = (cc_data[ i*nfeat + j ] /= (std_i * sqrt( cov_data[ j*(nfeat+1) ] ) ));
         }
+  };
+
+  if (do_parallel)
+    {
+      foreach (i; parallel( iota( nfeat ), /*workUnitSize:*/1 ))
+        mixin( one_d_C );
+    }
+  else
+    {
+      foreach (i; 0..nfeat)
+        mixin( one_d_C );
     }
 }
 
@@ -180,13 +211,17 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
   
   debug assert( n > 1 );
 
-  scope auto m_data    = m.data;
-  scope auto mean_data = m_mean.data;
-  scope auto cov_data  = m_cov.data;
+  auto m_data_0    = m.data;
+  auto mean_data_0 = m_mean.data;
+  auto cov_data_0  = m_cov.data;
 
-  mean_data[] = cast( T )( 0.0 );
-  cov_data[]  = cast( T )( 0.0 );
+  mean_data_0[] = cast( T )( 0.0 );
+  cov_data_0[]  = cast( T )( 0.0 );
 
+  auto m_data    = m.data.ptr;
+  auto mean_data = m_mean.data.ptr;
+  auto cov_data  = m_cov.data.ptr;
+  
   static if (transposed_data)
     {
       static if (do_parallel)
@@ -292,14 +327,15 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
             }
 
           debug assert( i_mean == nfeat );
-          debug assert( off_cov == cov_data.length );
+          debug assert( off_cov == cov_data_0.length );
           }}
     }
   else
     {
       static if (do_parallel)
         {{
-            alert( false, "parallel not implemented, consider transposed+parallel");
+            int i = 1;
+            assert( --i, "parallel not implemented, consider transposed+parallel" );
           }}
       else
         {{
@@ -336,13 +372,13 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
 
                 debug assert( im == next_im );
                 debug assert( i_mean == nfeat );
-                debug assert( off_cov == cov_data.length );
+                debug assert( off_cov == cov_data_0.length );
               }
           }}
     }
   
   immutable double nsample_dbl = cast( double )( nsample );
-  mean_data[] /= nsample_dbl;
+  mean_data_0[] /= nsample_dbl;
   
   immutable double r_cov = mixin((){
       return unbiased
@@ -563,41 +599,48 @@ void mean_cov_inplace_nogc
     }
   else
     {
-      foreach (iss; subset)
+      static if (do_parallel)
         {
-          size_t         im = iss * nfeat;
-          immutable next_im = im + nfeat;
-
-          size_t i_mean  = 0;
-          size_t off_cov = 0;
-      
-          while (im < next_im)
+          assert( false, "xxx not implemented. Consider transposed_data" );
+        }
+      else
+        {
+          foreach (iss; subset)
             {
-              immutable vi = m_data[ im ];
-          
-              mean_data[ i_mean ] += vi;
+              size_t         im = iss * nfeat;
+              immutable next_im = im + nfeat;
 
-              static if (diag_only)
+              size_t i_mean  = 0;
+              size_t off_cov = 0;
+      
+              while (im < next_im)
                 {
-                  cov_data[ off_cov + i_mean ] += vi * vi;
-                }
-              else
-                {
-                  size_t jm = im;
-                  foreach (k; i_mean..nfeat)
-                    cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
-
-                  debug assert( jm == next_im );
-                }
+                  immutable vi = m_data[ im ];
           
-              ++im;
-              ++i_mean;
-              off_cov += nfeat;
+                  mean_data[ i_mean ] += vi;
+
+                  static if (diag_only)
+                    {
+                      cov_data[ off_cov + i_mean ] += vi * vi;
+                    }
+                  else
+                    {
+                      size_t jm = im;
+                      foreach (k; i_mean..nfeat)
+                        cov_data[ off_cov + k ] += vi * m_data[ jm++ ];
+
+                      debug assert( jm == next_im );
+                    }
+          
+                  ++im;
+                  ++i_mean;
+                  off_cov += nfeat;
+                }
+
+              debug assert( im == next_im );
+              debug assert( i_mean == nfeat );
+              debug assert( off_cov == cov_data.length );
             }
-
-          debug assert( im == next_im );
-          debug assert( i_mean == nfeat );
-          debug assert( off_cov == cov_data.length );
         }
     }
   
