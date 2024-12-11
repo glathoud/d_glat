@@ -575,6 +575,52 @@ alias concatcol_parallel = interleave_parallel;
 alias concatcol_inplace          = interleave_inplace;
 alias concatcol_inplace_parallel = interleave_inplace_parallel;
 
+MatrixT!T concatrow_v(bool do_parallel = false, T)( in T[][] v_arr_arr ) pure nothrow @safe
+{
+  MatrixT!T ret;
+  concatrow_v_inplace!(do_parallel, T)( v_arr_arr, ret );
+  return ret;
+}
+
+void concatrow_v_inplace(bool do_parallel = false, T)( in T[][] v_arr_arr, ref MatrixT!T ret )
+pure nothrow @safe
+{
+  immutable nrow = v_arr_arr.length;
+  immutable ncol = v_arr_arr[ 0 ].length;
+
+  ret.setDim( [nrow, ncol] );
+  concatrow_v_inplace_nogc!(do_parallel, T)( v_arr_arr, ret );
+}
+
+void concatrow_v_inplace_nogc(bool do_parallel = false, T)( in T[][] v_arr_arr, ref MatrixT!T ret )
+pure nothrow @trusted @nogc
+{
+  immutable nrow = v_arr_arr.length;
+  immutable ncol = v_arr_arr[ 0 ].length;
+  debug
+    {
+      assert( ret.nrow == nrow );
+      assert( ret.restdim == ncol );
+    }
+
+  auto data = ret.data.ptr;
+  static if (do_parallel)
+    {
+      foreach (irow; parallel( iota( nrow ), /*workUnitSize*/1))
+        {
+          immutable jbegin = irow * icol;
+          data[ jbegin..jbegin+ncol ][] = v_arr_arr[ icol ][];
+        }
+    }
+  else
+    {
+      size_t jbegin = 0;
+      foreach (ref v_arr; v_arr_arr){
+        data[ jbegin..(jbegin = jbegin+ncol)][] = v_arr[];
+      }
+    }
+}
+
 
 MatrixT!T concatrow( T )( in MatrixT!T a, in MatrixT!T b ) pure nothrow @safe
 {
