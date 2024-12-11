@@ -17,12 +17,13 @@ import std.traits : hasMember;
 */
 
 
-T[] arr_change_order(T)( in size_t[] ind_arr, in T[] arr) pure @safe
+T[] arr_change_order(T)( in size_t[] ind_arr, in T[] arr) pure @trusted
 {
   auto ret = new T[ arr.length ];
-  
+
+  auto ret_ptr = ret.ptr;
   foreach (out_ind, in_ind; ind_arr)
-    ret[ out_ind ] = arr[ in_ind ];
+    ret_ptr[ out_ind ] = arr[ in_ind ];
   
   return ret;
 }
@@ -98,6 +99,18 @@ bool arr_equal_nan(T)( in T[] a, in T[] b )
 
       return a == b;
     }
+}
+
+
+T[] arr_set_iota(T)( in size_t desired_length, ref T[] arr ) pure nothrow @trusted
+{
+  arr_ensure_length( desired_length, arr );
+  
+  auto arr_ptr = arr.ptr;
+  foreach (i; 0..desired_length)
+    arr_ptr[ i ] = i;
+  
+  return arr;
 }
 
 
@@ -334,6 +347,13 @@ unittest
 
   }
 
+  {
+    size_t[] arr;
+    arr_set_iota( 7, arr );
+    assert( arr == [0 ,1 ,2 ,3 ,4 ,5 ,6] );
+  }
+
+  
   
   {
     assert( subset_ind_arr_of_sorted
