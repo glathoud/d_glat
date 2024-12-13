@@ -68,7 +68,7 @@ void mean_cov_crosscorr_inplace_dim( bool unbiased = true, bool diag_only = fals
   static if (transposed_data)
     {
       m_mean.setDim( [1UL]                     ~ m.dim[ 0..$-1 ] );
-      m_cov .setDim( [prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( [arr_prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -91,7 +91,7 @@ void mean_cov_crosscorr_inplace_nogc( bool unbiased = true, bool diag_only = fal
   static if (transposed_data)
     {
       immutable nsample = m.dim[ $-1 ];
-      immutable nfeat   = prod( m.dim[ 0..$-1 ] );
+      immutable nfeat   = arr_prod( m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -162,7 +162,7 @@ void mean_cov_inplace_dim( bool unbiased = true, bool diag_only = false, bool tr
   static if (transposed_data)
     {
       m_mean.setDim( [1UL]                     ~ m.dim[ 0..$-1 ] );
-      m_cov .setDim( [prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( [arr_prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -182,7 +182,7 @@ void mean_cov_inplace_nogc( bool unbiased = true, bool diag_only = false, bool t
   static if (transposed_data)
     {
       immutable nsample = m.dim[ $-1 ];
-      immutable nfeat   = prod( m.dim[ 0..$-1 ] );
+      immutable nfeat   = arr_prod( m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -432,7 +432,7 @@ void mean_cov_inplace_dim
   static if (transposed_data)
     {
       m_mean.setDim( [1UL]                     ~ m.dim[ 0..$-1 ] );
-      m_cov .setDim( [prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
+      m_cov .setDim( [arr_prod( m.dim[ 0..$-1 ] )] ~ m.dim[ 0..$-1 ] );
     }
   else
     {
@@ -452,7 +452,7 @@ void mean_cov_inplace_nogc
   static if (transposed_data)
     {
       immutable nsample_0 = m.dim[ $-1 ];
-      immutable nfeat     = prod( m.dim[ 0..$-1 ] );
+      immutable nfeat     = arr_prod( m.dim[ 0..$-1 ] );
     }
   else
     {

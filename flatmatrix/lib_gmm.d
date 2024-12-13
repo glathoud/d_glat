@@ -350,9 +350,9 @@ struct GmmT( T )
     n   = group_arr.length;
     
     static if (transposed_data)
-      dim = prod( m_feature.dim[ 0..$-1 ] );
+      dim = arr_prod( m_feature.dim[ 0..$-1 ] );
     else
-      dim = m_feature.restdim; // i.e. prod( ...[1..$] )
+      dim = m_feature.restdim; // i.e. arr_prod( ...[1..$] )
     
     immutable dim_T = cast( T )( dim );
 

@@ -2,6 +2,7 @@ module d_glat.core_array;
 
 import d_glat.core_assoc_array : aa_set_of_array;
 import d_glat.core_assert;
+import d_glat.core_string : _tli;
 import std.algorithm : sort;
 import std.array : appender, array;
 import std.conv : to;
@@ -61,11 +62,18 @@ pure nothrow @safe
   auto arr = ensure_length( n, buffer.arr );
 */
 {
-  if (arr.length != desired_length)
-    arr.length = desired_length;
-
+  mixin(arr_ensure_length_C( `desired_length`, `arr` ));
   return arr;
 }
+
+string arr_ensure_length_C( in string desired_length_c, in string arr_c ) pure nothrow @safe
+{
+  return mixin(_tli!q{{
+        if (${arr_c}.length != ${desired_length_c})
+          ${arr_c}.length = ${desired_length_c};
+      }});
+}
+
 
 
 bool arr_equal_nan(T)( in T[] a, in T[] b )
@@ -102,15 +110,44 @@ bool arr_equal_nan(T)( in T[] a, in T[] b )
 }
 
 
+
+
+string arr_fold_C(string opt_acctype_c="double")
+  ( in string opt_accinit_c, in string loopspec_c, in string iter_c ) pure nothrow @safe
+{
+  assert(!(0 == opt_acctype_c.length  &&  0 < opt_accinit_c.length));
+
+  const maybe_init_c = 0 < opt_accinit_c.length ?  mixin(_tli!q{ ${opt_acctype_c} ${opt_accinit_c}; })
+    :  "";
+  
+  return mixin(_tli!q{ ${maybe_init_c}
+                      foreach( ${loopspec_c} )
+                      {
+                        ${iter_c}
+                      }
+    });
+}
+
+string arr_loop_C( in string loopspec_c, in string iter_c ) pure nothrow @safe
+{ return arr_fold_C( "", loopspec_c, iter_c ); }
+
+
+
 T[] arr_set_iota(T)( in size_t desired_length, ref T[] arr ) pure nothrow @trusted
 {
-  arr_ensure_length( desired_length, arr );
-  
-  auto arr_ptr = arr.ptr;
-  foreach (i; 0..desired_length)
-    arr_ptr[ i ] = i;
-  
+  mixin(arr_set_iota_C(`desired_length`, `arr`));
   return arr;
+}
+
+string arr_set_iota_C( in string desired_length_c, in string arr_c, in string E="i" )
+  pure nothrow @safe
+{
+  return arr_ensure_length_C( desired_length_c, arr_c )
+    ~mixin(_tli!q{{
+        auto __tmp_arr_ptr__ = ${arr_c}.ptr;
+        foreach (i; 0..${desired_length_c})
+          __tmp_arr_ptr__[ i ] = ${E};
+        }});
 }
 
 

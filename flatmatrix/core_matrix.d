@@ -13,7 +13,7 @@ module d_glat.flatmatrix.core_matrix;
 import core.memory;
 import d_glat.core_array;
 import d_glat.core_assert;
-import d_glat.core_math : prod;
+import d_glat.core_math : arr_prod;
 import d_glat.core_memory;
 import d_glat.core_runtime;
 import std.algorithm : map, max, min, sort;
@@ -966,7 +966,7 @@ void extract_ind_inplace_transp_nogc( T )
   immutable nsample = X_transp.dim[ $-1 ];
   debug
     {
-      immutable d = prod( X_transp.dim[ 0..$-1 ] );
+      immutable d = arr_prod( X_transp.dim[ 0..$-1 ] );
       assert( 0 <= ind );
       assert( ind < d );
       assert( ret.length == nsample );
