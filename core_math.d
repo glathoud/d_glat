@@ -249,7 +249,7 @@ U arr_prod(string E="a",T,U=T)( in T[] arr ) pure nothrow @safe @nogc
 // just to be able to write @nogc, i.e. not using fold
 // and also E to provide a limited replacement for map
 {
-  mixin(arr_fold_C!`auto`(`p = cast(U)( 1 )`, `a; arr`, `p *= `~E~`;`));
+  mixin(arr_fold_C!`auto`(`p = cast(U)( 1 )`, `a; arr`, `p *= (`~E~`);`));
   return p;
 }
 
@@ -257,7 +257,7 @@ U arr_sum(string E="a",T,U=T)( in T[] arr ) pure nothrow @safe @nogc
 // just to be able to write @nogc, i.e. not using fold
 // and also E to provide a limited replacement for map
 {
-  mixin(arr_fold_C!`auto`(`s = cast(U)( 0 )`, `a; arr`, `s += `~E~`;`));
+  mixin(arr_fold_C!`auto`(`s = cast(U)( 0 )`, `a; arr`, `s += (`~E~`);`));
   return s;
 }
 
