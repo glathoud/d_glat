@@ -34,7 +34,7 @@ import std.conv : to;
 
 alias FixedPerm = FixedPermT!size_t;
 
-struct FixedPermT( T, bool infinite = false, size_t i_out_init = 0 )
+struct FixedPermT( T, bool infinite = false, string i_out_init = "0" )
 {
   immutable T n;
 
@@ -87,7 +87,7 @@ struct FixedPermT( T, bool infinite = false, size_t i_out_init = 0 )
       {
         if (0 == (i_in % n))
           {
-            i_out = i_out_init;
+            i_out = mixin(i_out_init);
             step = 1;
           }
       }
@@ -122,7 +122,7 @@ struct FixedPermT( T, bool infinite = false, size_t i_out_init = 0 )
   private:
 
   immutable T next_pow_2;
-  T i_in = 0, step = 1, i_out = i_out_init;
+  T i_in = 0, step = 1, i_out = mixin(i_out_init);
 
 }
 
