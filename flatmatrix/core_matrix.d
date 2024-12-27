@@ -89,7 +89,7 @@ struct MatrixT( T )
   {
     this.dim = dim.dup;
 
-    mixin(arr_ensure_length_C(`data.length`, `this.data`));
+    arr_ensure_length( data.length, this.data );
     this.data[] = data[];
     
     // One of the `dim[i]` numbers may be `0` => will be
@@ -107,7 +107,7 @@ struct MatrixT( T )
       for (size_t i = 1, i_end = dim.length; i < i_end; ++i)
         total *= dim[ i ];
 
-      mixin(arr_ensure_length_C(`total`, `this.data`));
+      arr_ensure_length( total, this.data );
       this.data[] = init_val;
 
       // One of the `dim[i]` numbers may be `0` => will be
@@ -129,7 +129,7 @@ struct MatrixT( T )
           }
         
         this.dim  = dim.dup;
-        mixin(arr_ensure_length_C(`total`, `this.data`));
+        arr_ensure_length( total, this.data );
       }
   }
 
