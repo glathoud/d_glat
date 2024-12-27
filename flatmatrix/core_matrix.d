@@ -129,7 +129,7 @@ struct MatrixT( T )
           }
         
         this.dim  = dim.dup;
-        mixin(arr_ensure_length_C(`total`, `this.data`));
+        ensure_length( total, this.data );
       }
   }
 
