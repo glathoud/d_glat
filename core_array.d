@@ -184,6 +184,38 @@ string arr_filter_inplace_C(string a_c="a", string b_c="b",string old_length_c="
 
 
   
+string arr_filter_inplace_remove_C(string a_c="a", string b_c="b",string old_length_c="old_length")
+  ( in string arr_c, in string test_c ) pure nothrow @safe
+// Code for remove-based, (GC & CPU)-cost-effective inplace removal of
+// several elements of an array.
+//
+// This probably makes sense when there are few removals.  Else,
+// consider the single-pass, remove-free `arr_filter_inplace_C`.
+//
+// In practice, should probably be @nogc since `arr.length` can only diminish.
+{
+  return mixin(_tli!q{
+      {
+        immutable size_t ${old_length_c} = ${arr_c}.length;
+
+        size_t ${b_c} = ${old_length_c};
+
+        for (size_t ${a_c} = ${old_length_c}; ${a_c}--;)
+          {
+            if (!(${test_c}))
+              {
+                ${arr_c}.remove( ${a_c} );
+                --${b_c};
+              }
+          }
+        
+        ${arr_c}.length = ${b_c};
+      }
+    });
+}
+
+
+  
 string arr_fold_C(string opt_acctype_c="double")
   ( in string opt_accinit_c, in string loopspec_c, in string iter_c ) pure nothrow @safe
 {
@@ -473,6 +505,25 @@ unittest
         writeln( "arr_0: ", arr_0 );
         writeln( "arr_1: ", arr_1 );
         writeln( "arr_2: ", arr_2 );
+      }
+
+    assert( arr_2 == arr_1 );
+  }
+
+  
+  {
+    enum test_c = "0 == (a % 3)";
+    auto arr_0 = assumeUnique( iota( 100 ).array );
+    auto arr_1 = assumeUnique( arr_0.filter!test_c.array );
+
+    auto arr_2 = arr_0.dup;
+    mixin(arr_filter_inplace_remove_C("arr_2",test_c));
+
+    if (verbose)
+      {
+        writeln( "(remove impl.) arr_0: ", arr_0 );
+        writeln( "(remove impl.) arr_1: ", arr_1 );
+        writeln( "(remove impl.) arr_2: ", arr_2 );
       }
 
     assert( arr_2 == arr_1 );
