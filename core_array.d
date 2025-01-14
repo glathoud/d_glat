@@ -3,7 +3,7 @@ module d_glat.core_array;
 import d_glat.core_assoc_array : aa_set_of_array;
 import d_glat.core_assert;
 import d_glat.core_string : _tli;
-import std.algorithm : sort;
+import std.algorithm : remove, sort;
 import std.array : appender, array;
 import std.exception : assumeUnique;
 import std.conv : to;
@@ -139,6 +139,7 @@ bool arr_equal_nan(T)( in T[] a, in T[] b )
 
 void arr_filter_inplace(string test_c, T)( ref T[] arr ) pure nothrow @safe
 // In practice, should probably be @nogc since `arr.length` can only diminish.
+// If there are only a few removals, consider using `arr_filter_inplace_remove`.
 {
   mixin(arr_filter_inplace_C("arr",test_c));
 }
@@ -150,6 +151,8 @@ string arr_filter_inplace_C(string a_c="a", string b_c="b",string old_length_c="
 // several elements of an array.
 //
 // In practice, should probably be @nogc since `arr.length` can only diminish.
+//
+// If there are only a few removals, consider using `arr_filter_inplace_remove_C`.
 {
   return mixin(_tli!q{
       {
@@ -182,6 +185,14 @@ string arr_filter_inplace_C(string a_c="a", string b_c="b",string old_length_c="
     });
 }
 
+
+
+void arr_filter_inplace_remove(string test_c, T)( ref T[] arr ) pure nothrow @safe
+// In practice, should probably be @nogc since `arr.length` can only diminish.
+// If there are only a few removals, consider using `arr_filter_inplace_remove`.
+{
+  mixin(arr_filter_inplace_remove_C("arr",test_c));
+}
 
   
 string arr_filter_inplace_remove_C(string a_c="a", string b_c="b",string old_length_c="old_length")
@@ -437,7 +448,7 @@ unittest
   import std.range;
   import std.stdio;
 
-  enum verbose = true;
+  enum verbose = false;
   
   writeln;
   writeln( "unittest starts: ", baseName( __FILE__ ) );
@@ -505,6 +516,25 @@ unittest
         writeln( "arr_0: ", arr_0 );
         writeln( "arr_1: ", arr_1 );
         writeln( "arr_2: ", arr_2 );
+      }
+
+    assert( arr_2 == arr_1 );
+  }
+
+  
+  {
+    enum test_c = "0 == (a % 3)";
+    auto arr_0 = assumeUnique( iota( 100 ).array );
+    auto arr_1 = assumeUnique( arr_0.filter!test_c.array );
+
+    auto arr_2 = arr_0.dup;
+    arr_filter_inplace_remove!test_c( arr_2 );
+
+    if (verbose)
+      {
+        writeln( "(remove) arr_0: ", arr_0 );
+        writeln( "(remove) arr_1: ", arr_1 );
+        writeln( "(remove) arr_2: ", arr_2 );
       }
 
     assert( arr_2 == arr_1 );
