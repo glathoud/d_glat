@@ -31,6 +31,8 @@ string getStackTrace()
 	return stuff.toString();
 }
 
+immutable printMemUsageFlushC = q{ mixin(_wr!`getMemUsage()`); stdout.flush; }; // Usage: mixin(printMemUsageFlushC);
+
 void printMemUsage()
 {
   writeln(getMemUsage());
