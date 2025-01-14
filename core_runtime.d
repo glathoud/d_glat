@@ -31,7 +31,8 @@ string getStackTrace()
 	return stuff.toString();
 }
 
-immutable printMemUsageFlushC = q{ mixin(_wr!`getMemUsage()`); stdout.flush; }; // Usage: mixin(printMemUsageFlushC);
+// Usage: mixin(printMemUsageFlushC);
+immutable printMemUsageFlushC = `writeln(__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ " getMemUsage():"); printMemUsage();`;
 
 void printMemUsage()
 {
@@ -59,4 +60,24 @@ string getMemUsage()
   app.put( "" );
 
   return app.data.join( '\n' );
+}
+
+
+unittest
+{
+  import std.algorithm;
+  import std.path;
+  import std.range;
+  import std.stdio;
+
+  enum verbose = true;
+
+  writeln;
+  writeln( "unittest starts: ", baseName( __FILE__ ) );
+
+
+  mixin(printMemUsageFlushC);
+
+  
+  writeln( "unittest passed: ", baseName( __FILE__ ) );
 }
