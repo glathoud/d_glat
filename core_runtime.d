@@ -5,6 +5,7 @@ import core.runtime : defaultTraceHandler;
 import core.thread : getpid;
 import std.array : appender, join;
 import std.conv : to;
+import std.datetime : Clock;
 import std.exception : enforce;
 import std.process : executeShell;
 import std.stdio : writeln, stdout;
@@ -36,7 +37,7 @@ immutable printMemUsageFlushC = `writeln(__FILE__.split("/")[$-1] ~ "@line:" ~ t
 
 void printMemUsage()
 {
-  writeln(getMemUsage());
+  writeln(getMemUsage(), ", now:", Clock.currTime);
   stdout.flush;
 }
 
