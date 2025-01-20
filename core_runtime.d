@@ -58,8 +58,7 @@ string getMemUsage()
   }
   scope auto stats = GC.stats; 
   app.put( "stats.usedSize: "~to!string( stats.usedSize )~", stats.freeSize: "~to!string( stats.freeSize ));
-  app.put( "" );
-
+  
   return app.data.join( '\n' );
 }
 
