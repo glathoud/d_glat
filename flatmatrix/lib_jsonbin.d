@@ -18,6 +18,7 @@ import core.memory;
 import d_glat.core_assert;
 import d_glat.core_file;
 import d_glat.core_gzip;
+import d_glat.core_json;
 import d_glat.core_profile_acc;
 import d_glat.core_runtime;
 import d_glat.lib_file_copy_rotate;
@@ -87,6 +88,16 @@ class JsonbinT( T ) : ProfileMemC
     return parseJSON( j_str );
   }
 
+  JSONValue jwrap() const pure
+  {
+    auto ret = json_object;
+    ret.object[ "about" ]  = parseJSON( j_str );
+    ret.object[ "dim" ]    = JSONValue( m.dim );
+    ret.object[ "q_data" ] = JSONValue( m.data );
+    return ret;
+  }
+
+  
   ubyte[] toUbytes( in string compression = COMPRESSION_NONE ) const @trusted
     {
       scope auto app = appender!(ubyte[]);

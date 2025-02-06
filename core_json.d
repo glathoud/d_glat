@@ -94,7 +94,7 @@ double get_double_of_json( bool accept_null = false )( in JSONValue jv )
     }
 }
 
-long get_long_of_json( in JSONValue jv )
+long get_long_of_json(bool accept_null = false)( in JSONValue jv )
 {
   if (jv.type == JSONType.integer)
     return cast( long )( jv.integer );
@@ -102,6 +102,12 @@ long get_long_of_json( in JSONValue jv )
   if (jv.type == JSONType.uinteger)
     return cast( long )( jv.uinteger );
 
+  static if (accept_null)
+    {
+      if (jv.type == JSONType.null_)
+        return long.max;
+    }
+  
   enforce( jv.type == JSONType.float_
            , "get_long_of_json: expects an INTEGER, UINTEGER"
            ~ " or FLOAT. Got instead: " ~ to!string(jv.type)~", value: "~jv.toString
@@ -125,18 +131,57 @@ long get_long_of_json( in JSONValue jv )
 }
 
 
-JSONValue json_array()
+
+
+long get_size_t_of_json(bool accept_null = false)( in JSONValue jv )
+{
+  if (jv.type == JSONType.integer)
+    return cast( size_t )( jv.integer );
+
+  if (jv.type == JSONType.uinteger)
+    return cast( size_t )( jv.uinteger );
+
+  static if (accept_null)
+    {
+      if (jv.type == JSONType.null_)
+        return size_t.max;
+    }
+  
+  enforce( jv.type == JSONType.float_
+           , "get_size_t_of_json: expects an INTEGER, UINTEGER"
+           ~ " or FLOAT. Got instead: " ~ to!string(jv.type)~", value: "~jv.toString
+           );
+
+  // Make sure the value is an integer
+  
+  auto jvf  = jv.floating;
+  immutable ret = cast( size_t )( jvf );
+  auto diff = cast( typeof( jvf ))( ret ) - jvf;
+  if (diff != 0)
+    {
+      throw new Exception
+        (
+         "get_size_t_of_json: even the FLOAT value must be "
+         ~ "a non-negative integer. Got instead: " ~ to!string( jvf )
+         );
+    }
+  
+  return ret;  
+}
+
+
+JSONValue json_array() pure @safe
 {
   return parseJSON( "[]" );
 }
 
-JSONValue json_object()
+JSONValue json_object() pure @safe
 {
   return parseJSON( "{}" );
 }
 
 
-T[] json_get_array(T)( in JSONValue jv )
+T[] json_get_array(T, bool accept_null = false)( in JSONValue jv )
 {
   enforce( jv.type == JSONType.array );
 
@@ -148,10 +193,13 @@ T[] json_get_array(T)( in JSONValue jv )
         apdr.put( json_get_string( j_one ) );
 
       else static if (is( T == double))
-	     apdr.put( json_get_double( j_one ) );
+	     apdr.put( json_get_double!accept_null( j_one ) );
       
 	else static if (is( T == long))
-	       apdr.put( json_get_long( j_one ) );
+	       apdr.put( json_get_long!accept_null( j_one ) );
+      
+	else static if (is( T == size_t))
+	       apdr.put( json_get_size_t!accept_null( j_one ) );
       
 	  else static if (is( T == bool ))
 		 apdr.put( json_get_bool( j_one ) );
@@ -169,9 +217,14 @@ double json_get_double( bool accept_null = false )( in JSONValue jv )
   return get_double_of_json!accept_null( jv );
 }
 
-long json_get_long( in JSONValue jv )
+long json_get_long( bool accept_null = false )( in JSONValue jv )
 {
-  return get_long_of_json( jv );
+  return get_long_of_json!accept_null( jv );
+}
+
+long json_get_size_t( bool accept_null = false )( in JSONValue jv )
+{
+  return get_size_t_of_json!accept_null( jv );
 }
 
 
