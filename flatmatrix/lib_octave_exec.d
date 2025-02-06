@@ -28,6 +28,8 @@ import std.typecons : Nullable;
 
 enum OCTAVE_AUTORESTART = dur!"minutes"( 10 );
 
+enum OCTAVE_DBG_VERBOSITY = false;
+
 static class OctaveException : Exception { mixin basicExceptionCtors; }
 
 
@@ -124,11 +126,12 @@ MatrixT!T octaveExecT(T)( in MAction[] mact_arr, in bool verbose = OCTAVE_VERBOS
 MatrixT!T octaveExecT(T)( in MAction[] mact_arr, ref char[][] oarr_warning
                           , in bool verbose = OCTAVE_VERBOSE_DEFAULT
                           , in size_t n_retry = 0 // in case of a (rare) Octave crash. Use if `mact_arr` implements an idempotent process
+                          , in Duration timeout = Duration.zero // 0 means deactivated
                           )
 // Common case: single output+warning output
 {
   MatrixT!T ret;
-  doOctaveExecT!double( mact_arr, oarr_warning, verbose, n_retry, ret );
+  doOctaveExecT!double( mact_arr, oarr_warning, verbose, n_retry, timeout, ret );
   return ret;
 }
 
@@ -464,7 +467,7 @@ char[] _callOctave( in string mCode
       {
         return receiveTimeout( timeout
                                , (string message) {
-                                 writeln(mixin(_HERE_C), ": message receive in spite of timeout : ", message);
+                                 static if (OCTAVE_DBG_VERBOSITY) writeln(mixin(_HERE_C), ": message receive in spite of timeout : ", message);
                                  octave_result = message.dup;
                                }
                                );
@@ -472,7 +475,7 @@ char[] _callOctave( in string mCode
     else
       {
         receive( (string message) {
-            writeln(mixin(_HERE_C), ": message received : ", message);
+            static if (OCTAVE_DBG_VERBOSITY) writeln(mixin(_HERE_C), ": message received : ", message);
             octave_result = message.dup;
           } );
         return true;
@@ -954,6 +957,8 @@ unittest  // --------------------------------------------------
         assert( C.approxEqual( C_expected, 1e-7 ) ); 
       }
     }
+
+  _killOctave( verbose );
   
   writeln( "unittest passed: "~__FILE__ );
 }
