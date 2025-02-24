@@ -35,7 +35,7 @@ string _tli( string s_0 )() pure @safe
   immutable template_parameter = "xyz";
   immutable v0 = "f";
 
-  mixin(_tri!q{
+  mixin(_tli!q{
     static if (abc)
     {
       app.put( "some_string_with_a_${template_parameter}_in_it");

@@ -32,6 +32,9 @@ T[] cumsum( T )( in T[] arr ) pure nothrow @safe
 
 
 
+
+
+
 alias Buffer_e_w_logsum = Buffer_e_w_logsumT!double;
 
 class Buffer_e_w_logsumT(T) : ProfileMemC
