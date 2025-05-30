@@ -583,7 +583,7 @@ MatrixT!T concatrow_v(bool do_parallel = false, T)( in T[][] v_arr_arr ) pure no
 }
 
 void concatrow_v_inplace(bool do_parallel = false, T)( in T[][] v_arr_arr, ref MatrixT!T ret )
-pure nothrow @safe
+  pure @safe nothrow
 {
   immutable nrow = v_arr_arr.length;
   immutable ncol = v_arr_arr[ 0 ].length;
@@ -593,7 +593,7 @@ pure nothrow @safe
 }
 
 void concatrow_v_inplace_nogc(bool do_parallel = false, T)( in T[][] v_arr_arr, ref MatrixT!T ret )
-pure nothrow @trusted @nogc
+  pure @trusted nothrow @nogc
 {
   immutable nrow = v_arr_arr.length;
   immutable ncol = v_arr_arr[ 0 ].length;
@@ -602,7 +602,7 @@ pure nothrow @trusted @nogc
       assert( ret.nrow == nrow );
       assert( ret.restdim == ncol );
     }
-
+  
   auto data = ret.data.ptr;
   static if (do_parallel)
     {
@@ -616,6 +616,8 @@ pure nothrow @trusted @nogc
     {
       size_t jbegin = 0;
       foreach (ref v_arr; v_arr_arr){
+        debug if (ncol != v_arr.length) assert( false ); // to keep @nogc
+        // debug assertWrap(ncol == v_arr.length, () => to!string([ncol, v_arr.length])); // to debug
         data[ jbegin..(jbegin = jbegin+ncol)][] = v_arr[];
       }
     }

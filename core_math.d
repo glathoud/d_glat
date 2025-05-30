@@ -43,7 +43,7 @@ class Buffer_e_w_logsumT(T) : ProfileMemC
   T[] work;
 }
 
-bool equal_nan(T)( in T a, in T b )   pure nothrow @safe @nogc
+bool equal_nan(alias tolerance = 0, T)( in T a, in T b )   pure nothrow @safe @nogc
 // Extended equal that also permits matching NaNs.  For an array
 // version, `arr_equal_nan` in ./core_array.d
 {
@@ -53,7 +53,10 @@ bool equal_nan(T)( in T a, in T b )   pure nothrow @safe @nogc
         return true;
     }
 
-  return a == b;
+  static if (tolerance == 0)
+    return a == b;
+  else
+    return tolerance > abs( a - b );
 }
 
 T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
