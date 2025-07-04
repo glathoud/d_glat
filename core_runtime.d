@@ -58,7 +58,7 @@ string getMemUsage()
     app.put(x.output.strip);
   }
   scope auto stats = GC.stats; 
-  app.put( "stats.usedSize: "~getHumanStrOfSize( stats.usedSize )~", stats.freeSize: "~getHumanStrOfSize( stats.freeSize ));
+  app.put( "stats.usedSize: "~getHumanStrOfSize( stats.usedSize )~",    stats.freeSize: "~getHumanStrOfSize( stats.freeSize ));
   app.put( "" );
   
   return app.data.join( '\n' );
@@ -66,7 +66,7 @@ string getMemUsage()
 
 string getHumanStrOfSize(T)( T n ) pure
 {
-  return format("%d (%,3?d)", n, '_', n );
+  return format("%15d (%,3?15d)", n, '_', n );
 }
 
 
