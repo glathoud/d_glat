@@ -7,6 +7,7 @@ import std.array : appender, join;
 import std.conv : to;
 import std.datetime : Clock;
 import std.exception : enforce;
+import std.format : format;
 import std.process : executeShell;
 import std.stdio : writeln, stdout;
 import std.string : strip;
@@ -33,7 +34,7 @@ string getStackTrace()
 }
 
 // Usage: mixin(printMemUsageFlushC);
-immutable printMemUsageFlushC = `writeln(__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ " getMemUsage():"); printMemUsage();`;
+immutable printMemUsageFlushC = `writeln(__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ " getMemUsage():" ~ (("\n"~getMemUsage()).replace( "\n", "\n"~format("%-40s", (__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ ": ")))));`;
 
 void printMemUsage()
 {
@@ -57,9 +58,15 @@ string getMemUsage()
     app.put(x.output.strip);
   }
   scope auto stats = GC.stats; 
-  app.put( "stats.usedSize: "~to!string( stats.usedSize )~", stats.freeSize: "~to!string( stats.freeSize ));
+  app.put( "stats.usedSize: "~getHumanStrOfSize( stats.usedSize )~", stats.freeSize: "~getHumanStrOfSize( stats.freeSize ));
+  app.put( "" );
   
   return app.data.join( '\n' );
+}
+
+string getHumanStrOfSize(T)( T n ) pure
+{
+  return format("%d (%,3?d)", n, '_', n );
 }
 
 
