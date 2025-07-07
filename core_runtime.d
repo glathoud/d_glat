@@ -44,21 +44,23 @@ void printMemUsage()
 
 string getMemUsage()
 {
+  immutable scope now_str = ", now:"~to!string( Clock.currTime );
+  
   scope auto app = appender!(string[]);
   
   immutable pid = getpid();
   {
     scope auto x = executeShell( "cat /proc/"~to!string(pid)~"/status  | grep VmHWM" );
     enforce( 0 == x.status );
-    app.put(x.output.strip);
+    app.put(x.output.strip~now_str);
   }
   {
     scope auto x = executeShell( "cat /proc/"~to!string(pid)~"/status  | grep VmRSS" );
     enforce( 0 == x.status );
-    app.put(x.output.strip);
+    app.put(x.output.strip~now_str);
   }
   scope auto stats = GC.stats; 
-  app.put( "stats.usedSize: "~getHumanStrOfSize( stats.usedSize )~",    stats.freeSize: "~getHumanStrOfSize( stats.freeSize ));
+  app.put( "stats.usedSize: "~getHumanStrOfSize( stats.usedSize )~",    stats.freeSize: "~getHumanStrOfSize( stats.freeSize )~now_str );
   app.put( "" );
   
   return app.data.join( '\n' );
