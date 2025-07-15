@@ -34,7 +34,7 @@ string getStackTrace()
 }
 
 // Usage: mixin(printMemUsageFlushC);
-immutable printMemUsageFlushC = `writeln(__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ " getMemUsage():" ~ (("\n"~getMemUsage()).replace( "\n", "\n"~format("%-40s", (__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ ": ")))));`;
+immutable printMemUsageFlushC = `writeln(__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ " getMemUsage():" ~ (("\n"~getMemUsage()).replace( "\n", "\n"~format("%-40s", (__FILE__.split("/")[$-1] ~ "@line:" ~ to!string( __LINE__ ) ~ ": "))))); stdout.flush;`;
 
 void printMemUsage()
 {

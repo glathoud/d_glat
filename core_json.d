@@ -445,10 +445,17 @@ bool json_is_string( in ref Nullable!JSONValue j )
 bool json_is_string_equal( T )( in ref T j, in Jsonplace place, in string s )
 {
   static if (is(T == Nullable!JSONValue))
-    auto maybe_j2 = json_get_place( j.get, place );
+    {
+      if (j.isNull)
+	return false;
+      
+      auto maybe_j2 = json_get_place( j.get, place );
+    }
   else
-    auto maybe_j2 = json_get_place( j, place );
-
+    {
+      auto maybe_j2 = json_get_place( j, place );
+    }
+  
   return json_is_string_equal( maybe_j2, s );
 }
 
@@ -457,9 +464,9 @@ bool json_is_string_equal( T )( in ref T j, in string s )
 // Should work well together with `json_get_place`.
 {
   static if (hasMember!(T, "get"))
-    return json_is_string( j )  &&  j.get.str == s;
+      return json_is_string( j )  &&  j.get.str == s;
   else
-    return json_is_string( j )  &&  j.str == s;
+      return json_is_string( j )  &&  j.str == s;
 }
 
 
