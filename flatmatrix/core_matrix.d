@@ -571,6 +571,7 @@ void clone_inplace_nogc( T )
 
 alias concatcol          = interleave;
 alias concatcol_parallel = interleave_parallel;
+alias concatcol_v        = interleave_v;
 
 alias concatcol_inplace          = interleave_inplace;
 alias concatcol_inplace_parallel = interleave_inplace_parallel;
