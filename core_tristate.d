@@ -9,7 +9,7 @@ module d_glat.core_tristate;
   The Boost license applies to this file, as described in ./LICENSE
  */
 
-enum Tristate : ubyte { UNKNOWN, FALSE, TRUE };
+enum Tristate : byte { UNKNOWN = 0, FALSE = -1, TRUE = 1 };
 
 alias TRI_U = Tristate.UNKNOWN
   ,   TRI_F = Tristate.FALSE
