@@ -391,24 +391,18 @@ JsonbinT!T Action_of_filename_or_copy
 }
 
 
-JsonbinT!T jsonbinmeta_of_filename( T = double )( in string filename ) 
+JsonbinT!T jsonbinmeta_of_filename( T = double )( in string filename, TimeseriesSelection ts_sel = TS_SEL_FULL ) 
 {
-  return jsonbin_of_filename!(T,/*only_meta:*/true)( filename );
+  return jsonbin_of_filename!(T,/*only_meta:*/true)( filename, ts_sel );
 }
 
 JsonbinT!T jsonbinmeta_of_filename( T = double )
-( in string filename, ref string error_msg )
+( in string filename, ref string error_msg, TimeseriesSelection ts_sel = TS_SEL_FULL )
 {
-  return jsonbin_of_filename!(T,/*only_meta:*/true)( filename, error_msg );
+  return jsonbin_of_filename!(T,/*only_meta:*/true)( filename, error_msg, ts_sel );
 }
 
 
-
-JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
-( in string filename )
-{
-  return jsonbin_of_filename!(T,only_meta)( filename, TS_SEL_FULL );
-}
 
 JsonbinT!T jsonbin_of_filename( T = double, bool only_meta = false )
 ( in string filename, TimeseriesSelection ts_sel = TS_SEL_FULL ) 
