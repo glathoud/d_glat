@@ -281,17 +281,20 @@ class JsonbinT( T ) : ProfileMemC
 
 JsonbinT!T jsonbin_of_filename_or_copy
 (T = double, string prefix = DFLT_PREFIX)
-( in string filename, bool verbose = true )
+( in string filename, in bool verbose = true, in TimeseriesSelection ts_sel = TS_SEL_FULL )
 {
   string error_msg;
   auto ret =
     Action_of_filename_or_copy!(/*only_meta:*/false,T,prefix)
-    ( filename, error_msg, TS_SEL_FULL, verbose );
+    ( filename, error_msg, ts_sel, verbose );
 
   mixin(alwaysAssertStderr(`0 == error_msg.length`,`error_msg`));
   
   return ret;
 }
+
+
+
 
 JsonbinT!T jsonbinmeta_of_filename_or_copy
 (T = double, string prefix = DFLT_PREFIX)
@@ -529,7 +532,7 @@ bool _check_data_length( ref string error_msg, in TimeseriesSelection ts_sel
 
 
 JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
-( std.stdio.File f, ref string error_msg, in TimeseriesSelection ts_sel = TS_SEL_FULL )
+( std.stdio.File f, ref string error_msg, in TimeseriesSelection ts_sel_0 = TS_SEL_FULL )
 {
   error_msg = "";
 
@@ -541,6 +544,11 @@ JsonbinT!T jsonbin_of_file( T = double, bool only_meta = false )
   jsonbin_read_file_meta!T( f
                             , index 
                             , j_str, dim, compression );
+
+
+  TimeseriesSelection ts_sel = ts_sel_0; // copy
+  if (isTimeseriesSelectionFromEndIncomplete( ts_sel ))
+    ts_sel.n_col = dim[ 1..$ ].fold!"a*b";
   
   static if (only_meta)
     {
@@ -1244,6 +1252,65 @@ unittest  // ------------------------------
     assert( jbe.m.dim == m.dim );
   }
 
+  {
+    auto ts_sel = TS_SEL_LAST_INCOMPLETE;
+    
+    const jb = jsonbin_of_filename_or_copy( tmp_filename, verbose, ts_sel );
+    assert( jb.j_str == j_str );
+
+    if (verbose) writeln( "jb:", jb );
+
+    mixin(m_code);
+    
+    auto m0_last1 = m.deepcopy;
+    m0_last1.slice( -ts_sel.inf_begin.n_past );
+
+    if (verbose) writeln( "m0_last1:", m0_last1 );
+
+    assert( jb.m.approxEqual( m0_last1, 1e-7 ) );
+    
+  }
+
+
+  {
+    TimeseriesSelection ts_sel = TS_SEL_LAST_INCOMPLETE;
+    ts_sel.inf_begin = getInfBeginFromEnd( 2 );
+    
+    const jb = jsonbin_of_filename_or_copy( tmp_filename, verbose, ts_sel );
+    assert( jb.j_str == j_str );
+
+    if (verbose) writeln( "jb:", jb );
+
+    mixin(m_code);
+    
+    auto m0_last2 = m.deepcopy;
+    m0_last2.slice( -ts_sel.inf_begin.n_past );
+
+    if (verbose) writeln( "m0_last2:", m0_last2 );
+
+    assert( jb.m.approxEqual( m0_last2, 1e-7 ) );
+  }
+
+  {
+    auto ts_sel = TS_SEL_LAST_INCOMPLETE;
+    
+    const jb = jsonbin_of_filename_or_copy( tmp_filename, verbose, ts_sel );
+    assert( jb.j_str == j_str );
+
+    if (verbose) writeln( "jb:", jb );
+
+    mixin(m_code);
+    
+    auto m0_last1 = m.deepcopy;
+    m0_last1.slice( -ts_sel.inf_begin.n_past );
+
+    if (verbose) writeln( "m0_last1:", m0_last1 );
+
+    assert( jb.m.approxEqual( m0_last1, 1e-7 ) );
+    
+  }
+
+  
   
   if (exists( tmp_filename ))    std.file.remove( tmp_filename );
   if (exists( tmp_filename_gz )) std.file.remove( tmp_filename_gz );
