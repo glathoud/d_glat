@@ -4,14 +4,14 @@ import d_glat.core_assert;
 import std.array;
 import std.process;
 
-string alwaysAssertExecute( in string[] cmd )
+string executeAlwaysAssert( in string[] cmd )
 {
   scope auto tmp = execute( cmd );
   mixin(alwaysAssertStderr(`0 == tmp.status`, `tmp.output`));
   return tmp.output;
 }
 
-string alwaysAssertExecuteShell( in string cmd )
+string executeShellAlwaysAssert( in string cmd )
 {
   scope auto tmp = executeShell( cmd );
   mixin(alwaysAssertStderr(`0 == tmp.status`, `tmp.output`));
@@ -19,8 +19,9 @@ string alwaysAssertExecuteShell( in string cmd )
 }
 
 
-void assertExecute( in string[] cmd )
+string executeAssert( in string[] cmd )
 {
   scope auto tmp = executeShell( cmd.join( ' ' ) );
   assert( tmp.status == 0, tmp.output );
+  return tmp.output;
 }
