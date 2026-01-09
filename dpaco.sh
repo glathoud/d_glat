@@ -336,6 +336,21 @@ O_LATEST="$(ls -rt ${O_LIST[@]} | tail -1)"
 
 set -v
 
+if [ -f "$OUTBIN" ]  &&  [ "10" -gt $(stat -c%s ${OUTBIN}) ]
+then
+    echo "Something is fishy, executable file way too small, deleting it, and all obj files."
+    set -e
+    rm -f "$OUTBIN"  ||  exit 1
+    rm -f "${OBJDIR}"/*  ||  exit 1
+    set +e
+    echo "Restarting"
+    RESTART="$ME_0 ${MY_ARGS[@]}"
+    echo
+    echo $RESTART
+    ${RESTART[@]}
+    exit 0
+fi
+
 if [ -f "$OUTBIN" ]  &&  [ -f "$O_LATEST" ]  &&  [ "$OUTBIN" -ot "$O_LATEST" ]
 then
     set -e
@@ -362,34 +377,58 @@ then
         # We do all this for compilation speed...
         echo "ERROR:"
         echo "$ERROR"
-        echo 
-        TO_DELETE_LDC2_1_10_0=$(grep -o -e '^[^:]*\.o' <<<$ERROR | grep -v '\.\.' | grep -v -e '^/usr/')
-        TO_DELETE_LDC2_1_30_0=$(grep -o -e '[^[:space:]:]*\.o' <<<$ERROR | sort | uniq)
-
-        TO_DELETE="${TO_DELETE_LDC2_1_10_0} ${TO_DELETE_LDC2_1_30_0}"
-        
-        echo "TO_DELETE:"
-        echo "$TO_DELETE"
         echo
-        
-        if [ "$TO_DELETE" != "" ]
+        echo "Always cleaning up everything on ERROR. Cleaning up now..."
+        rm "${OBJDIR}"/*
+        if [ "0" != "$?" ]
         then
-            echo "Workaround for FRESH_CHUNK-related issue: about to delete:"
-            echo $TO_DELETE
-            RM_CMD="rm $(echo $TO_DELETE)"
-            echo
-            echo "RM_CMD:"
-            echo $RM_CMD
-            echo
-            ${RM_CMD[@]}
-            echo "Workaround for FRESH_CHUNK-related issue: about to restart myself"
-            RESTART="$ME_0 ${MY_ARGS[@]}"
-            echo
-            echo $RESTART
-            ${RESTART[@]}
-            exit 0
+            echo "-- could not delete anything!"
+            exit 8
         fi
-        exit 8
+        if [ -f "$OUTBIN" ]
+        then
+            rm "$OUTBIN"
+            if [ "0" != "$?" ]
+            then
+                echo "-- could not delete $OUTBIN"
+                exit 9
+            fi
+        fi
+        echo "...and restarting"
+        RESTART="$ME_0 ${MY_ARGS[@]}"
+        echo
+        echo $RESTART
+        ${RESTART[@]}
+        exit 0
+        # Old code: partial deletion. Turns out to be insufficient in quite a few cases
+        #
+        # TO_DELETE_LDC2_1_10_0=$(grep -o -e '^[^:]*\.o' <<<$ERROR | grep -v '\.\.' | grep -v -e '^/usr/')
+        # TO_DELETE_LDC2_1_30_0=$(grep -o -e '[^[:space:]:]*\.o' <<<$ERROR | sort | uniq)
+
+        # TO_DELETE="${TO_DELETE_LDC2_1_10_0} ${TO_DELETE_LDC2_1_30_0}"
+        
+        # echo "TO_DELETE:"
+        # echo "$TO_DELETE"
+        # echo
+        
+        # if [ "$TO_DELETE" != "" ]
+        # then
+        #     echo "Workaround for FRESH_CHUNK-related issue: about to delete:"
+        #     echo $TO_DELETE
+        #     RM_CMD="rm $(echo $TO_DELETE)"
+        #     echo
+        #     echo "RM_CMD:"
+        #     echo $RM_CMD
+        #     echo
+        #     ${RM_CMD[@]}
+        #     echo "Workaround for FRESH_CHUNK-related issue: about to restart myself"
+        #     RESTART="$ME_0 ${MY_ARGS[@]}"
+        #     echo
+        #     echo $RESTART
+        #     ${RESTART[@]}
+        #     exit 0
+        # fi
+        # exit 8
     fi
     set -e
 fi
