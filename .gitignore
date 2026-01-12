@@ -3,3 +3,4 @@
 .hgignore
 
 *~
+__pycache__
