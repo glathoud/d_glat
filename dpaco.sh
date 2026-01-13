@@ -339,15 +339,13 @@ O_LIST="$(echo $(find -L ${OBJDIR} -name '*.o'))"
 
 O_LATEST="$(ls -rt ${O_LIST[@]} | tail -1)"
 
-set -v
-
 if [ -f "$OUTBIN" ]  &&  [ "10" -gt $(stat -c%s ${OUTBIN}) ]
 then
     echo "Something is fishy, executable file way too small, deleting it, and all obj files."
-    set -e
+    set -e -v
     rm -f "$OUTBIN"  ||  exit 1
     rm -f "${OBJDIR}"/*  ||  exit 1
-    set +e
+    set +e +v
     echo "Restarting"
     RESTART="$ME_0 ${MY_ARGS[@]}"
     echo
@@ -358,12 +356,10 @@ fi
 
 if [ -f "$OUTBIN" ]  &&  [ -f "$O_LATEST" ]  &&  [ "$OUTBIN" -ot "$O_LATEST" ]
 then
-    set -e
+    set -e -v
     rm -f "$OUTBIN"  ||  exit 1
-    set +e
+    set +e +v
 fi
-
-set +v
 
 if ! [ -f "$OUTBIN" ]
 then
