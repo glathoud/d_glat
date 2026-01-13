@@ -44,6 +44,7 @@ fi
 MODE="" # debug release relbug relbug0
 OUTBIN="dpaco.bin"
 PARALLEL_OPT=""
+REDIRECT_STDERR=""
 SYSID="$(cat /etc/machine-id)_$(uname -a | sed 's/[^0-9]//g' | echo "ibase=10; obase=16; $(cat)" | bc)"
 
 SRCLIST=()
@@ -93,6 +94,10 @@ do
         -m|--mode) # debug relbug0 relbug release
             MODE="$2"
             shift
+            shift
+            ;;
+        -rse|--redirect-stderr)
+            REDIRECT_STDERR="true"
             shift
             ;;
         *)    # unknown option
@@ -457,5 +462,10 @@ then
     echo "    About to launch ${OUTBIN}..."
     echo "============================================="
     echo
-    "${OUTBIN}" "{EXEC_OPT[@]}"
+    if [ "$REDIRECT_STDERR" == "true" ]
+    then
+        "${OUTBIN}" "{EXEC_OPT[@]}" 2>&1
+    else
+        "${OUTBIN}" "{EXEC_OPT[@]}"
+    fi
 fi
