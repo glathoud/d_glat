@@ -8,6 +8,12 @@ import threading
 
 import inspect, os
 
+
+def get_now_dt():
+    return datetime.datetime.now( datetime.timezone.utc )
+
+
+
 class LineNo2:
     # inspired from https://stackoverflow.com/questions/56762491/python-equivalent-to-c-line
     def __str__(self):
@@ -35,15 +41,25 @@ some source filename & line number (to facilitate debugging).
 Example usage:
 
 from lib_glat import *
-a = {b:123}
+a = {"b":123}
 eval(pC('">>"+str(a)+"<<"'))
-    """
+# :__main__:1: ">>"+str(a)+"<<":  >>{'b': 123}<< 
+#
+# From within a file you'd get a more useful output like:
+# :<filename>:<lineno>: ...
+"""
     expr_esc = expr.replace( '\\', '\\\\' ).replace( '"', '\\"' )
     return "print(':'+os_path_basename( (__file__  if  '__file__' in dir()  else  __name__) )+':'+str(get__line2)+\": %(expr_esc)s: \", %(expr)s, '\\n')" % locals()
 
 
+
+
 def synchronized(func):
-    """https://theorangeduck.com/page/synchronized-python
+    """Decorator. Effect: only one thread at a time executes a given
+function. Other threads wait. Useful in a multi-thread environment.
+
+Implementation taken from:
+https://theorangeduck.com/page/synchronized-python
 
 Example of use:
 
@@ -55,7 +71,8 @@ def count():
     curr = total + 1
     time.sleep(0.1)
     total = curr
-"""
+
+    """
 
     func.__lock__ = threading.Lock()
 		
