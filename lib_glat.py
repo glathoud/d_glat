@@ -86,14 +86,23 @@ def count():
 
 
 def tryExceptWrapped( onError ):
-    """Decorator to wrap a function with `try_except( onError, ... )`
+    """Decorator to wrap a function `func` with:
+`try_except(onError,func,...)`
+
+In case of error, catch most exceptions and errors, extract their
+information into a string, and call `onError()` with that string.
+
+Useful when you need to catch and report errors of asynchronous
+callbacks (of deferred).
+
 
 Example usage:
 
 @tryExceptWrapped( onError )
 def someAsynchronousCallback(a,b,c):
     assert( a == b, c ) # would call onError() with a string representation of the AssertionError
-"""
+
+    """
 
     def tryExceptWrappedDecorator( func ):
 
@@ -108,7 +117,7 @@ def someAsynchronousCallback(a,b,c):
 def try_except( onError, f, args=(), kwargs={} ):
     """Call `f( *args, **kwargs )`
 
-In case of error, catch most exceptions and errors, wrap their
+In case of error, catch most exceptions and errors, extract their
 information into a string, and call `onError()` with that string.
 
 Useful when you need to catch and report errors of asynchronous
