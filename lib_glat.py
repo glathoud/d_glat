@@ -123,8 +123,8 @@ information into a string, and call `onError()` with that string.
 Useful when you need to catch and report errors of asynchronous
 callbacks (of deferred).
 
-The companion decorator `tryExceptWrapped` is probably more practical
-in most cases.
+The companion decorator `@tryExceptWrapped( onError )` is probably
+more practical in most cases.
 
 
 Example usage:
@@ -133,10 +133,13 @@ try_except( onError, someAsynchronousCallback, a, b, c )
 
 def someAsynchronousCallback(a,b,c):
     assert( a == b, c ) # would call onError() with a string representation of the AssertionError
-"""
+
+    """
     try:
         f( *args, **kwargs )
-    except Exception as e: # i.e. any exception, but let KeybordInterrupt etc. through - see https://docs.python.org/3.8/library/exceptions.html#exception-hierarchy
+    except Exception as e: # i.e. pretty much any exception, but let
+                           # KeybordInterrupt etc. through - see
+                           # https://docs.python.org/3.8/library/exceptions.html#exception-hierarchy
         onError(''.join( ['tryExcept( '+f.__name__+' ) caught e:\n']
                          + traceback.format_exception( e )))
 
