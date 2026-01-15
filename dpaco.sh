@@ -44,7 +44,7 @@ fi
 MODE="" # debug release relbug relbug0
 OUTBIN="dpaco.bin"
 PARALLEL_OPT=""
-REDIRECT_STDERR=""
+REDIRECT_STDERR="true"
 SYSID="$(cat /etc/machine-id)_$(uname -a | sed 's/[^0-9]//g' | echo "ibase=10; obase=16; $(cat)" | bc)"
 
 SRCLIST=()
@@ -315,9 +315,9 @@ then
     echo
     echo "Compiling files grouped in chunks..."
     set -v
-    time {
+    { time {
         src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6
-    }
+    }; } 2>&1
     set +v
     echo
     echo 
@@ -326,9 +326,9 @@ else
     echo
     echo "Compiling each file separately..."
     set -v
-    time {
+    { time {
         src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7
-    }
+    }; } 2>&1
     set +v
     echo
     echo
@@ -370,7 +370,7 @@ then
     echo "    Linking everything into ${OUTBIN}..."
     echo "============================================="
     set +e
-    time { ERROR=$(${CMD[@]} 2>&1 > /dev/null); }
+    { time { ERROR=$(${CMD[@]} 2>&1 > /dev/null); }; } 2>&1
     code=$?
     if [ $code != 0 ]
     then
