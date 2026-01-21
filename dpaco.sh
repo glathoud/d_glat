@@ -287,7 +287,7 @@ function do_one()
             echo ${CMD_ONE[@]}
             {
                 {
-                    time ${CMD_ONE[@]} ;
+                    time -v ${CMD_ONE[@]} ;
                 } 2> "${TIMEFILENAME}"
             } || {
                 echo
@@ -315,7 +315,7 @@ then
     echo
     echo "Compiling files grouped in chunks..."
     set -v
-    { time {
+    { time -v {
         src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6
     }; } 2>&1
     set +v
@@ -326,7 +326,7 @@ else
     echo
     echo "Compiling each file separately..."
     set -v
-    { time {
+    { time -v {
         src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7
     }; } 2>&1
     set +v
@@ -370,7 +370,7 @@ then
     echo "    Linking everything into ${OUTBIN}..."
     echo "============================================="
     set +e
-    { time { ERROR=$(${CMD[@]} 2>&1 > /dev/null); }; } 2>&1
+    { time -v { ERROR=$(${CMD[@]} 2>&1 > /dev/null); }; } 2>&1
     code=$?
     if [ $code != 0 ]
     then
@@ -460,8 +460,8 @@ then
     echo
     if [ "$REDIRECT_STDERR" == "true" ]
     then
-        "${OUTBIN}" "{EXEC_OPT[@]}" 2>&1
+        { time -v "${OUTBIN}" "{EXEC_OPT[@]}" } 2>&1
     else
-        "${OUTBIN}" "{EXEC_OPT[@]}"
+        { time -v "${OUTBIN}" "{EXEC_OPT[@]}" }
     fi
 fi
