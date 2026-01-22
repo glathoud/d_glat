@@ -339,6 +339,12 @@ struct MatrixT( T )
   }
 
   string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
+    ( MatrixStringTransformfunT!T mstt ) const
+  {
+    return MtoString!(T, format_g, format_s)( this, mstt );
+  }
+
+  string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
     ( MaybeMSTT!T maybe_mstt ) const
   {
     return MtoString!(T, format_g, format_s)( this, maybe_mstt );
@@ -410,6 +416,13 @@ struct MatrixT( T )
 
 
 // Because of the dual-context issue for methods, had to put `toString` outside
+
+string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+  ( in MatrixT!T m, MatrixStringTransformfunT!T mstt ) 
+{
+  scope MaybeMSTT!T maybe_mstt = mstt;
+  return MtoString!(T, format_g, format_s, labels)( m, maybe_mstt );
+}
 
 string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
   ( in MatrixT!T m ) 
