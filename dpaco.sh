@@ -287,7 +287,7 @@ function do_one()
             echo ${CMD_ONE[@]}
             {
                 {
-                    time -v ${CMD_ONE[@]} ;
+                    /usr/bin/time -v ${CMD_ONE[@]} ;
                 } 2> "${TIMEFILENAME}"
             } || {
                 echo
@@ -315,9 +315,7 @@ then
     echo
     echo "Compiling files grouped in chunks..."
     set -v
-    { time -v {
-        src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6
-    }; } 2>&1
+    time ( src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6 ) 2>&1
     set +v
     echo
     echo 
@@ -326,9 +324,7 @@ else
     echo
     echo "Compiling each file separately..."
     set -v
-    { time -v {
-        src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7
-    }; } 2>&1
+    time ( src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7 ) 2>&1
     set +v
     echo
     echo
@@ -370,7 +366,7 @@ then
     echo "    Linking everything into ${OUTBIN}..."
     echo "============================================="
     set +e
-    { time -v { ERROR=$(${CMD[@]} 2>&1 > /dev/null); }; } 2>&1
+    time ( ERROR=$(${CMD[@]} 2>&1 > /dev/null); ) 2>&1
     code=$?
     if [ $code != 0 ]
     then
@@ -460,8 +456,8 @@ then
     echo
     if [ "$REDIRECT_STDERR" == "true" ]
     then
-        { time -v "${OUTBIN}" "{EXEC_OPT[@]}" } 2>&1
+        { /usr/bin/time -v "${OUTBIN}" "{EXEC_OPT[@]}"; } 2>&1
     else
-        { time -v "${OUTBIN}" "{EXEC_OPT[@]}" }
+        { /usr/bin/time -v "${OUTBIN}" "{EXEC_OPT[@]}"; }
     fi
 fi
