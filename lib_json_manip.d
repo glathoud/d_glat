@@ -425,7 +425,7 @@ JSONValue json_solve_calc_one( in ref JSONValue o
   return ret;
 }
 
-  
+
 JSONValue json_solve_calc_one( in ref JSONValue o
                                , in ref JSONValue v
                                , ref bool success
@@ -517,9 +517,14 @@ double json_solve_calc_one( in ref JSONValue o
 
   if (nop == 1)
     {
+      auto op0 = operands[ 0 ];
       switch (op)
         {
-        case "round": return round( operands[ 0 ] );
+        case "+": return op0;
+        case "-": return op0;
+        case "*": return op0;
+        case "/": return 0;
+        case "round": return round( op0 );
         default: break;
         }
       throw new Exception( "Unknown (unary?) operator "~op~" from "~li.toString );
