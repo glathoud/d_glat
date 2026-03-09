@@ -315,7 +315,7 @@ then
     echo
     echo "Compiling files grouped in chunks..."
     set -v
-    time ( src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6 ) 2>&1
+    time ( src_list_chunks | parallel -k --ungroup --halt now,fail=1 do_chunk {} "$OBJDIR" "$COMPILER" "$COMPILER_OPT" ||  exit 6 ) # xxx 2>&1
     set +v
     echo
     echo 
@@ -324,7 +324,7 @@ else
     echo
     echo "Compiling each file separately..."
     set -v
-    time ( src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7 ) 2>&1
+    time ( src_list_all_uniq | parallel -k --ungroup --halt now,fail=1 do_one {} "$OBJDIR" "$COMPILER" "$TIMESUMMARY" "$COMPILER_OPT"  ||  exit 7 ) # xxx 2>&1
     set +v
     echo
     echo
@@ -366,7 +366,7 @@ then
     echo "    Linking everything into ${OUTBIN}..."
     echo "============================================="
     set +e
-    time ( ERROR=$(${CMD[@]} 2>&1 > /dev/null); ) 2>&1
+    time ( ERROR=$(${CMD[@]} ); ) # xxx 2>&1 ?
     code=$?
     if [ $code != 0 ]
     then
