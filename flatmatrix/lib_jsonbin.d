@@ -682,6 +682,31 @@ class _FakeArrAroundReadFile(T)
     }
 }
 
+void jsonbin_write_to_m_filename(T)( in JsonbinT!T jb, in string m_filename, in string varname = "m" )
+{
+  scope f = File( m_filename, "w" );
+  f.writeln( "% j_str: ", jb.j_str );
+  f.writeln( "% dim: ", jb.m.dim );
+
+  static if (__traits(isFloating, T))
+    {
+      immutable data_str = "[\n"
+        ~(jb.m.data.chunks(jb.m.restdim).map!((c) => format( "%( %.17g%)\n",c)).join(""))
+        ~"]";
+    }
+  else
+    {
+      immutable data_str = format( "[ %( %d%) ]", jb.m.data );
+    }
+
+  immutable dim_str = format( "[%( %d%)]", jb.m.dim.dup.reverse );
+  
+  f.writeln( varname, " = reshape( ", data_str, ", ", dim_str, " );" );
+  f.flush;
+  f.close;
+}
+
+
 void jsonbin_write_to_filename(T)( in JsonbinT!T jb, in string filename, in string compression_type = COMPRESSION_NONE )
 {
   ensure_file_writable_or_exit( filename, /*ensure_dir:*/true );
