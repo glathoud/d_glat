@@ -2,6 +2,7 @@ module d_glat.lib_regress_theilsen;
 
 import d_glat.core_array;
 import d_glat.core_math;
+import std.algorithm.mutation;
 import std.array;
 
 /*
@@ -75,7 +76,8 @@ void regress_theilsen(T)( in T[] y, in T[] x
       }
     debug assert( i_s == slopes.length );
   }
-  m = median_inplace( slopes );
+
+  m = nanmedian_inplace( slopes );
 }
 
 T[] apply_theilsen_multi(T)( in T[] x, in T[] m_arr, in T[] b_arr ) pure nothrow @safe
