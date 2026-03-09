@@ -5,7 +5,7 @@ public import std.math;
 import d_glat.core_array;
 import d_glat.core_profile_acc;
 import d_glat.flatmatrix.lib_stat : MatrixT, mean_cov_inplace_dim;
-import std.algorithm : reduce, sort;
+import std.algorithm : reduce, remove, sort;
 import std.exception : enforce;
 import std.traits : hasMember, isArray, isCallable;
 
@@ -58,6 +58,7 @@ bool equal_nan(alias tolerance = 0, T)( in T a, in T b )   pure nothrow @safe @n
   else
     return tolerance > abs( a - b );
 }
+
 
 T e_w_logsum( T )( in T[] a_arr, in T[] logw_arr )
   @safe
@@ -304,6 +305,12 @@ pure nothrow @safe
   return median_inplace( arr.dup );
 }
 
+T nanmedian( T )( in T[] arr )
+ pure nothrow @safe
+{
+  return nanmedian_inplace( arr.dup );
+}
+
 T ratio_finite(T, alias final_modif = false)( in T num, in T denom ) pure nothrow @safe @nogc
 {
   immutable r0 = 0.0 == denom
@@ -380,6 +387,40 @@ T median_inplace( T )( T[] arr )
   return 1 == n % 2
     ?  arr[ $>>1 ]
     :  (arr[ $>>1 ] + arr[ ($-1)>>1 ]) * half;
+}
+
+
+T nanmedian_inplace( T )( T[] arr )
+  pure nothrow @safe @nogc
+{
+  immutable n0 = arr.length;
+  size_t    n  = n0;
+
+  for (size_t i = n; i--;)
+    {
+      if (isNaN( arr[ i ]))
+        {
+          arr.remove( i );
+          arr[ --n ] = T.nan;
+        }
+    }
+
+  if (1 > n)
+      return undefined!T;
+
+  if (2 > n)
+    return arr[ 0 ];
+
+  if (n == n0)
+    arr.sort;
+  else
+    arr[ 0..n ].sort;
+  
+  immutable half = cast( T )( 0.5 );
+
+  return 1 == n % 2
+    ?  arr[ n>>1 ]
+    :  (arr[ n>>1 ] + arr[ (n-1)>>1 ]) * half;
 }
 
 
@@ -524,6 +565,26 @@ unittest
       assert( arr == arr0 );
       assert( 3.0 == median_inplace( arr ) );
       assert( arr != arr0 );
+    }
+  }
+  
+  {
+    immutable nn = double.nan;
+
+    assert( nanmedian( [ 1.0,nn,2.0,3.0,nn,nn,4.0,5.0,nn,nn ] ) == 3.0 );
+    assert( nanmedian( [ nn,1.0,2.0,3.0,4.0,nn,nn,5.0,6.0,nn,nn ] ) == (3.0+4.0)*0.5 );
+
+    {
+      immutable double[] arr = [ nn,nn,nn,1.0, nn,4.0, 5.0, nn,nn,2.0, 3.0 ];
+      assert( 3.0 == nanmedian( arr ) );
+    }
+
+    {
+      double[] arr = [ nn,nn,nn,1.0, 4.0, nn,nn,nn,5.0, 2.0, nn,nn,3.0,nn ];
+      auto arr0 = arr.idup;
+      assert( arr_equal_nan( arr, arr0 ) );
+      assert( 3.0 == nanmedian_inplace( arr ) );
+      assert( !arr_equal_nan( arr, arr0 ) );
     }
   }
   
