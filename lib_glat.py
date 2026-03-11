@@ -27,12 +27,6 @@ def os_path_basename( s ):  # convenience: the user does not have to `import os`
 def sys_stdout_flush():  # convenience: the user does not have to `import sys`
     sys.stdout.flush()
 
-def eH():
-    """To just print some verbosity with source filename and lineno:
-print(eval(eH()))
-"""
-    return eC('""')
-    
 def pH():
     """To just print some verbosity with source filename and lineno:
 eval(pH())
@@ -54,25 +48,7 @@ eval(pC('">>"+str(a)+"<<"'))
 # :<filename>:<lineno>: ...
 """
     expr_esc = expr.replace( '\\', '\\\\' ).replace( '"', '\\"' )
-    return "print("+eC(expr)+")"
-
-
-def eC(expr):
-    """Print a piece of Python code, and its evaluated value, along with
-some source filename & line number (to facilitate debugging).
-
-Example usage:
-
-from lib_glat import *
-a = {"b":123}
-print(eval(eC('">>"+str(a)+"<<"')))
-# :__main__:1: ">>"+str(a)+"<<":  >>{'b': 123}<< 
-#
-# From within a file you'd get a more useful output like:
-# :<filename>:<lineno>: ...
-"""
-    expr_esc = expr.replace( '\\', '\\\\' ).replace( '"', '\\"' )
-    return "':'+os_path_basename( (__file__  if  '__file__' in dir()  else  __name__) )+':'+str(get__line2)+\": %(expr_esc)s: \"+ %(expr)s+ '\\n'" % locals()
+    return "print(':'+os_path_basename( (__file__  if  '__file__' in dir()  else  __name__) )+':'+str(get__line2)+\": %(expr_esc)s: \", %(expr)s, '\\n')" % locals()
 
 
 
