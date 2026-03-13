@@ -16,7 +16,7 @@ import d_glat.core_assert;
 import d_glat.core_math : arr_prod;
 import d_glat.core_memory;
 import d_glat.core_runtime;
-import std.algorithm : map, max, min, sort;
+import std.algorithm : map, max, min, reverse, sort;
 import std.array : appender, array;
 import std.conv : to;
 import std.exception : enforce;
@@ -333,6 +333,16 @@ struct MatrixT( T )
       &&  arr_equal_nan( this.data, other.data );
   }  
 
+  string toStringOctave( in string varname = "" ) const
+  {
+    immutable with_var = 0 < varname.length;
+    return (with_var ? varname~" = "  :  "")
+      ~format( "reshape( [ %( %.16g%)], %s )", data, dim.dup.reverse )
+      ~(with_var ? ";" : "")
+      ;
+  }
+
+  
   string toString(string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)() const
   {
     return MtoString!(T, format_g, format_s)( this );
@@ -567,6 +577,30 @@ void mat_samevalue_inplace_nogc(alias v,T)( in size_t[] dim, ref MatrixT!T ret )
   ret.data[] = v;
 }
 
+
+
+
+
+MatrixT!T mat_map(alias action, T)( in MatrixT!T m ) pure nothrow @safe
+{
+  auto ret = m.deepcopy;
+  mat_map_inplace_nogc!(action,T)( ret );
+  return ret;
+}
+
+
+void mat_map_inplace_nogc(alias action, T)( ref MatrixT!T m ) pure nothrow @safe @nogc
+{
+  auto m_data = m.data;
+  immutable nrow = m.nrow, restdim = m.restdim;
+  foreach (a,b; m_data)
+    {
+      static if (is(typeof(action) == string))
+        m_data[ a ] = mixin(action);
+      else
+        m_data[ a ] = action( a, b );
+    }
+}
 
 
 
