@@ -16,7 +16,7 @@ import d_glat.core_assert;
 import d_glat.core_math : arr_prod;
 import d_glat.core_memory;
 import d_glat.core_runtime;
-import std.algorithm : map, max, min, reverse, sort;
+import std.algorithm : fold, map, max, min, reverse, sort;
 import std.array : appender, array;
 import std.conv : to;
 import std.exception : enforce;
@@ -1027,6 +1027,41 @@ void extract_ind_inplace_transp_nogc( T )
 }
 
 
+T[] fold_cols(alias action, T)( in MatrixT!T m )
+{
+  immutable rd = m.restdim;
+  auto data = m.data;
+  
+  auto ret = new double[ m.nrow ];
+  for (size_t i = 0, i_end = data.length
+         , i_ret = 0
+         ; i < i_end; )
+    {
+      immutable i_next = i + rd;
+      ret[ i_ret++ ] = data[ i..i_next ].fold!action;
+      i = i_next;      
+    }
+  
+  return ret;
+}
+
+T[] fold_cols(alias action, T, U)( in MatrixT!T m, U seed )
+{
+  immutable rd = m.restdim;
+  auto data = m.data;
+
+  auto ret = new double[ m.nrow ];
+  for (size_t i = 0, i_end = data.length
+         , i_ret = 0
+         ; i < i_end; )
+    {
+      immutable i_next = i + rd;
+      ret[ i_ret++ ] = data[ i..i_next ].fold!action( seed );
+      i = i_next;      
+    }
+  
+  return ret;
+}
 
 
 T[] fold_rows(alias /*T[] */fun/*( T[], in T[] row )*/, T)
