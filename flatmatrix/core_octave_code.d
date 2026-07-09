@@ -15,11 +15,12 @@ import d_glat.core_string;
 import d_glat.flatmatrix.core_matrix;
 import d_glat.lib_json;
 import std.algorithm : map;
-import std.array : array, join;
+import std.array : appender, array, join;
 import std.format : format;
 import std.json;
 import std.range : chunks;
 import std.string : replace;
+import std.traits : isSomeString;
 
 alias mExecArr_fread = mExecArr_freadT!double;
 auto mExecArr_freadT(T)( in string fnC, in string vC, in string sizeC/*e.g. `[nr, nc]`*/
@@ -59,10 +60,62 @@ string mstr_arch() pure @safe
 }
 
 
-string mstr_of_arr(T/*typically float or double*/)( in T[] arr )
+string mstr_of_arr(T/*typically float or double*/, bool newline = true)
+  ( in string varname, in T[] arr )
 {
-  return JSONValue( arr ).toString( JSONOptions.specialFloatLiterals ).replace( `"NaN"`, "nan" ).replace( `"Infinite"`, "Inf" ).replace( `"-Infinite"`, "-Inf" );
+  return mstr_of_arr!T( arr, varname );
 }
+
+string mstr_of_arr(T/*typically float or double*/, bool newline = true)
+  ( in T[] arr, in string varname = "" )
+{
+  immutable has_var = 0 < varname.length;
+  
+  static if (isSomeString!T)
+    {
+      auto s_tmp   = arr.map!`'"'~a~'"'`.join( ", " );
+      auto s_value = mixin(_tli!`{ ${s_tmp} }`);
+    }
+  else
+    {
+      auto s_value = JSONValue( arr ).toString( JSONOptions.specialFloatLiterals ).replace( `"NaN"`, "nan" ).replace( `"Infinite"`, "Inf" ).replace( `"-Infinite"`, "-Inf" );
+    }
+
+  return (has_var  ?  varname~" = "~s_value~";"  :  s_value)
+    ~(newline  ?  "\n"  :  "");
+}
+
+string mstr_of_aa
+(T/*typically associative array, e.g. int[string], string[int]or whatever*/
+ , bool newline = true)
+  ( in string varname, in T aa )
+/* Non-string keys resp. values are converted to strings using
+   `v.toStringOctave()` if it exists (see e.g. ./core_matrix.d), else
+   falling back onto `'"'~to!string(v)~'"'`.
+
+   So the returned Octave code, when executed, builds an Octave
+   `struct:string->string`.
+*/
+{
+  auto app = appender!(char[]);
+  app.put( mixin(_tli!`${varname} = struct();`) );
+
+  string _to_string(T)( in T v )
+  {
+    static if (__traits(hasMember, T, "toStringOctave" ))
+      return v.toStringOctave!/*newline:*/false();
+    else
+      return '"'~to!string( v )~'"';
+  }
+
+
+  foreach (k,v; aa)
+    {
+      app.put( mixin(_tli!` ${varname} = setfield( ${varname}, ${_to_string(k)}, ${_to_string(v)} );`) );
+    }
+  return app.data.idup ~ (newline  ?  "\n"  :  "");
+}
+
 
 
 T[] arr_of_mstr(T = double/*typically float or double*/)( in string s )
@@ -83,6 +136,8 @@ T[] arr_of_mstr(T = double/*typically float or double*/)( in string s )
 string mstr_of_mat(T/*typically float or double*/)( in MatrixT!T m, bool newlines = false )
 // newlines: false better when passing code to an octave instance
 // newlines: true better e.g. for .m file output, to have something humanly readable
+//
+// Alternative: consider m.toStringOctave
 {
   immutable nrow = m.nrow;
   immutable rd   = m.restdim;

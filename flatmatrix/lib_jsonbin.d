@@ -181,6 +181,16 @@ class JsonbinT( T ) : ProfileMemC
       }
   }
 
+  string toStringOctave(bool newline = true)( in string varname = "" ) const
+  {
+    immutable with_var   = 0 < varname.length;
+    immutable j_oct_code = "# <jsonbin>: "~varname~"\n# j_str: "~j_str;
+    immutable m_oct_code = m.toStringOctave!newline( varname );
+
+    return with_var  ?  j_oct_code~'\n'~m_oct_code
+      :  m_oct_code // e.g. integration into an expression
+      ;
+  }
 
 
   string date_transform_fun

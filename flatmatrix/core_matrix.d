@@ -319,7 +319,7 @@ struct MatrixT( T )
   
   // --- API: Comparison
 
-  bool approxEqual( in ref Matrix other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
+  bool approxEqual( in ref MatrixT!T other, in double maxRelDiff, in double maxAbsDiff = 1e-5 ) const pure nothrow @safe @nogc
   {
     return this.dim == other.dim
       &&  std.math.isClose( this.data, other.data, maxRelDiff, maxAbsDiff );
@@ -333,12 +333,13 @@ struct MatrixT( T )
       &&  arr_equal_nan( this.data, other.data );
   }  
 
-  string toStringOctave( in string varname = "" ) const
+  string toStringOctave(bool newline = true)( in string varname = "" ) const
   {
     immutable with_var = 0 < varname.length;
     return (with_var ? varname~" = "  :  "")
       ~format( "reshape( [ %( %.16g%)], %s )", data, dim.dup.reverse )
       ~(with_var ? ";" : "")
+      ~(newline ? "\n" : "")
       ;
   }
 
@@ -427,21 +428,21 @@ struct MatrixT( T )
 
 // Because of the dual-context issue for methods, had to put `toString` outside
 
-string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, alias/*string[]*/ labels = [])
   ( in MatrixT!T m, MatrixStringTransformfunT!T mstt ) 
 {
   scope MaybeMSTT!T maybe_mstt = mstt;
   return MtoString!(T, format_g, format_s, labels)( m, maybe_mstt );
 }
 
-string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, alias/*string[]*/ labels = [])
   ( in MatrixT!T m ) 
 {
   scope MaybeMSTT!T mstt_null;
   return MtoString!(T, format_g, format_s, labels)( m, mstt_null );
 }
 
-string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, alias/*string[]*/ labels = [])
   ( in MatrixT!T m, MaybeMSTT!T maybe_mstt ) 
 {
   with (m)
@@ -458,14 +459,14 @@ string MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORM
 }
 
   
-void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, alias/*string[]*/ labels = [])
   (in MatrixT!T m, scope void delegate(const(char)[]) sink) 
 {
   MaybeMSTT!T mstt_null;
   m.MtoString!(T, format_g, format_s, labels)( sink, mstt_null );
 }
 
-void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, alias/*string[]*/ labels = [])
   (in MatrixT!T m, scope void delegate(const(char)[]) sink
    , MaybeMSTT!T maybe_mstt
    ) 
@@ -473,7 +474,7 @@ void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT
   m.MtoString!(T, format_g, format_s, labels)( sink, "", maybe_mstt );
 }
 
-void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, string[] labels = [])
+void MtoString(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S, alias/*string[]*/ labels = [])
   (in MatrixT!T m
    , scope void delegate(const(char)[]) sink
    , in string tab
@@ -1821,11 +1822,11 @@ void transpose_inplace_noSetDim_parallel( T )
 
 
 
+enum DFLT_FORMAT_G = "%+20.14g";
+enum DFLT_FORMAT_S = "%20s";
 
 private: // ------------------------------
 
-enum DFLT_FORMAT_G = "%+20.14g";
-enum DFLT_FORMAT_S = "%20s";
 
 void _spit_d(T, string format_g = DFLT_FORMAT_G, string format_s = DFLT_FORMAT_S)
   ( MaybeMSTT!T maybe_mstt
